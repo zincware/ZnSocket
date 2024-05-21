@@ -25,8 +25,6 @@ def get_sio(
 
     if db is None:
         db = MemoryDatabase()
-        # db = SqlDatabase(engine="sqlite:///:memory:")
-        # db = SqlDatabase(engine="sqlite:///znsocket.db")
 
     @sio.event
     def connect(sid, environ, auth):

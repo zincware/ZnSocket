@@ -10,7 +10,7 @@ python = "^3.10"
 python-socketio = {extras = ["client"], version = "^5.9"}
 eventlet = "^0.36"
 typer = "^0.12"
-sqlmodel = { version = "^0.0", optional = true }
+sqlmodel = "^0.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.4"
@@ -23,9 +23,6 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 znsocket = "znsocket.cli:app"
-
-[tool.poetry.extras]
-sql = ["sqlmodel"]
 
 [tool.ruff.lint]
 select = ["I"]

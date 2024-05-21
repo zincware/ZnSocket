@@ -3,7 +3,7 @@ import typing as t
 
 from sqlmodel import Field, Relationship, Session, SQLModel, create_engine, select
 
-from znsocket.server import Database
+from .base import Database
 
 
 class RoomData(SQLModel, table=True):
