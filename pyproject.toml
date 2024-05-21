@@ -16,6 +16,7 @@ sqlmodel = "^0.0"
 ruff = "^0.4"
 pytest = "^8.2"
 numpy = "^1.26"
+coverage = "^7.5.1"
 
 [build-system]
 requires = ["poetry-core"]

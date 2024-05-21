@@ -34,4 +34,3 @@ class Client:
             return data
         else:
             return super().__getattribute__(name)
-

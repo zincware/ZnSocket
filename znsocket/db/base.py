@@ -59,6 +59,7 @@ class Database(abc.ABC):
             The session ID of the client.
         """
 
+    # TODO: rename add client
     @abc.abstractmethod
     def join_room(self, sid: str, room_name: str) -> None:
         """Make the client join a room.
