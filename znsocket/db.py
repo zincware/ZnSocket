@@ -1,5 +1,6 @@
 import dataclasses
 import typing as t
+import abc
 
 
 @dataclasses.dataclass(eq=True, frozen=True)
@@ -14,8 +15,36 @@ class Room:
     storage: dict[str, str]
 
 
+class Database(abc.ABC):
+    @abc.abstractmethod
+    def set_room_storage(self, sid: str, key: str, value: t.Any) -> None:
+        pass
+
+    @abc.abstractmethod
+    def get_room_storage(self, sid: str, key: str) -> t.Any:
+        pass
+
+    @abc.abstractmethod
+    def remove_client(self, sid: str) -> None:
+        pass
+
+    @abc.abstractmethod
+    def join_room(self, sid: str, room_name: str) -> None:
+        pass
+
+
 @dataclasses.dataclass
-class Database:
+class MemoryDatabase(Database):
+    """In-memory database for storing room data.
+    
+    This database is NOT THREAD-SAFE!
+
+    Attributes
+    ----------
+    rooms : list[Room]
+        A list of rooms. Each room has a name, a list of clients
+        and a storage dictionary.
+    """
     rooms: list[Room] = dataclasses.field(default_factory=list)
 
     def set_room_storage(self, sid: str, key: str, value: t.Any) -> None:

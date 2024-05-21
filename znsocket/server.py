@@ -1,12 +1,12 @@
 import socketio
-from znsocket.db import Database
+from znsocket.db import MemoryDatabase
 
 MAX_HTTP_BUFFER_SIZE = 1e12
 
 # create a Socket.IO server
 sio = socketio.Server(max_http_buffer_size=MAX_HTTP_BUFFER_SIZE)
 
-db = Database()
+db = MemoryDatabase()
 
 # 3 Options
 # - like this, running single process max performance, concurrency could lead to data corruption
