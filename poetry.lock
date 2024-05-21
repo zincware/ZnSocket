@@ -4,7 +4,7 @@
 name = "annotated-types"
 version = "0.7.0"
 description = "Reusable constraint types to use with typing.Annotated"
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
     {file = "annotated_types-0.7.0-py3-none-any.whl", hash = "sha256:1f02e8b43a8fbbc3f3e0d4f0f4bfc8131bcb4eebe8849b8e5c773f3a1c582a53"},
@@ -423,7 +423,7 @@ testing = ["pytest", "pytest-benchmark"]
 name = "pydantic"
 version = "2.7.1"
 description = "Data validation using Python type hints"
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
     {file = "pydantic-2.7.1-py3-none-any.whl", hash = "sha256:e029badca45266732a9a79898a15ae2e8b14840b1eabbb25844be28f0b33f3d5"},
@@ -442,7 +442,7 @@ email = ["email-validator (>=2.0.0)"]
 name = "pydantic-core"
 version = "2.18.2"
 description = "Core functionality for Pydantic validation and serialization"
-optional = true
+optional = false
 python-versions = ">=3.8"
 files = [
     {file = "pydantic_core-2.18.2-cp310-cp310-macosx_10_12_x86_64.whl", hash = "sha256:9e08e867b306f525802df7cd16c44ff5ebbe747ff0ca6cf3fde7f36c05a59a81"},
@@ -703,7 +703,7 @@ docs = ["sphinx"]
 name = "sqlalchemy"
 version = "2.0.30"
 description = "Database Abstraction Library"
-optional = true
+optional = false
 python-versions = ">=3.7"
 files = [
     {file = "SQLAlchemy-2.0.30-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:3b48154678e76445c7ded1896715ce05319f74b1e73cf82d4f8b59b46e9c0ddc"},
@@ -790,7 +790,7 @@ sqlcipher = ["sqlcipher3_binary"]
 name = "sqlmodel"
 version = "0.0.18"
 description = "SQLModel, SQL databases in Python, designed for simplicity, compatibility, and robustness."
-optional = true
+optional = false
 python-versions = ">=3.7"
 files = [
     {file = "sqlmodel-0.0.18-py3-none-any.whl", hash = "sha256:d70fdf8fe595e30a918660cf4537b9c5fc2fffdbfcba851a0135de73c3ebcbb7"},
@@ -887,10 +887,7 @@ files = [
 [package.dependencies]
 h11 = ">=0.9.0,<1"
 
-[extras]
-sql = ["sqlmodel"]
-
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "b5a6ae6dcf530d0c3a3ba234b73d5a97916561638867615af7793bae96f1f237"
+content-hash = "6ca9c4b70334a6ce15b72e6fc7178091f9058befa608d73933de2b0f5e9f0419"
