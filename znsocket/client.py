@@ -35,14 +35,3 @@ class Client:
         else:
             return super().__getattribute__(name)
 
-
-if __name__ == "__main__":
-    c = Client("http://localhost:5000", room="tmp")
-    c.content = "Hello, World!"
-    print(c.content)
-    c2 = Client("http://localhost:5000", room="tmp")
-    print(c2.content)
-    c2.content = "Hello, there!"
-    print("updated")
-    print(c.content)
-    print(c2.content)
