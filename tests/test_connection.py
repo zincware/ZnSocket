@@ -110,6 +110,7 @@ def test_multiple_attributes(server, request):
 
     c1.a = "1"
     c1.b = "2"
+    eventlet.sleep(0.1)
 
     assert c1.a == "1"
     assert c1.b == "2"
@@ -117,6 +118,7 @@ def test_multiple_attributes(server, request):
     assert c1.b == c2.b
 
     c2.a = "3"
+    eventlet.sleep(0.1)
 
     assert c1.a == "3"
     assert c1.b == "2"
