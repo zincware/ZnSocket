@@ -3,7 +3,7 @@ import eventlet.wsgi
 eventlet.monkey_patch()  # MUST BE THERE FOR THE TESTS TO WORK
 
 import pytest
-from znsocket.server import app
+from znsocket.server import sio
 import znsocket.client
 import socketio
 import random
@@ -14,15 +14,16 @@ def eventlet_server():
     port = random.randint(10000, 20000)
 
     def start_server():
-        eventlet.wsgi.server(eventlet.listen(("localhost", port)), app)
+        server_app = socketio.WSGIApp(sio)
+        eventlet.wsgi.server(eventlet.listen(("localhost", port)), server_app)
 
     thread = eventlet.spawn(start_server)
 
     # wait for the server to be ready
     for _ in range(100):
         try:
-            with socketio.SimpleClient() as sio:
-                sio.connect(f"http://localhost:{port}")
+            with socketio.SimpleClient() as client:
+                client.connect(f"http://localhost:{port}")
                 break
         except socketio.exceptions.ConnectionError:
             eventlet.sleep(0.1)

@@ -1,11 +1,10 @@
 import socketio
 from znsocket.db import Database
 
-# create a Socket.IO server
-sio = socketio.Server()
+MAX_HTTP_BUFFER_SIZE = 1e12
 
-# wrap with a WSGI application
-app = socketio.WSGIApp(sio)
+# create a Socket.IO server
+sio = socketio.Server(max_http_buffer_size=MAX_HTTP_BUFFER_SIZE)
 
 db = Database()
 
@@ -46,10 +45,3 @@ def set_event(sid, data):
 def get(sid, data):
     name = data.pop("name")
     return db.get_room_storage(sid, name)
-
-
-if __name__ == "__main__":
-    import eventlet
-    import eventlet.wsgi
-
-    eventlet.wsgi.server(eventlet.listen(("localhost", 5000)), app)
