@@ -1,6 +1,7 @@
-from typing import Any
-import socketio
 import dataclasses
+from typing import Any
+
+import socketio
 
 
 @dataclasses.dataclass

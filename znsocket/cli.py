@@ -1,8 +1,10 @@
-import typer
-from znsocket.server import get_sio
-import socketio
-import eventlet.wsgi
 import typing as t
+
+import eventlet.wsgi
+import socketio
+import typer
+
+from znsocket.server import get_sio
 
 app = typer.Typer()
 
