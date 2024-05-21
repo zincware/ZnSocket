@@ -107,7 +107,7 @@ class DBClient:
     room: str = None
 
     def __post_init__(self):
-        self.sid = uuid.uuid4().hex
+        self.sid = uuid.uuid4().hex if self.sid is None else self.sid
         self.db.join_room(self.sid, self.room)
 
     def __setattr__(self, name: str, value: Any) -> None:
