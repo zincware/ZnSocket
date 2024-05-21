@@ -30,3 +30,28 @@ print(c2.text)
 You can set any attribute of the `Client`, except `{"address", "room", "sio"}` and it will be shared.
 The data must be JSON-serializable to be shared.
 
+## Special Clients
+For performance reasons there are two special clients
+### FrozenClient
+The `znsocket.FrozenClient` can be used to operate on data and only push or pull once requested.
+
+```python
+import znsocket
+
+client = znsocket.FrozenClient(
+    address='http://localhost:5000', room="MyRoom"
+)
+
+client.sync(push=True, pull=True)
+```
+
+### DBClient
+The `znsocket.DBClient` can be used to directly operate on the database without going through the server.
+
+```python
+import znsocket
+
+client = znsocket.DBClient(
+    db=znsocket.SqlDatabase(engine=f"sqlite:///znsocket.db"), room="MyRoom"
+)
+```
