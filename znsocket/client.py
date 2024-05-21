@@ -115,6 +115,11 @@ class DBClient:
         if name.startswith("_"):
             return super().__getattribute__(name)
         if name not in [x.name for x in dataclasses.fields(self)]:
-            return self.db.get_room_storage(self.sid, name)
+            data = self.db.get_room_storage(self.sid, name)
+            if isinstance(data, dict) and data == {"AttributeError": "AttributeError"}:
+                raise AttributeError(
+                    f"znsocket.DBClient '{self}' can not access attribute '{name}'"
+                )
+            return data
         else:
             return super().__getattribute__(name)

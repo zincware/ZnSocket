@@ -216,3 +216,6 @@ def test_db_client_shared(server, request):
 
     assert client.a == "3"
     assert client.b == "4"
+
+    with pytest.raises(AttributeError):
+        _ = db_client.non_existent_attribute
