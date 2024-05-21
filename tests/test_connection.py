@@ -100,3 +100,25 @@ def test_attribute_error(server, request):
     c1 = znsocket.client.Client(eventlet_server, room="tmp")
     with pytest.raises(AttributeError):
         _ = c1.non_existent_attribute
+
+
+@pytest.mark.parametrize("server", ["eventlet_memory_server", "eventlet_sql_server"])
+def test_multiple_attributes(server, request):
+    eventlet_server = request.getfixturevalue(server)
+    c1 = znsocket.client.Client(eventlet_server, room="tmp")
+    c2 = znsocket.client.Client(eventlet_server, room="tmp")
+
+    c1.a = "1"
+    c1.b = "2"
+
+    assert c1.a == "1"
+    assert c1.b == "2"
+    assert c1.a == c2.a
+    assert c1.b == c2.b
+
+    c2.a = "3"
+
+    assert c1.a == "3"
+    assert c1.b == "2"
+    assert c1.a == c2.a
+    assert c1.b == c2.b
