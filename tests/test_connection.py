@@ -3,11 +3,12 @@ import eventlet.wsgi
 eventlet.monkey_patch()  # MUST BE THERE FOR THE TESTS TO WORK
 
 import pytest
-from znsocket.server import sio
+from znsocket.server import get_sio
 import znsocket.client
 import socketio
 import random
 
+sio = get_sio()
 
 @pytest.fixture
 def eventlet_server():
