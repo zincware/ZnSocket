@@ -90,7 +90,12 @@ class FrozenClient:
         if name.startswith("_") or name in type(self).__dict__:
             return super().__getattribute__(name)
         if name not in [x.name for x in dataclasses.fields(self)]:
-            return self._data[name]
+            try:
+                return self._data[name]
+            except KeyError:
+                raise AttributeError(
+                    f"znsocket.FrozenClient '{self}' can not access attribute '{name}'"
+                )
         else:
             return super().__getattribute__(name)
 

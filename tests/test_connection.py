@@ -128,14 +128,18 @@ def test_multiple_attributes(server, request):
 @pytest.mark.parametrize("server", ["eventlet_memory_server", "eventlet_sql_server"])
 def test_frozen_client(server, request):
     eventlet_server, _ = request.getfixturevalue(server)
-    client = znsocket.client.FrozenClient(eventlet_server, room="tmp")
+    frozen_client = znsocket.client.FrozenClient(eventlet_server, room="tmp")
 
-    client.a = "1"
-    client.b = "2"
+    frozen_client.a = "1"
+    frozen_client.b = "2"
 
-    assert client.a == "1"
-    assert client.b == "2"
-    assert client._data == {"a": "1", "b": "2"}
+    assert frozen_client.a == "1"
+    assert frozen_client.b == "2"
+    assert frozen_client._data == {"a": "1", "b": "2"}
+
+    with pytest.raises(AttributeError):
+        _ = frozen_client.non_existent_attribute
+
 
 
 @pytest.mark.parametrize("server", ["eventlet_memory_server", "eventlet_sql_server"])
@@ -171,6 +175,9 @@ def test_frozen_client_pull(server, request):
     assert frozen_client.a == "3"
     assert frozen_client.b == "4"
 
+    with pytest.raises(AttributeError):
+        _ = frozen_client.non_existent_attribute
+
 
 @pytest.mark.parametrize("server", ["eventlet_sql_server"])
 def test_db_client(server, request):
@@ -190,6 +197,9 @@ def test_db_client(server, request):
 
     assert db_client.a == "3"
     assert db_client.b == "4"
+
+    with pytest.raises(AttributeError):
+        _ = db_client.non_existent_attribute
 
 
 @pytest.mark.parametrize("server", ["eventlet_sql_server"])
