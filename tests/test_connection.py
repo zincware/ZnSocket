@@ -2,19 +2,19 @@ import eventlet.wsgi
 
 eventlet.monkey_patch()  # MUST BE THERE FOR THE TESTS TO WORK
 
+import os
 import random
 
 import pytest
 import socketio
 
 import znsocket.client
-from znsocket.server import get_sio
-
-sio = get_sio()
+from znsocket.server import SqlDatabase, get_sio
 
 
 @pytest.fixture
-def eventlet_server():
+def eventlet_memory_server():
+    sio = get_sio()
     port = random.randint(10000, 20000)
 
     def start_server():
@@ -39,7 +39,41 @@ def eventlet_server():
     thread.kill()
 
 
-def test_example(eventlet_server):
+@pytest.fixture
+def eventlet_sql_server(tmp_path):
+    db_path = tmp_path / "znsocket.db"
+
+    db = SqlDatabase(engine=f"sqlite:///{db_path}")
+
+    sio = get_sio(db=db)
+
+    port = random.randint(10000, 20000)
+
+    def start_server():
+        server_app = socketio.WSGIApp(sio)
+        eventlet.wsgi.server(eventlet.listen(("localhost", port)), server_app)
+
+    thread = eventlet.spawn(start_server)
+
+    # wait for the server to be ready
+    for _ in range(100):
+        try:
+            with socketio.SimpleClient() as client:
+                client.connect(f"http://localhost:{port}")
+                break
+        except socketio.exceptions.ConnectionError:
+            eventlet.sleep(0.1)
+    else:
+        raise TimeoutError("Server did not start in time")
+
+    yield f"http://localhost:{port}"
+
+    thread.kill()
+
+
+@pytest.mark.parametrize("server", ["eventlet_memory_server", "eventlet_sql_server"])
+def test_example(server, request):
+    eventlet_server = request.getfixturevalue(server)
     c1 = znsocket.client.Client(eventlet_server, room="tmp")
     c2 = znsocket.client.Client(eventlet_server, room="tmp")
     c3 = znsocket.client.Client(eventlet_server)
@@ -60,7 +94,9 @@ def test_example(eventlet_server):
     assert c3.content == "Hello, there!"
 
 
-def test_attribute_error(eventlet_server):
+@pytest.mark.parametrize("server", ["eventlet_memory_server", "eventlet_sql_server"])
+def test_attribute_error(server, request):
+    eventlet_server = request.getfixturevalue(server)
     c1 = znsocket.client.Client(eventlet_server, room="tmp")
     with pytest.raises(AttributeError):
         _ = c1.non_existent_attribute

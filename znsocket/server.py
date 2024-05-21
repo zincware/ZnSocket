@@ -3,6 +3,7 @@ import typing as t
 import socketio
 
 from znsocket.db import Database, MemoryDatabase
+from znsocket.db.sql import SqlDatabase
 
 # 3 Options
 # - like this, running single process max performance, concurrency could lead to data corruption
@@ -11,15 +12,21 @@ from znsocket.db import Database, MemoryDatabase
 
 
 def get_sio(
-    db: t.Optional[Database] = None, max_http_buffer_size: t.Optional[int] = None
+    db: t.Optional[Database] = None,
+    max_http_buffer_size: t.Optional[int] = None,
+    async_mode: t.Optional[str] = None,
 ) -> socketio.Server:
     kwargs = {}
     if max_http_buffer_size is not None:
         kwargs["max_http_buffer_size"] = max_http_buffer_size
+    if async_mode is not None:
+        kwargs["async_mode"] = async_mode
     sio = socketio.Server(**kwargs)
 
     if db is None:
         db = MemoryDatabase()
+        # db = SqlDatabase(engine="sqlite:///:memory:")
+        # db = SqlDatabase(engine="sqlite:///znsocket.db")
 
     @sio.event
     def connect(sid, environ, auth):
