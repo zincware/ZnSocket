@@ -51,7 +51,7 @@ def get_sio(
 
     @sio.event
     def get(sid, data):
-        name = data.pop("name")
+        name = data.pop("name", None)
         return db.get_room_storage(sid, name)
 
     return sio

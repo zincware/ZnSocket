@@ -53,19 +53,25 @@ class SqlDatabase(Database):
                 session.commit()
                 session.refresh(room_data)
 
-    def get_room_storage(self, sid: str, key: str) -> t.Any:
+    def get_room_storage(self, sid: str, key: t.Optional[str]) -> t.Any:
         with Session(self._engine) as session:
             client = session.exec(select(Client).where(Client.sid == sid)).first()
-            if client:
-                room_data = session.exec(
-                    select(RoomData).where(
-                        RoomData.key == key, RoomData.room_id == client.room_id
-                    )
-                ).first()
-                if room_data:
-                    return room_data.value
+            if client: # TODO: this should always be true
+                if key is None:
+                    return {
+                        room_data.key: room_data.value
+                        for room_data in client.room.data
+                    }
                 else:
-                    return {"AttributeError": "AttributeError"}
+                    room_data = session.exec(
+                        select(RoomData).where(
+                            RoomData.key == key, RoomData.room_id == client.room_id
+                        )
+                    ).first()
+                    if room_data:
+                        return room_data.value
+                    else:
+                        return {"AttributeError": "AttributeError"}
 
     def remove_client(self, sid: str) -> None:
         with Session(self._engine) as session:

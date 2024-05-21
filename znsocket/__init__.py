@@ -1,3 +1,3 @@
-from .client import Client
+from .client import Client, FrozenClient
 
-__all__ = ["Client"]
+__all__ = ["Client", "FrozenClient"]
