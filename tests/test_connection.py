@@ -141,7 +141,6 @@ def test_frozen_client(server, request):
         _ = frozen_client.non_existent_attribute
 
 
-
 @pytest.mark.parametrize("server", ["eventlet_memory_server", "eventlet_sql_server"])
 def test_frozen_client_pull(server, request):
     eventlet_server, _ = request.getfixturevalue(server)
