@@ -1,5 +1,5 @@
 import socketio
-import dataclasses
+from znsocket.db import Database
 
 # create a Socket.IO server
 sio = socketio.Server()
@@ -7,8 +7,12 @@ sio = socketio.Server()
 # wrap with a WSGI application
 app = socketio.WSGIApp(sio)
 
-ROOM_STORAGE = {}
-ROOM_OCCUPANCY = {}
+db = Database()
+
+# 3 Options
+# - like this, running single process max performance, concurrency could lead to data corruption
+# - database through SQLAlchemy
+# - Redis
 
 
 @sio.event
@@ -19,13 +23,7 @@ def connect(sid, environ, auth):
 @sio.event
 def disconnect(sid):
     print("disconnect ", sid)
-    for room in ROOM_OCCUPANCY:
-        if sid in ROOM_OCCUPANCY[room]:
-            ROOM_OCCUPANCY[room].remove(sid)
-            if len(ROOM_OCCUPANCY[room]) == 0:
-                del ROOM_OCCUPANCY[room]
-                del ROOM_STORAGE[room]
-                break  # can only be in one room at a time
+    db.remove_client(sid)
 
 
 @sio.event
@@ -33,47 +31,22 @@ def join(sid, data):
     room = data.pop("room")
     if room is None:
         room = sid
-    for old_room in ROOM_OCCUPANCY:
-        if sid in ROOM_OCCUPANCY[old_room]:
-            ROOM_OCCUPANCY[old_room].remove(sid)
-            sio.leave_room(sid, old_room)
-            if len(ROOM_OCCUPANCY[old_room]) == 0:
-                del ROOM_OCCUPANCY[old_room]
-                del ROOM_STORAGE[old_room]
-
     sio.enter_room(sid, room)
-    if room not in ROOM_STORAGE:
-        ROOM_STORAGE[room] = {}
-    if room not in ROOM_OCCUPANCY:
-        ROOM_OCCUPANCY[room] = {sid}
-    else:
-        ROOM_OCCUPANCY[room].add(sid)
+    db.join_room(sid, room)
 
 
-@sio.on("set")
+@sio.on("set")  # TODO: rename to something else?
 def set_event(sid, data):
     name = data.pop("name")
     value = data.pop("value")
-    for room in ROOM_OCCUPANCY:
-        if sid in ROOM_OCCUPANCY[room]:
-            ROOM_STORAGE[room][name] = value
-            return
-    # if the client is not in a room, store the data in the SID_STORAGE
+    db.set_room_storage(sid, name, value)
 
 
 @sio.event
 def get(sid, data):
     name = data.pop("name")
-    print(ROOM_OCCUPANCY)
-    for room in ROOM_OCCUPANCY:
-        if sid in ROOM_OCCUPANCY[room]:
-            if name in ROOM_STORAGE[room]:
-                return ROOM_STORAGE[room][name]
+    return db.get_room_storage(sid, name)
 
-    return {"AttributeError": "AttributeError"}
-
-
-# such that the client can raise an AttributeError or similar
 
 if __name__ == "__main__":
     import eventlet
