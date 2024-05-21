@@ -4,17 +4,20 @@ import eventlet.wsgi
 import socketio
 import typer
 
-from znsocket.server import get_sio
 from znsocket.db import MemoryDatabase, SqlDatabase
-
+from znsocket.server import get_sio
 
 app = typer.Typer()
 
 
 @app.command()
-def server(port: int = 5000, max_http_buffer_size: t.Optional[int] = None, db: t.Optional[str] = None):
+def server(
+    port: int = 5000,
+    max_http_buffer_size: t.Optional[int] = None,
+    db: t.Optional[str] = None,
+):
     """Run a znsocket server.
-    
+
     Attributes
     ----------
     port : int
@@ -25,7 +28,7 @@ def server(port: int = 5000, max_http_buffer_size: t.Optional[int] = None, db: t
     db : str, optional
         The database to use.
         Options are: "memory" or a SQLAlchemy connection string, like "sqlite:///znsocket.db".
-    
+
     """
     if db == "memory":
         db = MemoryDatabase()

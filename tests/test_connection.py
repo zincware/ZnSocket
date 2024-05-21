@@ -2,7 +2,6 @@ import eventlet.wsgi
 
 eventlet.monkey_patch()  # MUST BE THERE FOR THE TESTS TO WORK
 
-import os
 import random
 
 import pytest
