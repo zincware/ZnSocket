@@ -35,15 +35,16 @@ class Database(abc.ABC):
         """
 
     @abc.abstractmethod
-    def get_room_storage(self, sid: str, key: str) -> t.Any:
+    def get_room_storage(self, sid: str, key: t.Optional[str]) -> t.Any:
         """Retrieve room data from the database.
 
         Attributes
         ----------
         sid : str
             The session ID of the client.
-        key : str
+        key : str, optional
             The key to retrieve the value from.
+            If None, return all data as {key: value, ...}
         """
 
     @abc.abstractmethod

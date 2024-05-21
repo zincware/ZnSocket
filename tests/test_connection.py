@@ -33,7 +33,7 @@ def eventlet_memory_server():
     else:
         raise TimeoutError("Server did not start in time")
 
-    yield f"http://localhost:{port}"
+    yield f"http://localhost:{port}", None
 
     thread.kill()
 
@@ -65,14 +65,14 @@ def eventlet_sql_server(tmp_path):
     else:
         raise TimeoutError("Server did not start in time")
 
-    yield f"http://localhost:{port}"
+    yield f"http://localhost:{port}", db_path
 
     thread.kill()
 
 
 @pytest.mark.parametrize("server", ["eventlet_memory_server", "eventlet_sql_server"])
 def test_example(server, request):
-    eventlet_server = request.getfixturevalue(server)
+    eventlet_server, _ = request.getfixturevalue(server)
     c1 = znsocket.client.Client(eventlet_server, room="tmp")
     c2 = znsocket.client.Client(eventlet_server, room="tmp")
     c3 = znsocket.client.Client(eventlet_server)
@@ -95,7 +95,7 @@ def test_example(server, request):
 
 @pytest.mark.parametrize("server", ["eventlet_memory_server", "eventlet_sql_server"])
 def test_attribute_error(server, request):
-    eventlet_server = request.getfixturevalue(server)
+    eventlet_server, _ = request.getfixturevalue(server)
     c1 = znsocket.client.Client(eventlet_server, room="tmp")
     with pytest.raises(AttributeError):
         _ = c1.non_existent_attribute
@@ -103,7 +103,7 @@ def test_attribute_error(server, request):
 
 @pytest.mark.parametrize("server", ["eventlet_memory_server", "eventlet_sql_server"])
 def test_multiple_attributes(server, request):
-    eventlet_server = request.getfixturevalue(server)
+    eventlet_server, _ = request.getfixturevalue(server)
     c1 = znsocket.client.Client(eventlet_server, room="tmp")
     c2 = znsocket.client.Client(eventlet_server, room="tmp")
 
@@ -123,3 +123,108 @@ def test_multiple_attributes(server, request):
     assert c1.b == "2"
     assert c1.a == c2.a
     assert c1.b == c2.b
+
+
+@pytest.mark.parametrize("server", ["eventlet_memory_server", "eventlet_sql_server"])
+def test_frozen_client(server, request):
+    eventlet_server, _ = request.getfixturevalue(server)
+    frozen_client = znsocket.client.FrozenClient(eventlet_server, room="tmp")
+
+    frozen_client.a = "1"
+    frozen_client.b = "2"
+
+    assert frozen_client.a == "1"
+    assert frozen_client.b == "2"
+    assert frozen_client._data == {"a": "1", "b": "2"}
+
+    with pytest.raises(AttributeError):
+        _ = frozen_client.non_existent_attribute
+
+
+@pytest.mark.parametrize("server", ["eventlet_memory_server", "eventlet_sql_server"])
+def test_frozen_client_pull(server, request):
+    eventlet_server, _ = request.getfixturevalue(server)
+    client = znsocket.client.Client(eventlet_server, room="tmp")
+    client.a = "1"
+    client.b = "2"
+
+    eventlet.sleep(0.1)
+
+    assert client.a == "1"
+    assert client.b == "2"
+
+    frozen_client = znsocket.client.FrozenClient(eventlet_server, room="tmp")
+    frozen_client.sync(pull=True)
+
+    assert frozen_client.a == "1"
+    assert frozen_client.b == "2"
+
+    client.a = "3"
+    client.b = "4"
+
+    eventlet.sleep(0.1)
+
+    assert client.a == "3"
+    assert client.b == "4"
+    assert frozen_client.a == "1"
+    assert frozen_client.b == "2"
+
+    frozen_client.sync(pull=True)
+
+    assert frozen_client.a == "3"
+    assert frozen_client.b == "4"
+
+    with pytest.raises(AttributeError):
+        _ = frozen_client.non_existent_attribute
+
+
+@pytest.mark.parametrize("server", ["eventlet_sql_server"])
+def test_db_client(server, request):
+    eventlet_server, db_path = request.getfixturevalue(server)
+
+    db_client = znsocket.client.DBClient(
+        db=SqlDatabase(engine=f"sqlite:///{db_path}"), room="tmp"
+    )
+    db_client.a = "1"
+    db_client.b = "2"
+
+    assert db_client.a == "1"
+    assert db_client.b == "2"
+
+    db_client.a = "3"
+    db_client.b = "4"
+
+    assert db_client.a == "3"
+    assert db_client.b == "4"
+
+    with pytest.raises(AttributeError):
+        _ = db_client.non_existent_attribute
+
+
+@pytest.mark.parametrize("server", ["eventlet_sql_server"])
+def test_db_client_shared(server, request):
+    eventlet_server, db_path = request.getfixturevalue(server)
+
+    db_client = znsocket.client.DBClient(
+        db=SqlDatabase(engine=f"sqlite:///{db_path}"), room="tmp"
+    )
+    client = znsocket.client.Client(eventlet_server, room="tmp")
+
+    client.a = "1"
+    client.b = "2"
+
+    eventlet.sleep(0.1)
+
+    assert db_client.a == "1"
+    assert db_client.b == "2"
+
+    db_client.a = "3"
+    db_client.b = "4"
+
+    eventlet.sleep(0.1)
+
+    assert client.a == "3"
+    assert client.b == "4"
+
+    with pytest.raises(AttributeError):
+        _ = db_client.non_existent_attribute

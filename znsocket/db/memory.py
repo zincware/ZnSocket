@@ -40,20 +40,15 @@ class MemoryDatabase(Database):
                 room.storage[key] = value
                 return
 
-    def get_room_storage(self, sid: str, key: str) -> t.Any:
-        """Retrieve room data from the database.
-
-        Attributes
-        ----------
-        sid : str
-            The session ID of the client.
-        key : str
-            The key to retrieve the value from.
-        """
+    def get_room_storage(self, sid: str, key: t.Optional[str]) -> t.Any:
         for room in self.rooms:
             if any(client.sid == sid for client in room.clients):
+                if key is None:
+                    return room.storage
                 return room.storage.get(key, {"AttributeError": "AttributeError"})
-        return {"AttributeError": "AttributeError"}
+        return {
+            "AttributeError": "AttributeError"
+        }  # client not found, this should never happen
 
     def remove_client(self, sid: str) -> None:
         """Remove a client from the database.
