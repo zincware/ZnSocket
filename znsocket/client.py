@@ -35,15 +35,17 @@ class Client:
         else:
             return super().__getattribute__(name)
 
+
 @dataclasses.dataclass
 class FrozenClient:
     """A frozen version of the Client.
-    
+
     This version does load all attributes upon initialization.
-    Attributes are changed in place and synced with the 
+    Attributes are changed in place and synced with the
     server.
-    
+
     """
+
     address: str
     sio: socketio.Client = dataclasses.field(default=None, repr=False, init=False)
     room: str = None
@@ -53,7 +55,6 @@ class FrozenClient:
         self.sio = socketio.Client()
         self.sio.connect(self.address)
         self.sio.emit("join", {"room": self.room})
-
 
     def sync(self, push=False, pull=False):
         # TODO: only sync changed attributes
@@ -73,12 +74,15 @@ class FrozenClient:
             self.sio.emit("set", {"name": key, "value": value})
 
     def __setattr__(self, name: str, value: Any) -> None:
-        if name not in [x.name for x in dataclasses.fields(self)] and name not in type(self).__dict__:
+        if (
+            name not in [x.name for x in dataclasses.fields(self)]
+            and name not in type(self).__dict__
+        ):
             # send everything that is not a dataclass field to the server
             self._data[name] = value
         else:
             super().__setattr__(name, value)
-    
+
     def __getattribute__(self, name: str) -> Any:
         if name.startswith("_") or name in type(self).__dict__:
             return super().__getattribute__(name)

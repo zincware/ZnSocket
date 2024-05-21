@@ -46,7 +46,9 @@ class MemoryDatabase(Database):
                 if key is None:
                     return room.storage
                 return room.storage.get(key, {"AttributeError": "AttributeError"})
-        return {"AttributeError": "AttributeError"} # client not found, this should never happen
+        return {
+            "AttributeError": "AttributeError"
+        }  # client not found, this should never happen
 
     def remove_client(self, sid: str) -> None:
         """Remove a client from the database.
