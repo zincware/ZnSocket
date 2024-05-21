@@ -1,7 +1,10 @@
 import dataclasses
+import uuid
 from typing import Any
 
 import socketio
+
+from znsocket.db.base import Database
 
 
 @dataclasses.dataclass
@@ -88,5 +91,30 @@ class FrozenClient:
             return super().__getattribute__(name)
         if name not in [x.name for x in dataclasses.fields(self)]:
             return self._data[name]
+        else:
+            return super().__getattribute__(name)
+
+
+@dataclasses.dataclass
+class DBClient:
+    db: Database
+    sid: str = None
+    room: str = None
+
+    def __post_init__(self):
+        self.sid = uuid.uuid4().hex
+        self.db.join_room(self.sid, self.room)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name not in [x.name for x in dataclasses.fields(self)]:
+            self.db.set_room_storage(self.sid, name, value)
+        else:
+            super().__setattr__(name, value)
+
+    def __getattribute__(self, name: str) -> Any:
+        if name.startswith("_"):
+            return super().__getattribute__(name)
+        if name not in [x.name for x in dataclasses.fields(self)]:
+            return self.db.get_room_storage(self.sid, name)
         else:
             return super().__getattribute__(name)

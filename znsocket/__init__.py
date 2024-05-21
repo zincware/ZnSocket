@@ -1,3 +1,3 @@
-from .client import Client, FrozenClient
+from .client import Client, DBClient, FrozenClient
 
-__all__ = ["Client", "FrozenClient"]
+__all__ = ["Client", "FrozenClient", "DBClient"]

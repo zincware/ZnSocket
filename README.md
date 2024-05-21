@@ -30,7 +30,3 @@ print(c2.text)
 You can set any attribute of the `Client`, except `{"address", "room", "sio"}` and it will be shared.
 The data must be JSON-serializable to be shared.
 
-
-# TODOs
-- direct database access
-- frozen client
