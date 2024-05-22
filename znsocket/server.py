@@ -15,6 +15,7 @@ def get_sio(
     db: t.Optional[Database] = None,
     max_http_buffer_size: t.Optional[int] = None,
     async_mode: t.Optional[str] = None,
+    set_callbacks: t.Optional[list[t.Callable]] = None,
 ) -> socketio.Server:
     kwargs = {}
     if max_http_buffer_size is not None:
@@ -48,6 +49,9 @@ def get_sio(
         name = data.pop("name")
         value = data.pop("value")
         db.set_room_storage(sid, name, value)
+        if set_callbacks:
+            for cb in set_callbacks:
+                cb(sio, sid, name, value)
 
     @sio.event
     def get(sid, data):

@@ -1,5 +1,6 @@
 import dataclasses
 import typing as t
+import json
 
 from sqlmodel import Field, Relationship, Session, SQLModel, create_engine, select
 
@@ -46,9 +47,9 @@ class SqlDatabase(Database):
                     )
                 ).first()
                 if room_data:
-                    room_data.value = value
+                    room_data.value = json.dumps(value)
                 else:
-                    room_data = RoomData(key=key, value=value, room=client.room)
+                    room_data = RoomData(key=key, value=json.dumps(value), room=client.room)
                     session.add(room_data)
                 session.commit()
                 session.refresh(room_data)
@@ -59,7 +60,7 @@ class SqlDatabase(Database):
             if client:  # TODO: this should always be true
                 if key is None:
                     return {
-                        room_data.key: room_data.value for room_data in client.room.data
+                        room_data.key: json.loads(room_data.value) for room_data in client.room.data
                     }
                 else:
                     room_data = session.exec(
@@ -68,9 +69,9 @@ class SqlDatabase(Database):
                         )
                     ).first()
                     if room_data:
-                        return room_data.value
+                        return json.loads(room_data.value)
                     else:
-                        return {"AttributeError": "AttributeError"}
+                        return {"AttributeError": "AttributeError"} # TODO: make this an object that can be imported
 
     def remove_client(self, sid: str) -> None:
         with Session(self._engine) as session:
@@ -88,6 +89,7 @@ class SqlDatabase(Database):
                 session.delete(room)
                 session.commit()
 
+    # TODO: add_client
     def join_room(self, sid: str, room_name: str) -> None:
         with Session(self._engine) as session:
             # check if the client exists
