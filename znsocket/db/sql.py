@@ -1,6 +1,7 @@
 import dataclasses
 import typing as t
 import json
+import uuid
 
 from sqlmodel import Field, Relationship, Session, SQLModel, create_engine, select
 
@@ -18,6 +19,7 @@ class RoomData(SQLModel, table=True):
 class Client(SQLModel, table=True):
     id: t.Optional[int] = Field(default=None, primary_key=True)
     sid: str
+    name: str 
     room_id: t.Optional[int] = Field(default=None, foreign_key="room.id")
     room: t.Optional["Room"] = Relationship(back_populates="clients")
 
@@ -95,7 +97,7 @@ class SqlDatabase(Database):
             # check if the client exists
             client = session.exec(select(Client).where(Client.sid == sid)).first()
             if not client:
-                client = Client(sid=sid)
+                client = Client(sid=sid, name=uuid.uuid4().hex)
                 session.add(client)
                 session.commit()
                 session.refresh(client)
@@ -115,3 +117,10 @@ class SqlDatabase(Database):
             # add the client to the room
             client.room = room
             session.commit()
+
+    def get_client_name(self, sid: str) -> str:
+        with Session(self._engine) as session:
+            client = session.exec(select(Client).where(Client.sid == sid)).first()
+            if client:
+                return client.name
+            raise ValueError(f"Client with sid {sid} not found")

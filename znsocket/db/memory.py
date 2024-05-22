@@ -90,3 +90,17 @@ class MemoryDatabase(Database):
                 room.clients.append(client)
                 return
         self.rooms.append(Room(room_name, [client], {}))
+
+    def get_client_name(self, sid: str) -> str:
+        """Get the name of the client.
+
+        Attributes
+        ----------
+        sid : str
+            The session ID of the client.
+        """
+        for room in self.rooms:
+            for client in room.clients:
+                if client.sid == sid:
+                    return client.name
+        raise ValueError(f"Client with sid {sid} not found")

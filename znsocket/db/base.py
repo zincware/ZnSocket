@@ -1,11 +1,13 @@
 import abc
 import dataclasses
 import typing as t
+import uuid
 
 
 @dataclasses.dataclass(eq=True, frozen=True)
 class Client:
     sid: str
+    name: str = dataclasses.field(default_factory=lambda: uuid.uuid4().hex)
 
 
 @dataclasses.dataclass
@@ -74,4 +76,14 @@ class Database(abc.ABC):
             The session ID of the client.
         room_name : str
             The name of the room to join.
+        """
+
+    @abc.abstractmethod
+    def get_client_name(self, sid: str) -> str:
+        """Get the name of the client.
+
+        Attributes
+        ----------
+        sid : str
+            The security ID of the client.
         """

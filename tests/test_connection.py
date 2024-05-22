@@ -92,6 +92,12 @@ def test_example(server, request):
     assert c2.content == "Lorem Ipsum"
     assert c3.content == "Hello, there!"
 
+    assert c1.name is not None
+    assert c2.name is not None
+    assert c3.name is not None
+
+    assert c1.name != c2.name != c3.name
+
 
 @pytest.mark.parametrize("server", ["eventlet_memory_server", "eventlet_sql_server"])
 def test_attribute_error(server, request):
@@ -176,6 +182,9 @@ def test_frozen_client_pull(server, request):
 
     with pytest.raises(AttributeError):
         _ = frozen_client.non_existent_attribute
+    
+    assert frozen_client.name is not None
+    assert frozen_client.name != client.name
 
 
 @pytest.mark.parametrize("server", ["eventlet_sql_server"])
@@ -228,3 +237,6 @@ def test_db_client_shared(server, request):
 
     with pytest.raises(AttributeError):
         _ = db_client.non_existent_attribute
+
+    assert db_client.name is not None
+    assert db_client.name != client.name

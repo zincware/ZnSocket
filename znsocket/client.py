@@ -5,6 +5,7 @@ from typing import Any
 import socketio
 
 from znsocket.db.base import Database
+import functools
 
 
 @dataclasses.dataclass
@@ -12,6 +13,10 @@ class Client:
     address: str
     sio: socketio.Client = dataclasses.field(default=None, repr=False, init=False)
     room: str = None
+
+    @functools.cached_property
+    def name(self):
+        return self.sio.call("name")
 
     def __post_init__(self):
         self.sio = socketio.Client()
@@ -26,7 +31,7 @@ class Client:
             super().__setattr__(name, value)
 
     def __getattribute__(self, name: str) -> Any:
-        if name.startswith("_"):
+        if name.startswith("_") or name in type(self).__dict__:
             return super().__getattribute__(name)
         if name not in [x.name for x in dataclasses.fields(self)]:
             data = self.sio.call("get", {"name": name})
@@ -58,6 +63,10 @@ class FrozenClient:
         self.sio = socketio.Client()
         self.sio.connect(self.address)
         self.sio.emit("join", {"room": self.room})
+
+    @functools.cached_property
+    def name(self):
+        return self.sio.call("name")
 
     def sync(self, push=False, pull=False):
         # TODO: only sync changed attributes
@@ -110,6 +119,10 @@ class DBClient:
         self.sid = uuid.uuid4().hex if self.sid is None else self.sid
         self.db.join_room(self.sid, self.room)
 
+    @functools.cached_property
+    def name(self):
+        return self.db.get_client_name(self.sid)
+
     def __setattr__(self, name: str, value: Any) -> None:
         if name not in [x.name for x in dataclasses.fields(self)]:
             self.db.set_room_storage(self.sid, name, value)
@@ -119,7 +132,7 @@ class DBClient:
     def __getattribute__(self, name: str) -> Any:
         if name.startswith("_"):
             return super().__getattribute__(name)
-        if name not in [x.name for x in dataclasses.fields(self)]:
+        if name not in [x.name for x in dataclasses.fields(self)] and name not in type(self).__dict__:
             data = self.db.get_room_storage(self.sid, name)
             if isinstance(data, dict) and data == {"AttributeError": "AttributeError"}:
                 raise AttributeError(
