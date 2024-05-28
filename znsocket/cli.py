@@ -1,3 +1,4 @@
+import datetime
 import typing as t
 
 import eventlet.wsgi
@@ -24,6 +25,12 @@ def server(
         The maximum size of the HTTP buffer.
         If you need to share large data, you may need to increase this value.
     """
+    typer.echo(
+        f"{datetime.datetime.now().isoformat()}: Starting znsocket server on port {port}"
+    )
     sio = get_sio(max_http_buffer_size=max_http_buffer_size)
     server_app = socketio.WSGIApp(sio)
     eventlet.wsgi.server(eventlet.listen(("localhost", port)), server_app)
+    typer.echo(
+        f"{datetime.datetime.now().isoformat()}: Stopped znsocket server on port {port}"
+    )
