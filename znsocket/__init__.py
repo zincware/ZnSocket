@@ -1,4 +1,8 @@
-from .client import Client, DBClient, FrozenClient
-from .db import SqlDatabase
+import eventlet
 
-__all__ = ["Client", "FrozenClient", "DBClient", "SqlDatabase"]
+eventlet.monkey_patch()
+
+from .client import Client
+from .server import get_sio
+
+__all__ = ["Client", "get_sio"]

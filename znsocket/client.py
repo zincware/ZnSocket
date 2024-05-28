@@ -1,143 +1,82 @@
 import dataclasses
-import uuid
-from typing import Any
 
 import socketio
-
-from znsocket.db.base import Database
-import functools
 
 
 @dataclasses.dataclass
 class Client:
     address: str
-    sio: socketio.Client = dataclasses.field(default=None, repr=False, init=False)
-    room: str = None
+    sio: socketio.SimpleClient = dataclasses.field(default=None, repr=False, init=False)
 
-    @functools.cached_property
-    def name(self):
-        return self.sio.call("name")
+    @classmethod
+    def from_url(cls, url):
+        """Connect to a znsocket server using a URL.
+
+        Parameters
+        ----------
+        url : str
+            The URL of the znsocket server. Should be in the format
+            "znsocket://127.0.0.1:5000".
+        """
+        return cls(address=url.replace("znsocket://", "http://"))
 
     def __post_init__(self):
-        self.sio = socketio.Client()
+        self.sio = socketio.SimpleClient()
         self.sio.connect(self.address)
-        self.sio.emit("join", {"room": self.room})
 
-    def __setattr__(self, name: str, value: Any) -> None:
-        if name not in [x.name for x in dataclasses.fields(self)]:
-            # send everything that is not a dataclass field to the server
-            self.sio.emit("set", {"name": name, "value": value})
-        else:
-            super().__setattr__(name, value)
+    def delete(self, name):
+        return self.sio.emit("rdelete", {"name": name})
 
-    def __getattribute__(self, name: str) -> Any:
-        if name.startswith("_") or name in type(self).__dict__:
-            return super().__getattribute__(name)
-        if name not in [x.name for x in dataclasses.fields(self)]:
-            data = self.sio.call("get", {"name": name})
-            if isinstance(data, dict) and data == {"AttributeError": "AttributeError"}:
-                raise AttributeError(
-                    f"znsocket.Client '{self}' can not access attribute '{name}'"
-                )
-            return data
-        else:
-            return super().__getattribute__(name)
+    def hget(self, name, key):
+        return self.sio.call("hget", {"name": name, "key": key})
 
+    def hset(self, name, key, value):
+        return self.sio.call("hset", {"name": name, "key": key, "value": value})
 
-@dataclasses.dataclass
-class FrozenClient:
-    """A frozen version of the Client.
+    def hmget(self, name, keys):
+        return self.sio.call("hmget", {"name": name, "keys": keys})
 
-    This version does load all attributes upon initialization.
-    Attributes are changed in place and synced with the
-    server.
+    def hkeys(self, name):
+        return self.sio.call("hkeys", {"name": name})
 
-    """
+    def exists(self, name):
+        return self.sio.call("exists", {"name": name})
 
-    address: str
-    sio: socketio.Client = dataclasses.field(default=None, repr=False, init=False)
-    room: str = None
-    _data: dict = dataclasses.field(default_factory=dict, init=False, repr=False)
+    def llen(self, name):
+        return self.sio.call("llen", {"name": name})
 
-    def __post_init__(self):
-        self.sio = socketio.Client()
-        self.sio.connect(self.address)
-        self.sio.emit("join", {"room": self.room})
+    def rpush(self, name, value):
+        return self.sio.call("rpush", {"name": name, "value": value})
 
-    @functools.cached_property
-    def name(self):
-        return self.sio.call("name")
+    def lindex(self, name, index):
+        return self.sio.call("lindex", {"name": name, "index": index})
 
-    def sync(self, push=False, pull=False):
-        # TODO: only sync changed attributes
-        if pull:
-            self._pull()
-        if push:
-            self._push()
+    def set(self, name, value):
+        return self.sio.call("set", {"name": name, "value": value})
 
-    def _pull(self):
-        data: dict = self.sio.call("get", {})
-        # TODO: chunk the data, it might be too much at once.
-        for key, value in data.items():
-            self._data[key] = value
+    def get(self, name):
+        return self.sio.call("get", {"name": name})
 
-    def _push(self):
-        for key, value in self._data.items():
-            self.sio.emit("set", {"name": key, "value": value})
+    def hmset(self, name, data):
+        return self.sio.call("hmset", {"name": name, "data": data})
 
-    def __setattr__(self, name: str, value: Any) -> None:
-        if (
-            name not in [x.name for x in dataclasses.fields(self)]
-            and name not in type(self).__dict__
-        ):
-            # send everything that is not a dataclass field to the server
-            self._data[name] = value
-        else:
-            super().__setattr__(name, value)
+    def hgetall(self, name):
+        return self.sio.call("hgetall", {"name": name})
 
-    def __getattribute__(self, name: str) -> Any:
-        if name.startswith("_") or name in type(self).__dict__:
-            return super().__getattribute__(name)
-        if name not in [x.name for x in dataclasses.fields(self)]:
-            try:
-                return self._data[name]
-            except KeyError:
-                raise AttributeError(
-                    f"znsocket.FrozenClient '{self}' can not access attribute '{name}'"
-                )
-        else:
-            return super().__getattribute__(name)
+    def smembers(self, name):
+        return set(self.sio.call("smembers", {"name": name}))
 
+    def lrange(self, name, start, end):
+        return self.sio.call("lrange", {"name": name, "start": start, "end": end})
 
-@dataclasses.dataclass
-class DBClient:
-    db: Database
-    sid: str = None
-    room: str = None
+    def lset(self, name, index, value):
+        return self.sio.call("lset", {"name": name, "index": index, "value": value})
 
-    def __post_init__(self):
-        self.sid = uuid.uuid4().hex if self.sid is None else self.sid
-        self.db.join_room(self.sid, self.room)
+    def lrem(self, name: str, count: int, value: str):
+        return self.sio.call("lrem", {"name": name, "count": count, "value": value})
 
-    @functools.cached_property
-    def name(self):
-        return self.db.get_client_name(self.sid)
+    def sadd(self, name, value):
+        return self.sio.call("sadd", {"name": name, "value": value})
 
-    def __setattr__(self, name: str, value: Any) -> None:
-        if name not in [x.name for x in dataclasses.fields(self)]:
-            self.db.set_room_storage(self.sid, name, value)
-        else:
-            super().__setattr__(name, value)
-
-    def __getattribute__(self, name: str) -> Any:
-        if name.startswith("_"):
-            return super().__getattribute__(name)
-        if name not in [x.name for x in dataclasses.fields(self)] and name not in type(self).__dict__:
-            data = self.db.get_room_storage(self.sid, name)
-            if isinstance(data, dict) and data == {"AttributeError": "AttributeError"}:
-                raise AttributeError(
-                    f"znsocket.DBClient '{self}' can not access attribute '{name}'"
-                )
-            return data
-        else:
-            return super().__getattribute__(name)
+    def flushall(self):
+        return self.sio.call("flushall", {})
