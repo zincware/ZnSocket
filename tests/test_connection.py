@@ -6,19 +6,18 @@ import random
 
 import pytest
 import redis
-import socketio
+import socketio.exceptions
 
-from znsocket import Client, get_sio
+from znsocket import Client, Server
 
 
 @pytest.fixture
 def eventlet_memory_server():
-    sio = get_sio()
     port = random.randint(10000, 20000)
 
     def start_server():
-        server_app = socketio.WSGIApp(sio)
-        eventlet.wsgi.server(eventlet.listen(("localhost", port)), server_app)
+        server = Server(port=port)
+        server.run()
 
     thread = eventlet.spawn(start_server)
 
