@@ -25,7 +25,7 @@ class Client:
         self.sio.connect(self.address)
 
     def delete(self, name):
-        return self.sio.emit("rdelete", {"name": name})
+        return self.sio.emit("delete", {"name": name})
 
     def hget(self, name, key):
         return self.sio.call("hget", {"name": name, "key": key})
