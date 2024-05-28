@@ -179,6 +179,7 @@ def test_flushall(client, request):
     c.flushall()
     assert c.get("name") is None
 
+
 @pytest.mark.parametrize("client", ["znsclient", "redisclient"])
 def test_rdlete(client, request):
     c = request.getfixturevalue(client)
