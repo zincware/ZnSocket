@@ -1,11 +1,9 @@
 import datetime
 import typing as t
 
-import eventlet.wsgi
-import socketio
 import typer
 
-from znsocket.server import get_sio
+from znsocket import Server
 
 app = typer.Typer()
 
@@ -28,9 +26,8 @@ def server(
     typer.echo(
         f"{datetime.datetime.now().isoformat()}: Starting znsocket server on port {port}"
     )
-    sio = get_sio(max_http_buffer_size=max_http_buffer_size)
-    server_app = socketio.WSGIApp(sio)
-    eventlet.wsgi.server(eventlet.listen(("localhost", port)), server_app)
+    server = Server(port=port, max_http_buffer_size=max_http_buffer_size)
+    server.run()
     typer.echo(
         f"{datetime.datetime.now().isoformat()}: Stopped znsocket server on port {port}"
     )

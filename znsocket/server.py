@@ -1,8 +1,34 @@
+import dataclasses
 import typing as t
 
+import eventlet.wsgi
 import socketio
 
 storage = {}
+
+
+@dataclasses.dataclass
+class Server:
+    port: int = 5000
+    max_http_buffer_size: t.Optional[int] = None
+    async_mode: t.Optional[str] = None
+
+    @classmethod
+    def from_url(cls, url: str, **kwargs) -> "Server":
+        # server url looks like "znsocket://127.0.0.1:5000"
+        if not url.startswith("znsocket://"):
+            raise ValueError("Invalid URL")
+        port = int(url.split(":")[-1])
+        return cls(port=port, **kwargs)
+
+    def run(self) -> None:
+        """Run the server (blocking)."""
+        sio = get_sio(
+            max_http_buffer_size=self.max_http_buffer_size,
+            async_mode=self.async_mode,
+        )
+        server_app = socketio.WSGIApp(sio)
+        eventlet.wsgi.server(eventlet.listen(("localhost", self.port)), server_app)
 
 
 def get_sio(

@@ -1,4 +1,4 @@
 from .client import Client
-from .server import get_sio
+from .server import Server
 
-__all__ = ["Client", "get_sio"]
+__all__ = ["Client", "Server"]
