@@ -30,3 +30,7 @@ repository = "https://github.com/zincware/ZnSocket"
 
 [tool.ruff.lint]
 select = ["I"]
+
+[tool.coverage.run]
+# omit the tests themselves
+omit = ["*/tests/*"]

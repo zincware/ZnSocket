@@ -47,14 +47,14 @@ def znsclient(eventlet_memory_server):
 
 # redis is currently not available in the CI
 # change the fixtures manually to test against redis
-redisclient = znsclient
+# redisclient = znsclient
 
-# @pytest.fixture
-# def redisclient():
-#     r = redis.Redis.from_url("redis://localhost:6379/0", decode_responses=True)
-#     yield r
-#     r.flushdb()
 
+@pytest.fixture
+def redisclient():
+    r = redis.Redis.from_url("redis://localhost:6379/0", decode_responses=True)
+    yield r
+    r.flushdb()
 
 
 @pytest.mark.parametrize("client", ["znsclient", "redisclient"])
@@ -84,6 +84,67 @@ def test_hmset_hgetall(client, request):
     data = {"field1": "value1", "field2": "value2"}
     c.hmset("hash", data)
     assert c.hgetall("hash") == data
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+def test_hmget(client, request):
+    c = request.getfixturevalue(client)
+    data = {"field1": "value1", "field2": "value2"}
+    c.hmset("hash", data)
+    assert c.hmget("hash", ["field1", "field2"]) == ["value1", "value2"]
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+def test_hkeys(client, request):
+    c = request.getfixturevalue(client)
+    data = {"field1": "value1", "field2": "value2"}
+    c.hmset("hash", data)
+    assert set(c.hkeys("hash")) == {"field1", "field2"}
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+def test_exists(client, request):
+    c = request.getfixturevalue(client)
+    c.set("name", "Alice")
+    assert c.exists("name") == 1
+    assert c.exists("nonexistent") == 0
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+def test_llen(client, request):
+    c = request.getfixturevalue(client)
+    c.rpush("list", "element1")
+    c.rpush("list", "element2")
+    assert c.llen("list") == 2
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+def test_lset(client, request):
+    c = request.getfixturevalue(client)
+    c.rpush("list", "element1")
+    c.rpush("list", "element2")
+    c.lset("list", 0, "new_element1")
+    assert c.lindex("list", 0) == "new_element1"
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+def test_lrem(client, request):
+    c = request.getfixturevalue(client)
+    c.rpush("list", "element1")
+    c.rpush("list", "element2")
+    c.rpush("list", "element1")
+    c.lrem("list", 0, "element1")
+    assert c.lrange("list", 0, -1) == ["element2"]
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+def test_lrem(client, request):
+    c = request.getfixturevalue(client)
+    c.rpush("list", "element1")
+    c.rpush("list", "element2")
+    c.rpush("list", "element1")
+    c.lrem("list", 1, "element1")
+    assert c.lrange("list", 0, -1) == ["element2", "element1"]
 
 
 @pytest.mark.parametrize("client", ["znsclient", "redisclient"])

@@ -63,7 +63,7 @@ def get_sio(
     @sio.event
     def exists(sid, data):
         name = data.pop("name")
-        return name in storage
+        return 1 if name in storage else 0
 
     @sio.event
     def llen(sid, data):
@@ -157,12 +157,15 @@ def get_sio(
         name = data.pop("name")
         count = data.pop("count")
         value = data.pop("value")
-        try:
-            storage[name] = [x for x in storage[name] if x != value]
-        except KeyError:
-            pass
-        except IndexError:
-            pass
+        removed = 0
+        while removed < count:
+            try:
+                storage[name].remove(value)
+                removed += 1
+            except KeyError:
+                break
+            except IndexError:
+                break
 
     @sio.event
     def sadd(sid, data):
