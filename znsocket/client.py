@@ -78,5 +78,8 @@ class Client:
     def sadd(self, name, value):
         return self.sio.call("sadd", {"name": name, "value": value})
 
+    def srem(self, name, value):
+        return self.sio.call("srem", {"name": name, "value": value})
+
     def flushall(self):
         return self.sio.call("flushall", {})

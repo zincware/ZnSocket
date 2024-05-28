@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "znsocket"
-version = "0.1.0"
+version = "0.1.1"
 description = "Create objects with shared attributes through a socket connection."
 authors = ["Fabian Zills <fzills@icp.uni-stuttgart.de>"]
 license = "Apache-2.0"

@@ -186,3 +186,12 @@ def test_rdlete(client, request):
     c.set("name", "Alice")
     c.delete("name")
     assert c.get("name") is None
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+def test_srem(client, request):
+    c = request.getfixturevalue(client)
+    c.sadd("set", "member1")
+    c.sadd("set", "member2")
+    c.srem("set", "member1")
+    assert c.smembers("set") == {"member2"}

@@ -180,4 +180,13 @@ def get_sio(
     def flushall(sid, data):
         storage.clear()
 
+    @sio.event
+    def srem(sid, data):
+        name = data.pop("name")
+        value = data.pop("value")
+        try:
+            storage[name].remove(value)
+        except KeyError:
+            pass
+
     return sio
