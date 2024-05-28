@@ -1,57 +1,40 @@
 [![Coverage Status](https://coveralls.io/repos/github/zincware/ZnSocket/badge.svg?branch=main)](https://coveralls.io/github/zincware/ZnSocket?branch=main)
 ![PyTest](https://github.com/zincware/ZnSocket/actions/workflows/pytest.yaml/badge.svg)
 [![zincware](https://img.shields.io/badge/Powered%20by-zincware-darkcyan)](https://github.com/zincware)
-# ZnSocket - share data using SocketIO
+# ZnSocket - Redis-like Key-Value Store in Python
 
-This package provides an interface to share data using WebSockets via the SocketIO protocol.
+ZnSocket provides a [Redis](https://redis.io/)-compatible API using [python-socketio](https://python-socketio.readthedocs.io/en/stable/) and Python objects for storage. It is designed for testing and applications requiring key-value storage while being easily installable via `pip`. For production, consider using [redis-py](https://redis-py.readthedocs.io/) and a Redis instance.
+
+
+## Installation
+To install ZnSocket, use:
+
+```bash
+pip install znsocket
+```
 
 ## Example
+Start the ZnSocket server using the CLI:
 
-Run the server using the CLI via `znsocket`.
-You can connect via
+```bash
+znsocket --port 5000
+```
+For additional options, run:
+```bash
+znsocket --help
+```
 
+Here's a simple example of how to use the ZnSocket client:
 ```python
 from znsocket import Client
 
-c1 = Client(address='http://localhost:5000', room="MyRoom")
-c1.text = "Hello World"
+# Connect to the ZnSocket server
+c = Client.from_url("znsocket://127.0.0.1:5000")
+
+# Set and get a value
+c.set("name", "Fabian")
+assert c.get("name") == "Fabian"
 ```
 
-As long as any client is connected to the server in `MyRoom` you will be able to access the data.
-Run this code in a separate Python kernel:
-
-```python
-from znsocket import Client
-
-c2 = Client(address='http://localhost:5000', room="MyRoom")
-print(c2.text)
-```
-
-You can set any attribute of the `Client`, except `{"address", "room", "sio"}` and it will be shared.
-The data must be JSON-serializable to be shared.
-
-## Special Clients
-For performance reasons there are two special clients
-### FrozenClient
-The `znsocket.FrozenClient` can be used to operate on data and only push or pull once requested.
-
-```python
-import znsocket
-
-client = znsocket.FrozenClient(
-    address='http://localhost:5000', room="MyRoom"
-)
-
-client.sync(push=True, pull=True)
-```
-
-### DBClient
-The `znsocket.DBClient` can be used to directly operate on the database without going through the server.
-
-```python
-import znsocket
-
-client = znsocket.DBClient(
-    db=znsocket.SqlDatabase(engine=f"sqlite:///znsocket.db"), room="MyRoom"
-)
-```
+> [!NOTE]
+> ZnSocket does not decode strings automatically. Using it is equivalent to using `Redis.from_url(storage, decode_responses=True)` in the Redis client.
