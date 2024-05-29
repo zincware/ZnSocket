@@ -74,20 +74,40 @@ def test_lset(client, request):
 @pytest.mark.parametrize("client", ["znsclient", "redisclient"])
 def test_lrem(client, request):
     c = request.getfixturevalue(client)
+
+    # Push elements to the list
     c.rpush("list", "element1")
     c.rpush("list", "element2")
     c.rpush("list", "element1")
+
+    # Remove all occurrences of "element1"
     c.lrem("list", 0, "element1")
     assert c.lrange("list", 0, -1) == ["element2"]
 
+    # Clear the list for the next part of the test
+    c.delete("list")
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
-def test_lrem(client, request):
-    c = request.getfixturevalue(client)
+    # Push elements to the list again
     c.rpush("list", "element1")
     c.rpush("list", "element2")
     c.rpush("list", "element1")
+    c.rpush("list", "element1")
+
+    # Remove one occurrence of "element1"
     c.lrem("list", 1, "element1")
+    assert c.lrange("list", 0, -1) == ["element2", "element1", "element1"]
+
+    # Clear the list for the next part of the test
+    c.delete("list")
+
+    # Push elements to the list again
+    c.rpush("list", "element1")
+    c.rpush("list", "element1")
+    c.rpush("list", "element2")
+    c.rpush("list", "element1")
+
+    # Remove two occurrences of "element1"
+    c.lrem("list", 2, "element1")
     assert c.lrange("list", 0, -1) == ["element2", "element1"]
 
 
@@ -139,3 +159,12 @@ def test_srem(client, request):
     c.sadd("set", "member2")
     c.srem("set", "member1")
     assert c.smembers("set") == {"member2"}
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+def test_linsert(client, request):
+    c = request.getfixturevalue(client)
+    c.rpush("list", "element1")
+    c.rpush("list", "element3")
+    c.linsert("list", "BEFORE", "element3", "element2")
+    assert c.lrange("list", 0, -1) == ["element1", "element2", "element3"]

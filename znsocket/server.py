@@ -222,10 +222,9 @@ def get_sio(
             storage[name].remove(value)
         except KeyError:
             pass
-    
+
     @sio.event
     def linsert(sid, data):
-        # TODO: this is not unit-tested
         name = data.pop("name")
         where = data.pop("where")
         pivot = data.pop("pivot")
