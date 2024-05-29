@@ -44,11 +44,6 @@ def znsclient(eventlet_memory_server):
     r.flushall()
 
 
-# redis is currently not available in the CI
-# change the fixtures manually to test against redis
-# redisclient = znsclient
-
-
 @pytest.fixture
 def redisclient():
     r = redis.Redis.from_url("redis://localhost:6379/0", decode_responses=True)
