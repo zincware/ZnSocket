@@ -5,13 +5,16 @@ import socketio.exceptions
 from znsocket import exceptions
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class Client:
     address: str
-    sio: socketio.SimpleClient = dataclasses.field(default=None, repr=False, init=False)
+    decode_responses: bool = True
+    sio: socketio.SimpleClient = dataclasses.field(
+        default_factory=socketio.SimpleClient, repr=False, init=False
+    )
 
     @classmethod
-    def from_url(cls, url):
+    def from_url(cls, url, **kwargs) -> "Client":
         """Connect to a znsocket server using a URL.
 
         Parameters
@@ -20,14 +23,16 @@ class Client:
             The URL of the znsocket server. Should be in the format
             "znsocket://127.0.0.1:5000".
         """
-        return cls(address=url.replace("znsocket://", "http://"))
+        return cls(address=url.replace("znsocket://", "http://"), **kwargs)
 
     def __post_init__(self):
-        self.sio = socketio.SimpleClient()
         try:
             self.sio.connect(self.address)
         except socketio.exceptions.ConnectionError as err:
             raise exceptions.ConnectionError(self.address) from err
+
+        if not self.decode_responses:
+            raise NotImplementedError("decode_responses=False is not supported yet")
 
     def delete(self, name):
         return self.sio.call("delete", {"name": name})
