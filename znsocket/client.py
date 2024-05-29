@@ -1,6 +1,6 @@
 import dataclasses
 
-import socketio
+import socketio.exceptions
 
 from znsocket import exceptions
 
@@ -24,7 +24,10 @@ class Client:
 
     def __post_init__(self):
         self.sio = socketio.SimpleClient()
-        self.sio.connect(self.address)
+        try:
+            self.sio.connect(self.address)
+        except socketio.exceptions.ConnectionError as err:
+            raise exceptions.ConnectionError(self.address) from err
 
     def delete(self, name):
         return self.sio.call("delete", {"name": name})
