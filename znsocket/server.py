@@ -183,15 +183,23 @@ def get_sio(
         name = data.pop("name")
         count = data.pop("count")
         value = data.pop("value")
-        removed = 0
-        while removed < count:
+
+        if count == 0:
+            # TODO: this is not unit-tested
             try:
-                storage[name].remove(value)
-                removed += 1
+                storage[name] = [x for x in storage[name] if x != value]
             except KeyError:
-                break
-            except IndexError:
-                break
+                pass
+        else:
+            removed = 0
+            while removed < count:
+                try:
+                    storage[name].remove(value)
+                    removed += 1
+                except KeyError:
+                    break
+                except IndexError:
+                    break
 
     @sio.event
     def sadd(sid, data):
