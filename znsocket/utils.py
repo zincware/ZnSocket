@@ -126,10 +126,10 @@ class Dict(MutableMapping):
         value = self.redis.hget(self.key, key)
         if value is None:
             raise KeyError(key)
-        return value
+        return znjson.loads(value)
 
     def __setitem__(self, key: str, value: t.Any):
-        self.redis.hset(self.key, key, value)
+        self.redis.hset(self.key, key, znjson.dumps(value))
 
     def __delitem__(self, key: str):
         if not self.redis.hexists(self.key, key):
@@ -146,14 +146,28 @@ class Dict(MutableMapping):
         return [k for k in self.redis.hkeys(self.key)]
 
     def values(self):
-        return [v for v in self.redis.hvals(self.key)]
+        response = []
+        for v in self.redis.hvals(self.key):
+            try:
+                response.append(znjson.loads(v))
+            except TypeError:
+                # None values are not JSON serializable
+                response.append(v)
+        return response
 
     def items(self):
-        return [(k, v) for k, v in self.redis.hgetall(self.key).items()]
+        response = []
+        for k, v in self.redis.hgetall(self.key).items():
+            try:
+                response.append((k, znjson.loads(v)))
+            except TypeError:
+                # None values are not JSON serializable
+                response.append((k, v))
+        return response
 
     def __contains__(self, key: object) -> bool:
         return self.redis.hexists(self.key, key)
 
     def __repr__(self):
-        data = {k: v for k, v in self.redis.hgetall(self.key).items()}
+        data = {a: b for a, b in self.items()}
         return f"Dict({data})"

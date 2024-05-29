@@ -31,6 +31,11 @@ def test_dct_set_get_item(client, request):
     with pytest.raises(KeyError, match="nonexistent"):
         dct["nonexistent"]
 
+    dct["a"] = 1
+    assert dct["a"] == 1
+    dct["numpy"] = np.arange(10)
+    npt.assert_array_equal(dct["numpy"], np.arange(10))
+
 
 @pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
 def test_dct_del_item(client, request):
@@ -105,3 +110,31 @@ def test_dct_repr(client, request):
     dct.update({"a": "1", "b": "2"})
 
     assert repr(dct) == "Dict({'a': '1', 'b': '2'})"
+
+
+@pytest.mark.parametrize("a", ["znsclient", "redisclient", "empty"])
+@pytest.mark.parametrize("b", ["znsclient", "redisclient", "empty"])
+def test_dict_equal(a, b, request):
+    a = request.getfixturevalue(a)
+    b = request.getfixturevalue(b)
+    if a is not None:
+        dct1 = znsocket.Dict(r=a, key="dict:test:a")
+    else:
+        dct1 = {}
+
+    if b is not None:
+        dct2 = znsocket.Dict(r=b, key="dict:test:b")
+    else:
+        dct2 = {}
+
+    dct1.update({"a": "1", "b": "2"})
+    dct2.update({"a": "1", "b": "2"})
+
+    assert dct1 == dct2
+
+    del dct1["b"]
+    assert dct1 == {"a": "1"}
+    assert dct2 == {"a": "1", "b": "2"}
+    assert dct1 != dct2
+
+    assert dct1 != "unsupported"
