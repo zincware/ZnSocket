@@ -7,7 +7,11 @@ import znjson
 from .client import Client
 
 
-class List(MutableSequence):
+class ZnSocketObject:
+    """Base class for all znsocket objects."""
+
+
+class List(MutableSequence, ZnSocketObject):
     def __init__(self, r: Client | t.Any, key: str):
         """Synchronized list object.
 
@@ -105,7 +109,7 @@ class List(MutableSequence):
         return f"List({data})"
 
 
-class Dict(MutableMapping):
+class Dict(MutableMapping, ZnSocketObject):
     def __init__(self, r: Client | t.Any, key: str):
         """Synchronized dict object.
 

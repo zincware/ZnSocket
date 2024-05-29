@@ -3,6 +3,7 @@ import numpy.testing as npt
 import pytest
 
 import znsocket
+from znsocket.utils import ZnSocketObject
 
 
 @pytest.fixture
@@ -16,6 +17,7 @@ def test_list_extend(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
         lst = znsocket.List(r=c, key="list:test")
+        assert isinstance(lst, ZnSocketObject)
     else:
         lst = []
 

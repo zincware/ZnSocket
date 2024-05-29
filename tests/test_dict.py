@@ -3,6 +3,7 @@ import numpy.testing as npt
 import pytest
 
 import znsocket
+from znsocket.utils import ZnSocketObject
 
 
 @pytest.fixture
@@ -16,6 +17,7 @@ def test_dct_set_get_item(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
         dct = znsocket.Dict(r=c, key="list:test")
+        assert isinstance(dct, ZnSocketObject)
     else:
         dct = {}
 
