@@ -2,6 +2,8 @@ import dataclasses
 
 import socketio
 
+from znsocket import exceptions
+
 
 @dataclasses.dataclass
 class Client:
@@ -70,7 +72,9 @@ class Client:
         return self.sio.call("lrange", {"name": name, "start": start, "end": end})
 
     def lset(self, name, index, value):
-        return self.sio.call("lset", {"name": name, "index": index, "value": value})
+        response = self.sio.call("lset", {"name": name, "index": index, "value": value})
+        if response is not None:
+            raise exceptions.ResponseError(response)
 
     def lrem(self, name: str, count: int, value: str):
         return self.sio.call("lrem", {"name": name, "count": count, "value": value})

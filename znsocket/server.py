@@ -169,8 +169,6 @@ def get_sio(
             return storage[name][start:end]
         except KeyError:
             return []
-        except IndexError:
-            return []
 
     @sio.event
     def lset(sid, data):
@@ -180,9 +178,9 @@ def get_sio(
         try:
             storage[name][index] = value
         except KeyError:
-            pass
+            return "no such key"
         except IndexError:
-            pass
+            return "index out of range"
 
     @sio.event
     def lrem(sid, data):
