@@ -1,3 +1,5 @@
+import numpy as np
+import numpy.testing as npt
 import pytest
 
 import znsocket
@@ -193,3 +195,21 @@ def test_list_getitem(client, request):
 
     with pytest.raises(IndexError):
         lst[10]
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+def test_list_numpy(client, request):
+    """Test ZnSocket with numpy arrays through znjson."""
+    c = request.getfixturevalue(client)
+    if c is not None:
+        lst = znsocket.List(r=c, key="list:test")
+    else:
+        lst = []
+
+    lst.extend([np.array([1, 2, 3]), np.array([4, 5, 6])])
+    npt.assert_array_equal(lst[0], np.array([1, 2, 3]))
+    npt.assert_array_equal(lst[1], np.array([4, 5, 6]))
+
+    lst[1] = np.array([7, 8, 9])
+    npt.assert_array_equal(lst[0], np.array([1, 2, 3]))
+    npt.assert_array_equal(lst[1], np.array([7, 8, 9]))

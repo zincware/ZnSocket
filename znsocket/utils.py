@@ -55,7 +55,6 @@ class List(MutableSequence):
         single_item = isinstance(index, int)
         if single_item:
             index = [index]
-            assert isinstance(value, str), "single index requires single value"
             value = [value]
 
         if isinstance(index, slice):
