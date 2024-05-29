@@ -2,6 +2,8 @@ import dataclasses
 
 import socketio
 
+from znsocket import exceptions
+
 
 @dataclasses.dataclass
 class Client:
@@ -25,7 +27,7 @@ class Client:
         self.sio.connect(self.address)
 
     def delete(self, name):
-        return self.sio.emit("delete", {"name": name})
+        return self.sio.call("delete", {"name": name})
 
     def hget(self, name, key):
         return self.sio.call("hget", {"name": name, "key": key})
@@ -47,6 +49,9 @@ class Client:
 
     def rpush(self, name, value):
         return self.sio.call("rpush", {"name": name, "value": value})
+
+    def lpush(self, name, value):
+        return self.sio.call("lpush", {"name": name, "value": value})
 
     def lindex(self, name, index):
         return self.sio.call("lindex", {"name": name, "index": index})
@@ -70,7 +75,9 @@ class Client:
         return self.sio.call("lrange", {"name": name, "start": start, "end": end})
 
     def lset(self, name, index, value):
-        return self.sio.call("lset", {"name": name, "index": index, "value": value})
+        response = self.sio.call("lset", {"name": name, "index": index, "value": value})
+        if response is not None:
+            raise exceptions.ResponseError(response)
 
     def lrem(self, name: str, count: int, value: str):
         return self.sio.call("lrem", {"name": name, "count": count, "value": value})
@@ -80,6 +87,11 @@ class Client:
 
     def srem(self, name, value):
         return self.sio.call("srem", {"name": name, "value": value})
+
+    def linsert(self, name, where, pivot, value):
+        return self.sio.call(
+            "linsert", {"name": name, "where": where, "pivot": pivot, "value": value}
+        )
 
     def flushall(self):
         return self.sio.call("flushall", {})
