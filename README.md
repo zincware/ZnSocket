@@ -42,7 +42,7 @@ assert c.get("name") == "Fabian"
 
 
 ## Lists
-`ZnSocket` provides a synchronized version of the Python `list` implementation. Unlike a regular Python list, the data in `znsocket.List` is not stored locally; instead, it is dynamically pushed to and pulled from the server.
+ZnSocket provides a synchronized version of the Python `list` implementation. Unlike a regular Python list, the data in `znsocket.List` is not stored locally; instead, it is dynamically pushed to and pulled from the server.
 
 Below is a step-by-step example of how to use `znsocket.List` to interact with a ZnSocket server.
 
