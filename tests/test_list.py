@@ -214,3 +214,22 @@ def test_list_numpy(client, request):
     lst[1] = np.array([7, 8, 9])
     npt.assert_array_equal(lst[0], np.array([1, 2, 3]))
     npt.assert_array_equal(lst[1], np.array([7, 8, 9]))
+
+
+# @pytest.mark.parametrize("a", ["znsclient", "redisclient", "empty"])
+# @pytest.mark.parametrize("b", ["znsclient", "redisclient", "empty"])
+# def test_list_nested(a, b, request):
+#     a = request.getfixturevalue(a)
+#     b = request.getfixturevalue(b)
+#     if a is not None:
+#         lst1 = znsocket.List(r=a, key="list:test:a")
+#     else:
+#         lst1 = []
+
+#     if b is not None:
+#         lst2 = znsocket.List(r=b, key="list:test:b")
+#     else:
+#         lst2 = []
+
+#     lst1.extend(["1", "2", "3", "4"])
+#     lst2.extend([lst1, lst1])
