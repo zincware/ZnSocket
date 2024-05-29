@@ -6,6 +6,10 @@
 
 ZnSocket provides a [Redis](https://redis.io/)-compatible API using [python-socketio](https://python-socketio.readthedocs.io/en/stable/) and Python objects for storage. It is designed for testing and applications requiring key-value storage while being easily installable via `pip`. For production, consider using [redis-py](https://redis-py.readthedocs.io/) and a Redis instance.
 
+> [!IMPORTANT]
+> ZnSocket is not designed for large data.
+> The maximum size for a single communication is 100 MB.
+> Although this value can be adapted, you will notice slow data transfers for large files.
 
 ## Installation
 To install ZnSocket, use:
