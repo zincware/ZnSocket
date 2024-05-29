@@ -298,17 +298,13 @@ def test_hdel(client, request):
     c = request.getfixturevalue(client)
 
     c.hset("hash", "field", "value")
-    response = c.hdel("hash", "field")
-    assert response == 1
+    assert c.hdel("hash", "field") == 1
 
-    response = c.hdel("hash", "nonexistent")
-    assert response == 0
+    assert c.hdel("hash", "nonexistent") == 0
 
-    response = c.hdel("nonexistent", "field")
-    assert response == 0
+    assert c.hdel("nonexistent", "field") == 0
 
-    response = c.hdel("nonexistent", "nonexistent")
-    assert response == 0
+    assert c.hdel("nonexistent", "nonexistent") == 0
 
 
 @pytest.mark.parametrize("client", ["znsclient", "redisclient"])
