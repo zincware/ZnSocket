@@ -53,11 +53,32 @@ from znsocket import Client, List
 client = Client.from_url("znsocket://127.0.0.1:5000")
 
 # Create a synchronized list associated with the specified key
-sync_list = List(client=client, key="list:1")
+sync_list = List(r=client, key="list:1")
 
 # Extend the list with multiple elements
 sync_list.extend(["a", "b", "c", "d"])
 
 # Print every second element from the list
 print(sync_list[::2])
+```
+
+## Dicts
+ZnSocket provides a synchronized version of the Python `dict` implementation similar to the `list` implementation.
+
+Below is a step-by-step example of how to use `znsocket.Dict` to interact with a ZnSocket server.
+
+```python
+from znsocket import Client, Dict
+
+# Connect to the ZnSocket server using the provided URL
+client = Client.from_url("znsocket://127.0.0.1:5000")
+
+# Create a synchronized dict associated with the specified key
+sync_dict = Dict(r=client, key="dict:1")
+
+# Add an item to the synchronized dict
+sync_dict["Hello"] = "World"
+
+# Print the added item
+print(sync_dict["Hello"])
 ```

@@ -251,4 +251,39 @@ def get_sio(
         except ValueError:
             return -1
 
+    @sio.event
+    def hexists(sid, data):
+        name = data.pop("name")
+        key = data.pop("key")
+        try:
+            return 1 if key in storage[name] else 0
+        except KeyError:
+            return 0
+
+    @sio.event
+    def hdel(sid, data):
+        name = data.pop("name")
+        key = data.pop("key")
+        try:
+            del storage[name][key]
+            return 1
+        except KeyError:
+            return 0
+
+    @sio.event
+    def hlen(sid, data):
+        name = data.pop("name")
+        try:
+            return len(storage[name])
+        except KeyError:
+            return 0
+
+    @sio.event
+    def hvals(sid, data):
+        name = data.pop("name")
+        try:
+            return list(storage[name].values())
+        except KeyError:
+            return []
+
     return sio
