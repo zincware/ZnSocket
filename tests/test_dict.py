@@ -140,6 +140,31 @@ def test_dict_equal(a, b, request):
     assert dct1 != "unsupported"
 
 
+@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+def test_dct_similar_keys(client, request):
+    c = request.getfixturevalue(client)
+    if c is not None:
+        dct = znsocket.Dict(r=c, key="list:test")
+    else:
+        dct = {}
+
+    dct.update({1: 1, "1": "1", None: "None"})
+    assert dct[1] == 1
+    assert dct["1"] == "1"
+    assert dct[None] == "None"
+
+    assert dct == {1: 1, "1": "1", None: "None"}
+    if c is not None:
+        assert repr(dct) == "Dict({1: 1, '1': '1', None: 'None'})"
+
+    del dct[1]
+    assert dct == {"1": "1", None: "None"}
+    del dct["1"]
+    assert dct == {None: "None"}
+    del dct[None]
+    assert dct == {}
+
+
 # @pytest.mark.parametrize("a", ["znsclient", "redisclient", "empty"])
 # @pytest.mark.parametrize("b", ["znsclient", "redisclient", "empty"])
 # def test_dict_nested(a, b, request):

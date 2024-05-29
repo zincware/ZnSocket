@@ -123,18 +123,18 @@ class Dict(MutableMapping):
         self.key = key
 
     def __getitem__(self, key: str):
-        value = self.redis.hget(self.key, key)
+        value = self.redis.hget(self.key, znjson.dumps(key))
         if value is None:
             raise KeyError(key)
         return znjson.loads(value)
 
     def __setitem__(self, key: str, value: t.Any):
-        self.redis.hset(self.key, key, znjson.dumps(value))
+        self.redis.hset(self.key, znjson.dumps(key), znjson.dumps(value))
 
     def __delitem__(self, key: str):
-        if not self.redis.hexists(self.key, key):
+        if not self.redis.hexists(self.key, znjson.dumps(key)):
             raise KeyError(key)
-        self.redis.hdel(self.key, key)
+        self.redis.hdel(self.key, znjson.dumps(key))
 
     def __iter__(self):
         return iter(self.keys())
@@ -143,7 +143,7 @@ class Dict(MutableMapping):
         return self.redis.hlen(self.key)
 
     def keys(self):
-        return [k for k in self.redis.hkeys(self.key)]
+        return [znjson.loads(k) for k in self.redis.hkeys(self.key)]
 
     def values(self):
         response = []
@@ -159,14 +159,18 @@ class Dict(MutableMapping):
         response = []
         for k, v in self.redis.hgetall(self.key).items():
             try:
-                response.append((k, znjson.loads(v)))
+                response.append((znjson.loads(k), znjson.loads(v)))
             except TypeError:
                 # None values are not JSON serializable
-                response.append((k, v))
+                try:
+                    response.append((znjson.loads(k), v))
+                except TypeError:
+                    # None keys are allowed, they are not JSON serializable
+                    response.append((k, v))
         return response
 
     def __contains__(self, key: object) -> bool:
-        return self.redis.hexists(self.key, key)
+        return self.redis.hexists(self.key, znjson.dumps(key))
 
     def __repr__(self):
         data = {a: b for a, b in self.items()}
