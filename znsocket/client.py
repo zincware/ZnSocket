@@ -50,6 +50,9 @@ class Client:
     def rpush(self, name, value):
         return self.sio.call("rpush", {"name": name, "value": value})
 
+    def lpush(self, name, value):
+        return self.sio.call("lpush", {"name": name, "value": value})
+
     def lindex(self, name, index):
         return self.sio.call("lindex", {"name": name, "index": index})
 

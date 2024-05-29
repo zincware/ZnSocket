@@ -146,7 +146,7 @@ def test_sadd_smembers(client, request):
 
 
 @pytest.mark.parametrize("client", ["znsclient", "redisclient"])
-def test_lpush_lindex(client, request):
+def test_rpush_lindex(client, request):
     c = request.getfixturevalue(client)
     c.rpush("list", "element1")
     c.rpush("list", "element2")
@@ -267,3 +267,15 @@ def test_linsert(client, request):
     result = c.linsert("list", "BEFORE", "element1", "element0")
     assert result == 0
     assert c.lrange("list", 0, -1) == []
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+def test_lpush_lindex(client, request):
+    c = request.getfixturevalue(client)
+    c.lpush("list", "element1")
+    c.lpush("list", "element2")
+    assert c.lindex("list", 0) == "element2"
+    assert c.lindex("list", 1) == "element1"
+
+    assert c.lindex("list", 2) is None
+    assert c.lindex("nonexistent", 0) is None

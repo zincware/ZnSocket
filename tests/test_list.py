@@ -21,11 +21,6 @@ def test_list_extend(client, request):
     assert lst == ["1", "2", "3", "4"]
     assert lst[:] == ["1", "2", "3", "4"]
 
-    assert lst[0] == "1"
-    assert lst[1::2] == ["2", "4"]
-    assert lst[::-1] == ["4", "3", "2", "1"]
-    assert len(lst) == 4
-
 
 @pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
 def test_list_setitem(client, request):
@@ -41,6 +36,24 @@ def test_list_setitem(client, request):
 
     lst[:2] = ["a", "b"]
     assert lst[:] == ["a", "b", "c", "4"]
+
+    with pytest.raises(IndexError):
+        lst[10] = "x"
+
+    lst.clear()
+    assert lst[:] == []
+    lst.extend(["1", "2", "3", "4"])
+    lst[1::2] = ["a", "b"]
+    assert lst[:] == ["1", "a", "3", "b"]
+
+    if c is not None:
+        # Here we diverge from the Python list implementation
+        # which replaces the slice and then inserts the rest
+        with pytest.raises(
+            ValueError,
+            match="attempt to assign sequence of size 3 to extended slice of size 2",
+        ):
+            lst[:2] = ["a", "b", "c"]
 
 
 @pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
@@ -99,6 +112,9 @@ def test_list_insert(client, request):
     lst.insert(1, "x")
     assert lst[:] == ["1", "x", "2", "3", "4"]
 
+    lst.insert(0, "y")
+    assert lst[:] == ["y", "1", "x", "2", "3", "4"]
+
 
 @pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
 def test_list_iter(client, request):
@@ -146,3 +162,23 @@ def test_list_equal(a, b, request):
     assert lst1 == ["1", "2", "3"]
     assert lst2 == ["1", "2", "3", "4"]
     assert lst1 != lst2
+
+    assert lst1 != "unsupported"
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+def test_list_getitem(client, request):
+    c = request.getfixturevalue(client)
+    if c is not None:
+        lst = znsocket.List(r=c, key="list:test")
+    else:
+        lst = []
+    lst.extend(["1", "2", "3", "4"])
+
+    assert lst[0] == "1"
+    assert lst[1::2] == ["2", "4"]
+    assert lst[::-1] == ["4", "3", "2", "1"]
+    assert len(lst) == 4
+
+    with pytest.raises(IndexError):
+        lst[10]

@@ -113,6 +113,15 @@ def get_sio(
             storage[name] = [value]
 
     @sio.event
+    def lpush(sid, data):
+        name = data.pop("name")
+        value = data.pop("value")
+        try:
+            storage[name].insert(0, value)
+        except KeyError:
+            storage[name] = [value]
+
+    @sio.event
     def lindex(sid, data):
         name = data.pop("name")
         index = data.pop("index")
