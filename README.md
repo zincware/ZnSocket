@@ -38,7 +38,7 @@ assert c.get("name") == "Fabian"
 ```
 
 > [!NOTE]
-> ZnSocket does not decode strings automatically. Using it is equivalent to using `Redis.from_url(storage, decode_responses=True)` in the Redis client.
+> ZnSocket does not encode/decode strings. Using it is equivalent to using `Redis.from_url(storage, decode_responses=True)` in the Redis client.
 
 
 ## Lists

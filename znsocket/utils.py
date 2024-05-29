@@ -1,5 +1,8 @@
+import json
 import typing as t
 from collections.abc import MutableSequence
+
+import znjson
 
 from .client import Client
 
@@ -38,7 +41,11 @@ class List(MutableSequence):
 
         items = []
         for i in index:
-            item = self.redis.lindex(self.key, i)
+            value = self.redis.lindex(self.key, i)
+            try:
+                item = znjson.loads(value)
+            except TypeError:
+                item = value
             if item is None:
                 raise IndexError("list index out of range")
             items.append(item)
@@ -48,7 +55,6 @@ class List(MutableSequence):
         single_item = isinstance(index, int)
         if single_item:
             index = [index]
-            assert isinstance(value, str), "single index requires single value"
             value = [value]
 
         if isinstance(index, slice):
@@ -64,7 +70,7 @@ class List(MutableSequence):
         for i, v in zip(index, value):
             if i >= self.__len__() or i < -self.__len__():
                 raise IndexError("list index out of range")
-            self.redis.lset(self.key, i, v)
+            self.redis.lset(self.key, i, znjson.dumps(v))
 
     def __delitem__(self, index: int | list | slice):
         single_item = isinstance(index, int)
@@ -79,15 +85,12 @@ class List(MutableSequence):
 
     def insert(self, index, value):
         if index >= self.__len__():
-            self.redis.rpush(self.key, value)
+            self.redis.rpush(self.key, znjson.dumps(value))
         elif index == 0:
-            self.redis.lpush(self.key, value)
+            self.redis.lpush(self.key, znjson.dumps(value))
         else:
             pivot = self.redis.lindex(self.key, index)
-            self.redis.linsert(self.key, "BEFORE", pivot, value)
-
-    def __iter__(self):
-        return (item for item in self.redis.lrange(self.key, 0, -1))
+            self.redis.linsert(self.key, "BEFORE", pivot, znjson.dumps(value))
 
     def __eq__(self, value: object) -> bool:
         if isinstance(value, List):
@@ -97,4 +100,7 @@ class List(MutableSequence):
         return False
 
     def __repr__(self):
-        return f"List({self.redis.lrange(self.key, 0, -1)})"
+        data = self.redis.lrange(self.key, 0, -1)
+        data = [znjson.loads(i) for i in data]
+
+        return f"List({data})"
