@@ -21,6 +21,10 @@ def test_list_extend(client, request):
     assert lst == ["1", "2", "3", "4"]
     assert lst[:] == ["1", "2", "3", "4"]
 
+    lst.clear()
+    lst.extend([1, 2, 3, 4])
+    assert lst == [1, 2, 3, 4]
+
 
 @pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
 def test_list_setitem(client, request):
@@ -125,8 +129,15 @@ def test_list_iter(client, request):
         lst = []
     lst.extend(["1", "2", "3", "4"])
 
-    for a, b in zip(lst, ["1", "2", "3", "4"]):
-        assert a == b
+    assert lst[0] == "1"
+    assert lst[1] == "2"
+    assert lst[2] == "3"
+    assert lst[3] == "4"
+
+    assert [a for a in lst] == ["1", "2", "3", "4"]
+
+    # for a, b in zip(lst, ["1", "2", "3", "4"]):
+    #     assert a == b
 
 
 @pytest.mark.parametrize("client", ["znsclient", "redisclient"])

@@ -11,6 +11,7 @@ python = "^3.10"
 python-socketio = {extras = ["client"], version = "^5"}
 eventlet = "^0"
 typer = "^0"
+znjson = "^0.2.3"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.4"

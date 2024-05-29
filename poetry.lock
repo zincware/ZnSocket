@@ -712,7 +712,18 @@ files = [
 [package.dependencies]
 h11 = ">=0.9.0,<1"
 
+[[package]]
+name = "znjson"
+version = "0.2.3"
+description = "A Python Package to Encode/Decode some common file formats to json"
+optional = false
+python-versions = "<4.0,>=3.9"
+files = [
+    {file = "znjson-0.2.3-py3-none-any.whl", hash = "sha256:a23d81f39e3fd663c4c27361a03858ba3d5295f337c73d917e2ac1422016817b"},
+    {file = "znjson-0.2.3.tar.gz", hash = "sha256:5de937e46b10e128157e8fe8d424dc28b5dbbf43b6b9d6a7dc8f6cdc61036cef"},
+]
+
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "a01ff8445d92410ce9f646d1f60f4ca16ab0c867513f6b4f86c114d279c00c2a"
+content-hash = "0262a1e01f1b92816d9c6b46f264cf46a8b37c1ca9aa13b7edc4166b3cf19aa1"
