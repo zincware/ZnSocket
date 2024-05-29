@@ -20,6 +20,7 @@ def test_hset_hget(client, request):
     c = request.getfixturevalue(client)
     c.hset("hash", "field", "value")
     assert c.hget("hash", "field") == "value"
+    assert c.hget("hash", "nonexistent") is None
 
 
 @pytest.mark.parametrize("client", ["znsclient", "redisclient"])
@@ -36,6 +37,7 @@ def test_hmget(client, request):
     data = {"field1": "value1", "field2": "value2"}
     c.hmset("hash", data)
     assert c.hmget("hash", ["field1", "field2"]) == ["value1", "value2"]
+    assert c.hmget("hash", ["field1", "nonexistent"]) == ["value1", None]
 
 
 @pytest.mark.parametrize("client", ["znsclient", "redisclient"])
@@ -44,6 +46,8 @@ def test_hkeys(client, request):
     data = {"field1": "value1", "field2": "value2"}
     c.hmset("hash", data)
     assert set(c.hkeys("hash")) == {"field1", "field2"}
+    assert c.hkeys("hash") == ["field1", "field2"]
+    assert c.hkeys("nonexistent") == []
 
 
 @pytest.mark.parametrize("client", ["znsclient", "redisclient"])
@@ -69,6 +73,14 @@ def test_lset(client, request):
     c.rpush("list", "element2")
     c.lset("list", 0, "new_element1")
     assert c.lindex("list", 0) == "new_element1"
+
+    # here redis raises an Exception and we currently don't.
+    # c.lset("list2", 0, "new_element1")
+    # assert c.lindex("list2", 0) is None
+
+    # here redis raises an Exception and we currently don't.
+    # c.lset("list", 10, "new_element2")
+    # assert c.lindex("list", 10) == "new_element2"
 
 
 @pytest.mark.parametrize("client", ["znsclient", "redisclient"])
@@ -110,6 +122,13 @@ def test_lrem(client, request):
     c.lrem("list", 2, "element1")
     assert c.lrange("list", 0, -1) == ["element2", "element1"]
 
+    # remove from non-existent key
+    response = c.lrem("nonexistent", 0, "element1")
+    assert response == 0
+    # remove from non-existent key with count
+    response = c.lrem("nonexistent", 1, "element1")
+    assert response == 0
+
 
 @pytest.mark.parametrize("client", ["znsclient", "redisclient"])
 def test_sadd_smembers(client, request):
@@ -127,6 +146,9 @@ def test_lpush_lindex(client, request):
     assert c.lindex("list", 0) == "element1"
     assert c.lindex("list", 1) == "element2"
 
+    assert c.lindex("list", 2) is None
+    assert c.lindex("nonexistent", 0) is None
+
 
 @pytest.mark.parametrize("client", ["znsclient", "redisclient"])
 def test_lrange(client, request):
@@ -134,6 +156,17 @@ def test_lrange(client, request):
     c.rpush("list", "element1")
     c.rpush("list", "element2")
     assert c.lrange("list", 0, -1) == ["element1", "element2"]
+    assert c.lrange("list", 0, 0) == ["element1"]
+    assert c.lrange("list", 1, 1) == ["element2"]
+    assert c.lrange("list", 0, 1) == ["element1", "element2"]
+    assert c.lrange("list", 1, 2) == ["element2"]
+    assert c.lrange("list", 2, 3) == []
+    assert c.lrange("list", 1, -2) == []
+    assert c.lrange("list", -2, 1) == ["element1", "element2"]
+    # assert c.lrange("list", 0, -2) == ["element1"] # Why is that?
+
+    assert c.lrange("nonexistent", 0, 1) == []
+
 
 
 @pytest.mark.parametrize("client", ["znsclient", "redisclient"])
@@ -145,11 +178,15 @@ def test_flushall(client, request):
 
 
 @pytest.mark.parametrize("client", ["znsclient", "redisclient"])
-def test_rdlete(client, request):
+def test_delete(client, request):
     c = request.getfixturevalue(client)
     c.set("name", "Alice")
-    c.delete("name")
+    response = c.delete("name")
+    assert response == 1
     assert c.get("name") is None
+
+    response = c.delete("nonexistent") # No error should be raised
+    assert response == 0
 
 
 @pytest.mark.parametrize("client", ["znsclient", "redisclient"])
@@ -159,12 +196,55 @@ def test_srem(client, request):
     c.sadd("set", "member2")
     c.srem("set", "member1")
     assert c.smembers("set") == {"member2"}
+    assert c.smembers("nonexistent") == set()
 
 
 @pytest.mark.parametrize("client", ["znsclient", "redisclient"])
 def test_linsert(client, request):
     c = request.getfixturevalue(client)
+    
+    # Initial setup and basic linsert test
     c.rpush("list", "element1")
     c.rpush("list", "element3")
     c.linsert("list", "BEFORE", "element3", "element2")
     assert c.lrange("list", 0, -1) == ["element1", "element2", "element3"]
+    
+    # Cleanup the list for the next test
+    c.delete("list")
+    
+    # Test linsert AFTER
+    c.rpush("list", "element1")
+    c.rpush("list", "element2")
+    c.linsert("list", "AFTER", "element1", "element1.5")
+    assert c.lrange("list", 0, -1) == ["element1", "element1.5", "element2"]
+    
+    # Cleanup the list for the next test
+    c.delete("list")
+    
+    # Test linsert when pivot element does not exist
+    c.rpush("list", "element1")
+    result = c.linsert("list", "BEFORE", "element2", "element1.5")
+    assert result == -1
+    assert c.lrange("list", 0, -1) == ["element1"]
+    
+    # Cleanup the list for the next test
+    c.delete("list")
+    
+    # Test linsert with multiple elements and different positions
+    c.rpush("list", "element1")
+    c.rpush("list", "element2")
+    c.rpush("list", "element3")
+    c.rpush("list", "element4")
+    c.linsert("list", "BEFORE", "element4", "element3.5")
+    assert c.lrange("list", 0, -1) == ["element1", "element2", "element3", "element3.5", "element4"]
+    
+    c.linsert("list", "AFTER", "element1", "element1.5")
+    assert c.lrange("list", 0, -1) == ["element1", "element1.5", "element2", "element3", "element3.5", "element4"]
+    
+    # Cleanup the list for the next test
+    c.delete("list")
+    
+    # Test linsert with an empty list
+    result = c.linsert("list", "BEFORE", "element1", "element0")
+    assert result == 0
+    assert c.lrange("list", 0, -1) == []

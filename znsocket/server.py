@@ -65,10 +65,13 @@ def get_sio(
     def hmget(sid, data):
         name = data.pop("name")
         keys = data.pop("keys")
-        try:
-            return [storage[name][key] for key in keys]
-        except KeyError:
-            return [None for key in keys]
+        response = []
+        for key in keys:
+            try:
+                response.append(storage[name][key])
+            except KeyError:
+                response.append(None)
+        return response
 
     @sio.event
     def hkeys(sid, data):
@@ -83,8 +86,9 @@ def get_sio(
         name = data.pop("name")
         try:
             del storage[name]
+            return 1
         except KeyError:
-            pass
+            return 0
 
     @sio.event
     def exists(sid, data):
@@ -159,6 +163,8 @@ def get_sio(
         end = data.pop("end")
         if end == -1:
             end = None
+        elif end >= 0:
+            end += 1
         try:
             return storage[name][start:end]
         except KeyError:
@@ -188,7 +194,7 @@ def get_sio(
             try:
                 storage[name] = [x for x in storage[name] if x != value]
             except KeyError:
-                pass
+                return 0
         else:
             removed = 0
             while removed < count:
@@ -196,9 +202,7 @@ def get_sio(
                     storage[name].remove(value)
                     removed += 1
                 except KeyError:
-                    break
-                except IndexError:
-                    break
+                    return 0
 
     @sio.event
     def sadd(sid, data):
@@ -235,8 +239,8 @@ def get_sio(
             elif where == "AFTER":
                 storage[name].insert(index + 1, value)
         except KeyError:
-            pass
+            return 0
         except ValueError:
-            pass
+            return -1
 
     return sio
