@@ -151,25 +151,13 @@ class Dict(MutableMapping, ZnSocketObject):
     def values(self) -> list[t.Any]:
         response = []
         for v in self.redis.hvals(self.key):
-            try:
-                response.append(znjson.loads(v))
-            except TypeError:
-                # None values are not JSON serializable
-                response.append(v)
+            response.append(znjson.loads(v))
         return response
 
     def items(self) -> list[t.Tuple[t.Any, t.Any]]:
         response = []
         for k, v in self.redis.hgetall(self.key).items():
-            try:
-                response.append((znjson.loads(k), znjson.loads(v)))
-            except TypeError:
-                # None values are not JSON serializable
-                try:
-                    response.append((znjson.loads(k), v))
-                except TypeError:
-                    # None keys are allowed, they are not JSON serializable
-                    response.append((k, v))
+            response.append((znjson.loads(k), znjson.loads(v)))
         return response
 
     def __contains__(self, key: object) -> bool:

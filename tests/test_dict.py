@@ -33,11 +33,6 @@ def test_dct_set_get_item(client, request):
     with pytest.raises(KeyError, match="nonexistent"):
         dct["nonexistent"]
 
-    dct["a"] = 1
-    assert dct["a"] == 1
-    dct["numpy"] = np.arange(10)
-    npt.assert_array_equal(dct["numpy"], np.arange(10))
-
 
 @pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
 def test_dct_del_item(client, request):
@@ -165,6 +160,40 @@ def test_dct_similar_keys(client, request):
     assert dct == {None: "None"}
     del dct[None]
     assert dct == {}
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+def test_dct_None_key_values(client, request):
+    c = request.getfixturevalue(client)
+    if c is not None:
+        dct = znsocket.Dict(r=c, key="list:test")
+    else:
+        dct = {}
+
+    dct[None] = "None"
+    dct["None"] = None
+    assert dct[None] == "None"
+    assert dct["None"] is None
+    assert dct == {None: "None", "None": None}
+    if c is not None:
+        assert repr(dct) == "Dict({None: 'None', 'None': None})"
+
+    assert list(dct) == [None, "None"]
+    assert list(dct.keys()) == [None, "None"]
+    assert list(dct.values()) == ["None", None]
+    assert list(dct.items()) == [(None, "None"), ("None", None)]
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+def test_dct_numpy(client, request):
+    c = request.getfixturevalue(client)
+    if c is not None:
+        dct = znsocket.Dict(r=c, key="list:test")
+    else:
+        dct = {}
+
+    dct["a"] = np.array([1, 2, 3])
+    npt.assert_array_equal(dct["a"], np.array([1, 2, 3]))
 
 
 # @pytest.mark.parametrize("a", ["znsclient", "redisclient", "empty"])
