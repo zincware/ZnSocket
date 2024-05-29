@@ -200,9 +200,11 @@ def test_srem(client, request):
     c = request.getfixturevalue(client)
     c.sadd("set", "member1")
     c.sadd("set", "member2")
-    c.srem("set", "member1")
+    assert c.srem("set", "member1") == 1
     assert c.smembers("set") == {"member2"}
     assert c.smembers("nonexistent") == set()
+
+    assert c.srem("nonexistent", "member1") == 0
 
 
 @pytest.mark.parametrize("client", ["znsclient", "redisclient"])

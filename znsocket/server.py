@@ -230,8 +230,9 @@ def get_sio(
         value = data.pop("value")
         try:
             storage[name].remove(value)
+            return 1
         except KeyError:
-            pass
+            return 0
 
     @sio.event
     def linsert(sid, data):
