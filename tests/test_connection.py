@@ -281,3 +281,53 @@ def test_lpush_lindex(client, request):
 
     assert c.lindex("list", 2) is None
     assert c.lindex("nonexistent", 0) is None
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+def test_hexists(client, request):
+    c = request.getfixturevalue(client)
+
+    c.hset("hash", "field", "value")
+    assert c.hexists("hash", "field") == 1
+    assert c.hexists("hash", "nonexistent") == 0
+    assert c.hexists("nonexistent", "field") == 0
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+def test_hdel(client, request):
+    c = request.getfixturevalue(client)
+
+    c.hset("hash", "field", "value")
+    response = c.hdel("hash", "field")
+    assert response == 1
+
+    response = c.hdel("hash", "nonexistent")
+    assert response == 0
+
+    response = c.hdel("nonexistent", "field")
+    assert response == 0
+
+    response = c.hdel("nonexistent", "nonexistent")
+    assert response == 0
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+def test_hlen(client, request):
+    c = request.getfixturevalue(client)
+
+    c.hset("hash", "field1", "value1")
+    c.hset("hash", "field2", "value2")
+    assert c.hlen("hash") == 2
+
+    assert c.hlen("nonexistent") == 0
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+def test_hvals(client, request):
+    c = request.getfixturevalue(client)
+
+    c.hset("hash", "field1", "value1")
+    c.hset("hash", "field2", "value2")
+    assert set(c.hvals("hash")) == {"value1", "value2"}
+
+    assert c.hvals("nonexistent") == []

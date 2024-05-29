@@ -103,3 +103,15 @@ class Client:
 
     def flushall(self):
         return self.sio.call("flushall", {})
+
+    def hexists(self, name, key):
+        return self.sio.call("hexists", {"name": name, "key": key})
+
+    def hdel(self, name, key):
+        return self.sio.call("hdel", {"name": name, "key": key})
+
+    def hlen(self, name):
+        return self.sio.call("hlen", {"name": name})
+
+    def hvals(self, name):
+        return self.sio.call("hvals", {"name": name})

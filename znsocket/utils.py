@@ -1,6 +1,6 @@
 import json
 import typing as t
-from collections.abc import MutableSequence
+from collections.abc import MutableMapping, MutableSequence
 
 import znjson
 
@@ -13,7 +13,6 @@ class List(MutableSequence):
 
         The content of this list is stored/read from the
         server. The data is not stored in this object at all.
-        For this, all data has to be JSON-serializeable.
 
         Parameters
         ----------
@@ -104,3 +103,57 @@ class List(MutableSequence):
         data = [znjson.loads(i) for i in data]
 
         return f"List({data})"
+
+
+class Dict(MutableMapping):
+    def __init__(self, r: Client | t.Any, key: str):
+        """Synchronized dict object.
+
+        The content of this dict is stored/read from the
+        server. The data is not stored in this object at all.
+
+        Parameters
+        ----------
+        r: znsocket.Client|redis.Redis
+            Connection to the server.
+        key: str
+            The key in the server to store the data from this dict.
+        """
+        self.redis = r
+        self.key = key
+
+    def __getitem__(self, key: str):
+        value = self.redis.hget(self.key, key)
+        if value is None:
+            raise KeyError(key)
+        return value
+
+    def __setitem__(self, key: str, value: t.Any):
+        self.redis.hset(self.key, key, value)
+
+    def __delitem__(self, key: str):
+        if not self.redis.hexists(self.key, key):
+            raise KeyError(key)
+        self.redis.hdel(self.key, key)
+
+    def __iter__(self):
+        return iter(self.keys())
+
+    def __len__(self) -> int:
+        return self.redis.hlen(self.key)
+
+    def keys(self):
+        return [k for k in self.redis.hkeys(self.key)]
+
+    def values(self):
+        return [v for v in self.redis.hvals(self.key)]
+
+    def items(self):
+        return [(k, v) for k, v in self.redis.hgetall(self.key).items()]
+
+    def __contains__(self, key: object) -> bool:
+        return self.redis.hexists(self.key, key)
+
+    def __repr__(self):
+        data = {k: v for k, v in self.redis.hgetall(self.key).items()}
+        return f"Dict({data})"
