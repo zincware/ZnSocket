@@ -18,7 +18,7 @@ def test_list_extend(client, request):
         lst = []
 
     lst.extend(["1", "2", "3", "4"])
-    # TODO assert lst == ["1", "2", "3", "4"]
+    assert lst == ["1", "2", "3", "4"]
     assert lst[:] == ["1", "2", "3", "4"]
 
     assert lst[0] == "1"
@@ -120,3 +120,29 @@ def test_list_repr(client, request):
     lst.extend(["1", "2", "3", "4"])
 
     assert repr(lst) == "List(['1', '2', '3', '4'])"
+
+
+@pytest.mark.parametrize("a", ["znsclient", "redisclient", "empty"])
+@pytest.mark.parametrize("b", ["znsclient", "redisclient", "empty"])
+def test_list_equal(a, b, request):
+    a = request.getfixturevalue(a)
+    b = request.getfixturevalue(b)
+    if a is not None:
+        lst1 = znsocket.List(r=a, key="list:test:a")
+    else:
+        lst1 = []
+
+    if b is not None:
+        lst2 = znsocket.List(r=b, key="list:test:b")
+    else:
+        lst2 = []
+
+    lst1.extend(["1", "2", "3", "4"])
+    lst2.extend(["1", "2", "3", "4"])
+
+    assert lst1 == lst2
+
+    lst1.pop()
+    assert lst1 == ["1", "2", "3"]
+    assert lst2 == ["1", "2", "3", "4"]
+    assert lst1 != lst2

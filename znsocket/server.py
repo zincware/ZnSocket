@@ -185,7 +185,6 @@ def get_sio(
         value = data.pop("value")
 
         if count == 0:
-            # TODO: this is not unit-tested
             try:
                 storage[name] = [x for x in storage[name] if x != value]
             except KeyError:

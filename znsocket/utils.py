@@ -62,7 +62,6 @@ class List(MutableSequence):
             )
 
         for i, v in zip(index, value):
-            # TODO: this prohibits appending to the list, right?
             if i >= self.__len__() or i < -self.__len__():
                 raise IndexError("list index out of range")
             self.redis.lset(self.key, i, v)
@@ -89,6 +88,13 @@ class List(MutableSequence):
 
     def __iter__(self):
         return (item for item in self.redis.lrange(self.key, 0, -1))
+
+    def __eq__(self, value: object) -> bool:
+        if isinstance(value, List):
+            return self[:] == value[:]
+        elif isinstance(value, list):
+            return self[:] == value
+        return False
 
     def __repr__(self):
         return f"List({self.redis.lrange(self.key, 0, -1)})"
