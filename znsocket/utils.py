@@ -91,4 +91,4 @@ class List(MutableSequence):
         return (item for item in self.redis.lrange(self.key, 0, -1))
 
     def __repr__(self):
-        return f"RedisList({self.redis.lrange(self.key, 0, -1)})"
+        return f"List({self.redis.lrange(self.key, 0, -1)})"

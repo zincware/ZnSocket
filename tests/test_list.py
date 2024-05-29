@@ -85,3 +85,38 @@ def test_list_append(client, request):
 
     assert lst[:] == ["1", "2", "3", "4", "5"]
     assert len(lst) == 5
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+def test_list_insert(client, request):
+    c = request.getfixturevalue(client)
+    if c is not None:
+        lst = znsocket.List(r=c, key="list:test")
+    else:
+        lst = []
+    lst.extend(["1", "2", "3", "4"])
+
+    lst.insert(1, "x")
+    assert lst[:] == ["1", "x", "2", "3", "4"]
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+def test_list_iter(client, request):
+    c = request.getfixturevalue(client)
+    if c is not None:
+        lst = znsocket.List(r=c, key="list:test")
+    else:
+        lst = []
+    lst.extend(["1", "2", "3", "4"])
+
+    for a, b in zip(lst, ["1", "2", "3", "4"]):
+        assert a == b
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+def test_list_repr(client, request):
+    c = request.getfixturevalue(client)
+    lst = znsocket.List(r=c, key="list:test")
+    lst.extend(["1", "2", "3", "4"])
+
+    assert repr(lst) == "List(['1', '2', '3', '4'])"

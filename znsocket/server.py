@@ -222,5 +222,23 @@ def get_sio(
             storage[name].remove(value)
         except KeyError:
             pass
+    
+    @sio.event
+    def linsert(sid, data):
+        # TODO: this is not unit-tested
+        name = data.pop("name")
+        where = data.pop("where")
+        pivot = data.pop("pivot")
+        value = data.pop("value")
+        try:
+            index = storage[name].index(pivot)
+            if where == "BEFORE":
+                storage[name].insert(index, value)
+            elif where == "AFTER":
+                storage[name].insert(index + 1, value)
+        except KeyError:
+            pass
+        except ValueError:
+            pass
 
     return sio

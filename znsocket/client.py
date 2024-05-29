@@ -80,6 +80,9 @@ class Client:
 
     def srem(self, name, value):
         return self.sio.call("srem", {"name": name, "value": value})
+    
+    def linsert(self, name, where, pivot, value):
+        return self.sio.call("linsert", {"name": name, "where": where, "pivot": pivot, "value": value})
 
     def flushall(self):
         return self.sio.call("flushall", {})
