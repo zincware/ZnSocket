@@ -338,3 +338,18 @@ def test_lpop(client, request):
     assert c.lpop("list") == "element2"
     assert c.lpop("list") is None
     assert c.lpop("nonexistent") is None
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+def test_scard(client, request):
+    c = request.getfixturevalue("znsclient")
+    c.sadd("set", "member1")
+    c.sadd("set", "member2")
+    assert c.scard("set") == 2
+    assert c.scard("nonexistent") == 0
+    c.delete("set")
+    assert c.scard("set") == 0
+    c.sadd("set", "member1")
+    assert c.scard("set") == 1
+    c.sadd("set", "member2")
+    assert c.scard("set") == 2

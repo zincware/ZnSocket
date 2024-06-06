@@ -118,3 +118,6 @@ class Client:
 
     def lpop(self, name):
         return self.sio.call("lpop", {"name": name})
+
+    def scard(self, name):
+        return self.sio.call("scard", {"name": name})
