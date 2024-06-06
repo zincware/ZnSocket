@@ -327,3 +327,14 @@ def test_hvals(client, request):
     assert set(c.hvals("hash")) == {"value1", "value2"}
 
     assert c.hvals("nonexistent") == []
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+def test_lpop(client, request):
+    c = request.getfixturevalue(client)
+    c.rpush("list", "element1")
+    c.rpush("list", "element2")
+    assert c.lpop("list") == "element1"
+    assert c.lpop("list") == "element2"
+    assert c.lpop("list") is None
+    assert c.lpop("nonexistent") is None
