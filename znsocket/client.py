@@ -115,3 +115,6 @@ class Client:
 
     def hvals(self, name):
         return self.sio.call("hvals", {"name": name})
+
+    def lpop(self, name):
+        return self.sio.call("lpop", {"name": name})

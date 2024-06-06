@@ -286,4 +286,14 @@ def get_sio(
         except KeyError:
             return []
 
+    @sio.event
+    def lpop(sid, data):
+        name = data.pop("name")
+        try:
+            return storage[name].pop(0)
+        except KeyError:
+            return None
+        except IndexError:
+            return None
+
     return sio
