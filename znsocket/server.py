@@ -287,7 +287,7 @@ def get_sio(
             return []
 
     @sio.event
-    def lpop(sid, data):
+    def lpop(sid, data) -> t.Optional[t.Any]:
         name = data.pop("name")
         try:
             return storage[name].pop(0)
@@ -295,5 +295,13 @@ def get_sio(
             return None
         except IndexError:
             return None
+
+    @sio.event
+    def scard(sid, data) -> int:
+        name = data.pop("name")
+        try:
+            return len(storage[name])
+        except KeyError:
+            return 0
 
     return sio
