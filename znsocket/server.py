@@ -104,13 +104,15 @@ def get_sio(
             return 0
 
     @sio.event
-    def rpush(sid, data):
+    def rpush(sid, data) -> int:
         name = data.pop("name")
         value = data.pop("value")
         try:
             storage[name].append(value)
         except KeyError:
             storage[name] = [value]
+        
+        return len(storage[name])
 
     @sio.event
     def lpush(sid, data):

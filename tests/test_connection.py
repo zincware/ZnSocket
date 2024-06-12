@@ -148,8 +148,8 @@ def test_sadd_smembers(client, request):
 @pytest.mark.parametrize("client", ["znsclient", "redisclient"])
 def test_rpush_lindex(client, request):
     c = request.getfixturevalue(client)
-    c.rpush("list", "element1")
-    c.rpush("list", "element2")
+    assert c.rpush("list", "element1") == 1
+    assert c.rpush("list", "element2") == 2
     assert c.lindex("list", 0) == "element1"
     assert c.lindex("list", 1) == "element2"
 
