@@ -62,7 +62,8 @@ class List(MutableSequence, ZnSocketObject):
         if isinstance(index, slice):
             index = list(range(*index.indices(len(self))))
 
-        index = [int(i) for i in index]
+        if any(not isinstance(i, int) for i in index):
+            raise TypeError("list indices must be integers or slices")
 
         if len(index) != len(value):
             raise ValueError(
