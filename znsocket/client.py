@@ -71,6 +71,8 @@ class Client:
         return self.sio.call("get", {"name": name})
 
     def hmset(self, name, data):
+        if len(data) == 0:
+            raise exceptions.DataError("data must not be empty")
         return self.sio.call("hmset", {"name": name, "data": data})
 
     def hgetall(self, name):

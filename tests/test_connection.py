@@ -364,3 +364,12 @@ def test_smembers_on_hash(client, request):
         match="WRONGTYPE Operation against a key holding the wrong kind of value",
     ):
         c.smembers("hash")
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+def test_hmset_data_error(client, request):
+    c = request.getfixturevalue(client)
+    with pytest.raises(
+        (redis.exceptions.DataError, znsocket.exceptions.DataError),
+    ):
+        c.hmset("name", {})
