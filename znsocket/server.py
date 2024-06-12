@@ -104,13 +104,15 @@ def get_sio(
             return 0
 
     @sio.event
-    def rpush(sid, data):
+    def rpush(sid, data) -> int:
         name = data.pop("name")
         value = data.pop("value")
         try:
             storage[name].append(value)
         except KeyError:
             storage[name] = [value]
+
+        return len(storage[name])
 
     @sio.event
     def lpush(sid, data):
@@ -132,8 +134,8 @@ def get_sio(
         except IndexError:
             return None
 
-    @sio.event
-    def set(sid, data):
+    @sio.on("set")
+    def set_(sid, data):
         name = data.pop("name")
         value = data.pop("value")
         storage[name] = value
@@ -161,9 +163,15 @@ def get_sio(
     def smembers(sid, data):
         name = data.pop("name")
         try:
-            return list(storage[name])
+            response = storage[name]
         except KeyError:
-            return []
+            response = set()
+
+        if not isinstance(response, set):
+            return {
+                "error": "WRONGTYPE Operation against a key holding the wrong kind of value"
+            }
+        return list(response)
 
     @sio.event
     def lrange(sid, data):

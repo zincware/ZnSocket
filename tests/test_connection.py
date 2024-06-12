@@ -148,8 +148,8 @@ def test_sadd_smembers(client, request):
 @pytest.mark.parametrize("client", ["znsclient", "redisclient"])
 def test_rpush_lindex(client, request):
     c = request.getfixturevalue(client)
-    c.rpush("list", "element1")
-    c.rpush("list", "element2")
+    assert c.rpush("list", "element1") == 1
+    assert c.rpush("list", "element2") == 2
     assert c.lindex("list", 0) == "element1"
     assert c.lindex("list", 1) == "element2"
 
@@ -353,3 +353,23 @@ def test_scard(client, request):
     assert c.scard("set") == 1
     c.sadd("set", "member2")
     assert c.scard("set") == 2
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+def test_smembers_on_hash(client, request):
+    c = request.getfixturevalue(client)
+    c.hset("hash", "field", "value")
+    with pytest.raises(
+        (redis.exceptions.ResponseError, znsocket.exceptions.ResponseError),
+        match="WRONGTYPE Operation against a key holding the wrong kind of value",
+    ):
+        c.smembers("hash")
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+def test_hmset_data_error(client, request):
+    c = request.getfixturevalue(client)
+    with pytest.raises(
+        (redis.exceptions.DataError, znsocket.exceptions.DataError),
+    ):
+        c.hmset("name", {})

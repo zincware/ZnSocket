@@ -71,13 +71,19 @@ class Client:
         return self.sio.call("get", {"name": name})
 
     def hmset(self, name, data):
+        if len(data) == 0:
+            raise exceptions.DataError("data must not be empty")
         return self.sio.call("hmset", {"name": name, "data": data})
 
     def hgetall(self, name):
         return self.sio.call("hgetall", {"name": name})
 
     def smembers(self, name):
-        return set(self.sio.call("smembers", {"name": name}))
+        response = self.sio.call("smembers", {"name": name})
+        # check if respone should raise an exception
+        if isinstance(response, dict) and "error" in response:
+            raise exceptions.ResponseError(response["error"])
+        return set(response)
 
     def lrange(self, name, start, end):
         return self.sio.call("lrange", {"name": name, "start": start, "end": end})

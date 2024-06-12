@@ -218,6 +218,38 @@ def test_list_numpy(client, request):
     npt.assert_array_equal(lst[1], np.array([7, 8, 9]))
 
 
+@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+def test_list_set_dict(client, request):
+    """Test ZnSocket with numpy arrays through znjson."""
+    c = request.getfixturevalue(client)
+    if c is not None:
+        lst = znsocket.List(r=c, key="list:test")
+    else:
+        lst = []
+
+    lst.append("Hello World")
+    with pytest.raises(TypeError, match="list indices must be integers or slices"):
+        lst["0"] = "Lorem ipsum"
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+def test_list_set_get_negative(client, request):
+    """Test ZnSocket with negative indices."""
+    c = request.getfixturevalue(client)
+    if c is not None:
+        lst = znsocket.List(r=c, key="list:test")
+    else:
+        lst = []
+
+    lst.extend(["Hello", "World"])
+    assert lst[-1] == "World"
+    assert lst[-2] == "Hello"
+
+    lst[-1] = "Lorem"
+    assert lst[-1] == "Lorem"
+    assert lst[-2] == "Hello"
+
+
 # @pytest.mark.parametrize("a", ["znsclient", "redisclient", "empty"])
 # @pytest.mark.parametrize("b", ["znsclient", "redisclient", "empty"])
 # def test_list_nested(a, b, request):
