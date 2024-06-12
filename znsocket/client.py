@@ -77,7 +77,11 @@ class Client:
         return self.sio.call("hgetall", {"name": name})
 
     def smembers(self, name):
-        return set(self.sio.call("smembers", {"name": name}))
+        response = self.sio.call("smembers", {"name": name})
+        # check if respone should raise an exception
+        if isinstance(response, dict) and "error" in response:
+            raise exceptions.ResponseError(response["error"])
+        return set(response)
 
     def lrange(self, name, start, end):
         return self.sio.call("lrange", {"name": name, "start": start, "end": end})

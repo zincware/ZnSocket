@@ -353,3 +353,14 @@ def test_scard(client, request):
     assert c.scard("set") == 1
     c.sadd("set", "member2")
     assert c.scard("set") == 2
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+def test_smembers_on_hash(client, request):
+    c = request.getfixturevalue(client)
+    c.hset("hash", "field", "value")
+    with pytest.raises(
+        (redis.exceptions.ResponseError, znsocket.exceptions.ResponseError),
+        match="WRONGTYPE Operation against a key holding the wrong kind of value",
+    ):
+        c.smembers("hash")
