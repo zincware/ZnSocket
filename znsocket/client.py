@@ -1,7 +1,7 @@
 import dataclasses
 
 import socketio.exceptions
-import typing_extensions as te
+import typing_extensions as tyex
 
 from znsocket import exceptions
 
@@ -71,7 +71,7 @@ class Client:
     def get(self, name):
         return self.sio.call("get", {"name": name})
 
-    @te.deprecated("Use hset instead")
+    @tyex.deprecated("Use hset instead")
     def hmset(self, name, data):
         if len(data) == 0:
             raise exceptions.DataError("data must not be empty")
@@ -82,7 +82,7 @@ class Client:
 
     def smembers(self, name):
         response = self.sio.call("smembers", {"name": name})
-        # check if respone should raise an exception
+        # check if response should raise an exception
         if isinstance(response, dict) and "error" in response:
             raise exceptions.ResponseError(response["error"])
         return set(response)

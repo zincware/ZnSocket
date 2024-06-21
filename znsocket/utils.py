@@ -113,7 +113,7 @@ class List(MutableSequence, ZnSocketObject):
     def append(self, value: t.Any) -> None:
         """Append an item to the end of the list.
 
-        Overriade default method for better performance
+        Override default method for better performance
         """
         self.redis.rpush(self.key, znjson.dumps(value))
 
