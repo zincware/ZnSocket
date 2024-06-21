@@ -59,8 +59,10 @@ class List(MutableSequence, ZnSocketObject):
             index = [index]
             value = [value]
 
+        LENGTH = len(self)
+
         if isinstance(index, slice):
-            index = list(range(*index.indices(len(self))))
+            index = list(range(*index.indices(LENGTH)))
 
         if any(not isinstance(i, int) for i in index):
             raise TypeError("list indices must be integers or slices")
@@ -71,7 +73,7 @@ class List(MutableSequence, ZnSocketObject):
             )
 
         for i, v in zip(index, value):
-            if i >= self.__len__() or i < -self.__len__():
+            if i >= LENGTH or i < -LENGTH:
                 raise IndexError("list index out of range")
             self.redis.lset(self.key, i, znjson.dumps(v))
 
@@ -87,7 +89,7 @@ class List(MutableSequence, ZnSocketObject):
         self.redis.lrem(self.key, 0, "__DELETED__")
 
     def insert(self, index: int, value: t.Any) -> None:
-        if index >= self.__len__():
+        if index >= len(self):
             self.redis.rpush(self.key, znjson.dumps(value))
         elif index == 0:
             self.redis.lpush(self.key, znjson.dumps(value))
@@ -107,6 +109,13 @@ class List(MutableSequence, ZnSocketObject):
         data = [znjson.loads(i) for i in data]
 
         return f"List({data})"
+
+    def append(self, value: t.Any) -> None:
+        """Append an item to the end of the list.
+
+        Override default method for better performance
+        """
+        self.redis.rpush(self.key, znjson.dumps(value))
 
 
 class Dict(MutableMapping, ZnSocketObject):
