@@ -1,7 +1,7 @@
 import dataclasses
-import typing_extensions as te
 
 import socketio.exceptions
+import typing_extensions as te
 
 from znsocket import exceptions
 

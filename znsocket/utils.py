@@ -58,7 +58,7 @@ class List(MutableSequence, ZnSocketObject):
         if single_item:
             index = [index]
             value = [value]
-        
+
         LENGTH = len(self)
 
         if isinstance(index, slice):
@@ -109,10 +109,10 @@ class List(MutableSequence, ZnSocketObject):
         data = [znjson.loads(i) for i in data]
 
         return f"List({data})"
-    
+
     def append(self, value: t.Any) -> None:
         """Append an item to the end of the list.
-        
+
         Overriade default method for better performance
         """
         self.redis.rpush(self.key, znjson.dumps(value))

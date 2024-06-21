@@ -1,7 +1,7 @@
 import pytest
+import socketio.exceptions
 
 from znsocket import Client, exceptions
-import socketio.exceptions
 
 
 def test_client_from_url(eventlet_memory_server):
@@ -21,6 +21,7 @@ def test_client_connection_error():
         Client.from_url("znsocket://127.0.0.1:5000")
 
     with pytest.raises(
-        socketio.exceptions.ConnectionError, match="Could not connect to http://127.0.0.1:5000"
+        socketio.exceptions.ConnectionError,
+        match="Could not connect to http://127.0.0.1:5000",
     ):
         Client.from_url("znsocket://127.0.0.1:5000")
