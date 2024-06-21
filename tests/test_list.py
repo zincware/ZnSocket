@@ -103,9 +103,9 @@ def test_list_append(client, request):
         lst = znsocket.List(r=c, key="list:test")
     else:
         lst = []
-    lst.extend(["1", "2", "3", "4"])
-
-    lst.append("5")
+    
+    for idx in range(1, 6):
+        lst.append(str(idx))
 
     assert lst[:] == ["1", "2", "3", "4", "5"]
     assert len(lst) == 5
