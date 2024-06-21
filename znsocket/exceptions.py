@@ -1,5 +1,6 @@
-import socketio.exceptions
 import redis.exceptions
+import socketio.exceptions
+
 
 class ZnSocketError(Exception):
     pass
