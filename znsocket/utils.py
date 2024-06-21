@@ -58,9 +58,11 @@ class List(MutableSequence, ZnSocketObject):
         if single_item:
             index = [index]
             value = [value]
+        
+        LENGTH = len(self)
 
         if isinstance(index, slice):
-            index = list(range(*index.indices(len(self))))
+            index = list(range(*index.indices(LENGTH)))
 
         if any(not isinstance(i, int) for i in index):
             raise TypeError("list indices must be integers or slices")
@@ -71,7 +73,7 @@ class List(MutableSequence, ZnSocketObject):
             )
 
         for i, v in zip(index, value):
-            if i >= self.__len__() or i < -self.__len__():
+            if i >= LENGTH or i < -LENGTH:
                 raise IndexError("list index out of range")
             self.redis.lset(self.key, i, znjson.dumps(v))
 
@@ -87,7 +89,7 @@ class List(MutableSequence, ZnSocketObject):
         self.redis.lrem(self.key, 0, "__DELETED__")
 
     def insert(self, index: int, value: t.Any) -> None:
-        if index >= self.__len__():
+        if index >= len(self):
             self.redis.rpush(self.key, znjson.dumps(value))
         elif index == 0:
             self.redis.lpush(self.key, znjson.dumps(value))
