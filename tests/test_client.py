@@ -14,6 +14,7 @@ def test_client_decode_responses(eventlet_memory_server):
     with pytest.raises(NotImplementedError):
         _ = Client.from_url(eventlet_memory_server, decode_responses=False)
 
+
 def test_client_connection_error():
     with pytest.raises(
         exceptions.ConnectionError, match="Could not connect to http://127.0.0.1:5000"
