@@ -1,4 +1,5 @@
 import dataclasses
+import typing_extensions as te
 
 import socketio.exceptions
 
@@ -70,6 +71,7 @@ class Client:
     def get(self, name):
         return self.sio.call("get", {"name": name})
 
+    @te.deprecated("Use hset instead")
     def hmset(self, name, data):
         if len(data) == 0:
             raise exceptions.DataError("data must not be empty")
