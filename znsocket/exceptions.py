@@ -1,3 +1,5 @@
+import socketio.exceptions
+
 class ZnSocketError(Exception):
     pass
 
@@ -10,7 +12,7 @@ class ResponseError(ZnSocketError):
         return self.response
 
 
-class ConnectionError(ZnSocketError):
+class ConnectionError(ZnSocketError, socketio.exceptions.ConnectionError):
     def __init__(self, address: str):
         self.address = address
 
