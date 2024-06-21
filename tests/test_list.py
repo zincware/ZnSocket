@@ -103,7 +103,7 @@ def test_list_append(client, request):
         lst = znsocket.List(r=c, key="list:test")
     else:
         lst = []
-    
+
     for idx in range(1, 6):
         lst.append(str(idx))
 
