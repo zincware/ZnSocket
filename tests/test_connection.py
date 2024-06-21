@@ -78,13 +78,13 @@ def test_lset(client, request):
     assert c.lindex("list", 0) == "new_element1"
 
     with pytest.raises(
-        (redis.exceptions.ResponseError, znsocket.exceptions.ResponseError),
+        redis.exceptions.ResponseError,
         match="no such key",
     ):
         c.lset("list2", 0, "new_element1")
 
     with pytest.raises(
-        (redis.exceptions.ResponseError, znsocket.exceptions.ResponseError),
+        redis.exceptions.ResponseError,
         match="index out of range",
     ):
         c.lset("list", 10, "new_element2")
@@ -360,7 +360,7 @@ def test_smembers_on_hash(client, request):
     c = request.getfixturevalue(client)
     c.hset("hash", "field", "value")
     with pytest.raises(
-        (redis.exceptions.ResponseError, znsocket.exceptions.ResponseError),
+        redis.exceptions.ResponseError,
         match="WRONGTYPE Operation against a key holding the wrong kind of value",
     ):
         c.smembers("hash")
@@ -370,6 +370,6 @@ def test_smembers_on_hash(client, request):
 def test_hmset_data_error(client, request):
     c = request.getfixturevalue(client)
     with pytest.raises(
-        (redis.exceptions.DataError, znsocket.exceptions.DataError),
+        redis.exceptions.DataError
     ):
         c.hmset("name", {})

@@ -1,10 +1,11 @@
 import socketio.exceptions
+import redis.exceptions
 
 class ZnSocketError(Exception):
     pass
 
 
-class ResponseError(ZnSocketError):
+class ResponseError(ZnSocketError, redis.exceptions.ResponseError):
     def __init__(self, response: str):
         self.response = response
 
@@ -23,7 +24,7 @@ class ConnectionError(ZnSocketError, socketio.exceptions.ConnectionError):
         return response
 
 
-class DataError(ZnSocketError):
+class DataError(ZnSocketError, redis.exceptions.DataError):
     def __init__(self, message: str):
         self.message = message
 
