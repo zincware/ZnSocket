@@ -52,14 +52,14 @@ class List(MutableSequence, ZnSocketObject):
         self.redis = r
         self.key = key
 
-        self.callbacks = {
+        self._callbacks = {
             "setitem": None,
             "delitem": None,
             "insert": None,
             "append": None,
         }
         if callbacks:
-            self.callbacks.update(callbacks)
+            self._callbacks.update(callbacks)
 
     def __len__(self) -> int:
         return int(self.redis.llen(self.key))
@@ -107,7 +107,7 @@ class List(MutableSequence, ZnSocketObject):
                 raise IndexError("list index out of range")
             self.redis.lset(self.key, i, znjson.dumps(v))
 
-        if callback := self.callbacks["setitem"]:
+        if callback := self._callbacks["setitem"]:
             callback(index, value)
 
     def __delitem__(self, index: int | list | slice) -> None:
@@ -121,8 +121,8 @@ class List(MutableSequence, ZnSocketObject):
             self.redis.lset(self.key, i, "__DELETED__")
         self.redis.lrem(self.key, 0, "__DELETED__")
 
-        if self.callbacks["delitem"]:
-            self.callbacks["delitem"](index)
+        if self._callbacks["delitem"]:
+            self._callbacks["delitem"](index)
 
     def insert(self, index: int, value: t.Any) -> None:
         if index >= len(self):
@@ -133,7 +133,7 @@ class List(MutableSequence, ZnSocketObject):
             pivot = self.redis.lindex(self.key, index)
             self.redis.linsert(self.key, "BEFORE", pivot, znjson.dumps(value))
 
-        if callback := self.callbacks["insert"]:
+        if callback := self._callbacks["insert"]:
             callback(index, value)
 
     def __eq__(self, value: object) -> bool:
@@ -154,7 +154,7 @@ class List(MutableSequence, ZnSocketObject):
 
         Override default method for better performance
         """
-        if callback := self.callbacks["append"]:
+        if callback := self._callbacks["append"]:
             callback(value)
         self.redis.rpush(self.key, znjson.dumps(value))
 
@@ -183,12 +183,12 @@ class Dict(MutableMapping, ZnSocketObject):
         """
         self.redis = r
         self.key = key
-        self.callbacks = {
+        self._callbacks = {
             "setitem": None,
             "delitem": None,
         }
         if callbacks:
-            self.callbacks.update(callbacks)
+            self._callbacks.update(callbacks)
 
     def __getitem__(self, key: str) -> t.Any:
         value = self.redis.hget(self.key, znjson.dumps(key))
@@ -198,14 +198,14 @@ class Dict(MutableMapping, ZnSocketObject):
 
     def __setitem__(self, key: str, value: t.Any) -> None:
         self.redis.hset(self.key, znjson.dumps(key), znjson.dumps(value))
-        if callback := self.callbacks["setitem"]:
+        if callback := self._callbacks["setitem"]:
             callback(key, value)
 
     def __delitem__(self, key: str) -> None:
         if not self.redis.hexists(self.key, znjson.dumps(key)):
             raise KeyError(key)
         self.redis.hdel(self.key, znjson.dumps(key))
-        if callback := self.callbacks["delitem"]:
+        if callback := self._callbacks["delitem"]:
             callback(key)
 
     def __iter__(self):
