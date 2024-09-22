@@ -229,6 +229,7 @@ def test_dict_callbacks(client, request):
     del dct["a"]
     delitem_callback.assert_called_once_with("a")
 
+
 # TODO: if different clients are used, things get weird therefore znsclient is not used in this test
 @pytest.mark.parametrize("a", ["redisclient", "empty"])
 @pytest.mark.parametrize("b", ["redisclient", "empty"])
