@@ -131,3 +131,7 @@ class Client:
 
     def scard(self, name):
         return self.sio.call("scard", {"name": name})
+    
+    @tyex.deprecated("hmset() is deprecated. Use hset() instead.")
+    def hmset(self, name, mapping):
+        return self.hset(name, mapping=mapping)
