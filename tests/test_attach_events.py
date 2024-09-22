@@ -1,5 +1,6 @@
 import znsocket
 
+
 def test_dict_dual_clients(znsclient_w_redis, redisclient):
     # this checks access via the znsocket server through redis
     #  and redis directly yields the same results
