@@ -49,3 +49,9 @@ def redisclient():
     r = redis.Redis.from_url("redis://localhost:6379/0", decode_responses=True)
     yield r
     r.flushdb()
+
+
+@pytest.fixture
+def empty() -> None:
+    """Test against Python list implementation"""
+    return None

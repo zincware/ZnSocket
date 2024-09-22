@@ -8,12 +8,6 @@ import znsocket
 from znsocket.utils import ZnSocketObject
 
 
-@pytest.fixture
-def empty() -> None:
-    """Test against Python list implementation"""
-    return None
-
-
 @pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
 def test_dct_set_get_item(client, request):
     c = request.getfixturevalue(client)

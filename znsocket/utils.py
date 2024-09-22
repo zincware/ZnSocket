@@ -48,6 +48,9 @@ class List(MutableSequence, ZnSocketObject):
         callbacks: dict[str, Callable]
             optional function callbacks for methods
             which modify the database.
+        repr_type: str
+            Control the `repr` appearance of the object.
+            Reduce for better performance.
 
         Limitations
         -----------
@@ -85,6 +88,13 @@ class List(MutableSequence, ZnSocketObject):
                 item = value
             if item is None:
                 raise IndexError("list index out of range")
+            if isinstance(item, str):
+                if item.startswith("znsocket.List:"):
+                    key = item.split(":", 1)[1]
+                    item = List(r=self.redis, key=key)
+                elif item.startswith("znsocket.Dict:"):
+                    key = item.split(":", 1)[1]
+                    item = Dict(r=self.redis, key=key)
             items.append(item)
         return items[0] if single_item else items
 
@@ -110,6 +120,11 @@ class List(MutableSequence, ZnSocketObject):
         for i, v in zip(index, value):
             if i >= LENGTH or i < -LENGTH:
                 raise IndexError("list index out of range")
+            if isinstance(v, Dict):
+                v = f"znsocket.Dict:{v.key}"
+            if isinstance(v, List):
+                v = f"znsocket.List:{v.key}"
+
             self.redis.lset(self.key, i, znjson.dumps(v))
 
         if callback := self._callbacks["setitem"]:
@@ -130,6 +145,11 @@ class List(MutableSequence, ZnSocketObject):
             self._callbacks["delitem"](index)
 
     def insert(self, index: int, value: t.Any) -> None:
+        if isinstance(value, Dict):
+            value = f"znsocket.Dict:{value.key}"
+        if isinstance(value, List):
+            value = f"znsocket.List:{value.key}"
+
         if index >= len(self):
             self.redis.rpush(self.key, znjson.dumps(value))
         elif index == 0:
@@ -168,6 +188,10 @@ class List(MutableSequence, ZnSocketObject):
         """
         if callback := self._callbacks["append"]:
             callback(value)
+        if isinstance(value, Dict):
+            value = f"znsocket.Dict:{value.key}"
+        if isinstance(value, List):
+            value = f"znsocket.List:{value.key}"
         self.redis.rpush(self.key, znjson.dumps(value))
 
 
@@ -193,6 +217,9 @@ class Dict(MutableMapping, ZnSocketObject):
         callbacks: dict[str, Callable]
             optional function callbacks for methods
             which modify the database.
+        repr_type: str
+            Control the `repr` appearance of the object.
+            Reduce for better performance.
         """
         self.redis = r
         self.key = key
@@ -208,9 +235,21 @@ class Dict(MutableMapping, ZnSocketObject):
         value = self.redis.hget(self.key, znjson.dumps(key))
         if value is None:
             raise KeyError(key)
-        return znjson.loads(value)
+        value = znjson.loads(value)
+        if isinstance(value, str):
+            if value.startswith("znsocket.List:"):
+                key = value.split(":", 1)[1]
+                value = List(r=self.redis, key=key)
+            elif value.startswith("znsocket.Dict:"):
+                key = value.split(":", 1)[1]
+                value = Dict(r=self.redis, key=key)
+        return value
 
     def __setitem__(self, key: str, value: t.Any) -> None:
+        if isinstance(value, List):
+            value = f"znsocket.List:{value.key}"
+        if isinstance(value, Dict):
+            value = f"znsocket.Dict:{value.key}"
         self.redis.hset(self.key, znjson.dumps(key), znjson.dumps(value))
         if callback := self._callbacks["setitem"]:
             callback(key, value)
@@ -219,6 +258,7 @@ class Dict(MutableMapping, ZnSocketObject):
         if not self.redis.hexists(self.key, znjson.dumps(key)):
             raise KeyError(key)
         self.redis.hdel(self.key, znjson.dumps(key))
+        # TODO: we might also want to clear the DB if a znsocket.Object was passed.
         if callback := self._callbacks["delitem"]:
             callback(key)
 
@@ -256,3 +296,10 @@ class Dict(MutableMapping, ZnSocketObject):
             return f"Dict({data})"
         else:
             raise ValueError(f"Invalid repr_type: {self.repr_type}")
+        
+    def __eq__(self, value: object) -> bool:
+        if isinstance(value, Dict):
+            return dict(self) == dict(value)
+        elif isinstance(value, dict):
+            return dict(self) == value
+        return False
