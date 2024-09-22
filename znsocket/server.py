@@ -40,7 +40,7 @@ def get_sio(
     if async_mode is not None:
         kwargs["async_mode"] = async_mode
     sio = socketio.Server(**kwargs)
-    attach_events(sio)
+    attach_events(sio, namespace="/znsocket")
     return sio
 
 def attach_events(sio: socketio.Server, namespace: str = "/") -> None:
