@@ -266,7 +266,6 @@ class Dict(MutableMapping, ZnSocketObject):
         if not self.redis.hexists(self.key, znjson.dumps(key)):
             raise KeyError(key)
         self.redis.hdel(self.key, znjson.dumps(key))
-        # TODO: we might also want to clear the DB if a znsocket.Object was passed.
         if callback := self._callbacks["delitem"]:
             callback(key)
 
