@@ -13,9 +13,10 @@ class Client:
     sio: socketio.SimpleClient = dataclasses.field(
         default_factory=socketio.SimpleClient, repr=False, init=False
     )
+    namespace: str = "/znsocket"
 
     @classmethod
-    def from_url(cls, url, **kwargs) -> "Client":
+    def from_url(cls, url, namespace: str = "/znsocket", **kwargs) -> "Client":
         """Connect to a znsocket server using a URL.
 
         Parameters
@@ -23,12 +24,16 @@ class Client:
         url : str
             The URL of the znsocket server. Should be in the format
             "znsocket://127.0.0.1:5000".
+        namespace : str
+            The namespace to connect to. Default is "/znsocket".
         """
-        return cls(address=url.replace("znsocket://", "http://"), **kwargs)
+        return cls(
+            address=url.replace("znsocket://", "http://"), namespace=namespace, **kwargs
+        )
 
     def __post_init__(self):
         try:
-            self.sio.connect(self.address)
+            self.sio.connect(self.address, namespace=self.namespace)
         except socketio.exceptions.ConnectionError as err:
             raise exceptions.ConnectionError(self.address) from err
 
@@ -94,8 +99,10 @@ class Client:
 
     def lset(self, name, index, value):
         response = self.sio.call("lset", {"name": name, "index": index, "value": value})
+        if isinstance(response, bool):
+            return response
         if response is not None:
-            raise exceptions.ResponseError(response)
+            raise exceptions.ResponseError(str(response))
 
     def lrem(self, name: str, count: int, value: str):
         return self.sio.call("lrem", {"name": name, "count": count, "value": value})

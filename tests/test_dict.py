@@ -8,7 +8,9 @@ import znsocket
 from znsocket.utils import ZnSocketObject
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+)
 def test_dct_set_get_item(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
@@ -30,7 +32,9 @@ def test_dct_set_get_item(client, request):
         dct["nonexistent"]
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+)
 def test_dct_del_item(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
@@ -46,7 +50,9 @@ def test_dct_del_item(client, request):
         del dct["nonexistent"]
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+)
 def test_dct_update(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
@@ -61,7 +67,9 @@ def test_dct_update(client, request):
     assert dct == {"a": "1", "b": "3", "c": "4"}
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+)
 def test_dct_iter(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
@@ -77,7 +85,9 @@ def test_dct_iter(client, request):
     assert list(dct.items()) == [("a", "1"), ("b", "2")]
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+)
 def test_dct_contains(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
@@ -92,7 +102,7 @@ def test_dct_contains(client, request):
     assert "c" not in dct
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_dct_repr(client, request):
     c = request.getfixturevalue(client)
     dct = znsocket.Dict(r=c, key="list:test")
@@ -109,8 +119,12 @@ def test_dct_repr(client, request):
         repr(dct)
 
 
-@pytest.mark.parametrize("a", ["znsclient", "redisclient", "empty"])
-@pytest.mark.parametrize("b", ["znsclient", "redisclient", "empty"])
+@pytest.mark.parametrize(
+    "a", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+)
+@pytest.mark.parametrize(
+    "b", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+)
 def test_dict_equal(a, b, request):
     a = request.getfixturevalue(a)
     b = request.getfixturevalue(b)
@@ -137,7 +151,9 @@ def test_dict_equal(a, b, request):
     assert dct1 != "unsupported"
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+)
 def test_dct_similar_keys(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
@@ -162,7 +178,9 @@ def test_dct_similar_keys(client, request):
     assert dct == {}
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+)
 def test_dct_None_key_values(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
@@ -184,7 +202,9 @@ def test_dct_None_key_values(client, request):
     assert list(dct.items()) == [(None, "None"), ("None", None)]
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+)
 def test_dct_numpy(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
@@ -196,7 +216,9 @@ def test_dct_numpy(client, request):
     npt.assert_array_equal(dct["a"], np.array([1, 2, 3]))
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+)
 def test_dct_get(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
@@ -209,7 +231,7 @@ def test_dct_get(client, request):
     assert dct.get("b") is None
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_dict_callbacks(client, request):
     """Test ZnSocket with negative indices."""
     c = request.getfixturevalue(client)

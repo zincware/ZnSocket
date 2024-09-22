@@ -4,21 +4,21 @@ import redis.exceptions
 import znsocket.exceptions
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_set(client, request):
     c = request.getfixturevalue(client)
     c.set("name", "Alice")
     assert c.get("name") == "Alice"
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_get(client, request):
     c = request.getfixturevalue(client)
     c.set("name", "Alice")
     assert c.get("name") == "Alice"
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_hset_hget(client, request):
     c = request.getfixturevalue(client)
     c.hset("hash", "field", "value")
@@ -26,7 +26,7 @@ def test_hset_hget(client, request):
     assert c.hget("hash", "nonexistent") is None
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_hset_hgetall(client, request):
     c = request.getfixturevalue(client)
     data = {"field1": "value1", "field2": "value2"}
@@ -34,7 +34,7 @@ def test_hset_hgetall(client, request):
     assert c.hgetall("hash") == data
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_hmget(client, request):
     c = request.getfixturevalue(client)
     data = {"field1": "value1", "field2": "value2"}
@@ -43,7 +43,7 @@ def test_hmget(client, request):
     assert c.hmget("hash", ["field1", "nonexistent"]) == ["value1", None]
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_hkeys(client, request):
     c = request.getfixturevalue(client)
     data = {"field1": "value1", "field2": "value2"}
@@ -53,7 +53,7 @@ def test_hkeys(client, request):
     assert c.hkeys("nonexistent") == []
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_exists(client, request):
     c = request.getfixturevalue(client)
     c.set("name", "Alice")
@@ -61,7 +61,7 @@ def test_exists(client, request):
     assert c.exists("nonexistent") == 0
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_llen(client, request):
     c = request.getfixturevalue(client)
     c.rpush("list", "element1")
@@ -69,7 +69,7 @@ def test_llen(client, request):
     assert c.llen("list") == 2
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_lset(client, request):
     c = request.getfixturevalue(client)
     c.rpush("list", "element1")
@@ -90,7 +90,7 @@ def test_lset(client, request):
         c.lset("list", 10, "new_element2")
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_lrem(client, request):
     c = request.getfixturevalue(client)
 
@@ -137,7 +137,7 @@ def test_lrem(client, request):
     assert response == 0
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_sadd_smembers(client, request):
     c = request.getfixturevalue(client)
     c.sadd("set", "member1")
@@ -145,7 +145,7 @@ def test_sadd_smembers(client, request):
     assert c.smembers("set") == {"member1", "member2"}
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_rpush_lindex(client, request):
     c = request.getfixturevalue(client)
     assert c.rpush("list", "element1") == 1
@@ -157,7 +157,7 @@ def test_rpush_lindex(client, request):
     assert c.lindex("nonexistent", 0) is None
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_lrange(client, request):
     c = request.getfixturevalue(client)
     c.rpush("list", "element1")
@@ -175,7 +175,7 @@ def test_lrange(client, request):
     assert c.lrange("nonexistent", 0, 1) == []
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_flushall(client, request):
     c = request.getfixturevalue(client)
     c.set("name", "Alice")
@@ -183,7 +183,7 @@ def test_flushall(client, request):
     assert c.get("name") is None
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_delete(client, request):
     c = request.getfixturevalue(client)
     c.set("name", "Alice")
@@ -195,7 +195,7 @@ def test_delete(client, request):
     assert response == 0
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_srem(client, request):
     c = request.getfixturevalue(client)
     c.sadd("set", "member1")
@@ -207,7 +207,7 @@ def test_srem(client, request):
     assert c.srem("nonexistent", "member1") == 0
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_linsert(client, request):
     c = request.getfixturevalue(client)
 
@@ -271,7 +271,7 @@ def test_linsert(client, request):
     assert c.lrange("list", 0, -1) == []
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_lpush_lindex(client, request):
     c = request.getfixturevalue(client)
     c.lpush("list", "element1")
@@ -283,7 +283,7 @@ def test_lpush_lindex(client, request):
     assert c.lindex("nonexistent", 0) is None
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_hexists(client, request):
     c = request.getfixturevalue(client)
 
@@ -293,7 +293,7 @@ def test_hexists(client, request):
     assert c.hexists("nonexistent", "field") == 0
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_hdel(client, request):
     c = request.getfixturevalue(client)
 
@@ -307,7 +307,7 @@ def test_hdel(client, request):
     assert c.hdel("nonexistent", "nonexistent") == 0
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_hlen(client, request):
     c = request.getfixturevalue(client)
 
@@ -318,7 +318,7 @@ def test_hlen(client, request):
     assert c.hlen("nonexistent") == 0
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_hvals(client, request):
     c = request.getfixturevalue(client)
 
@@ -329,7 +329,7 @@ def test_hvals(client, request):
     assert c.hvals("nonexistent") == []
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_lpop(client, request):
     c = request.getfixturevalue(client)
     c.rpush("list", "element1")
@@ -340,9 +340,9 @@ def test_lpop(client, request):
     assert c.lpop("nonexistent") is None
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_scard(client, request):
-    c = request.getfixturevalue("znsclient")
+    c = request.getfixturevalue(client)
     c.sadd("set", "member1")
     c.sadd("set", "member2")
     assert c.scard("set") == 2
@@ -355,7 +355,7 @@ def test_scard(client, request):
     assert c.scard("set") == 2
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_smembers_on_hash(client, request):
     c = request.getfixturevalue(client)
     c.hset("hash", "field", "value")
@@ -366,7 +366,7 @@ def test_smembers_on_hash(client, request):
         c.smembers("hash")
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_hset_data_error(client, request):
     c = request.getfixturevalue(client)
     with pytest.raises(redis.exceptions.DataError):

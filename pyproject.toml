@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "znsocket"
-version = "0.1.9"
+version = "0.1.10"
 description = "Python implementation of a Redis-compatible API using websockets."
 authors = ["Fabian Zills <fzills@icp.uni-stuttgart.de>"]
 license = "Apache-2.0"
