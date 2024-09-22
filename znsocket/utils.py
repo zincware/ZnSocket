@@ -31,7 +31,7 @@ class List(MutableSequence, ZnSocketObject):
         r: Client | t.Any,
         key: str,
         callbacks: ListCallbackTypedDict | None = None,
-        repr_type: ListRepr = "full",
+        repr_type: ListRepr = "length",
     ):
         """Synchronized list object.
 
@@ -176,7 +176,7 @@ class Dict(MutableMapping, ZnSocketObject):
         r: Client | t.Any,
         key: str,
         callbacks: DictCallbackTypedDict | None = None,
-        repr_type: DictRepr = "full",
+        repr_type: DictRepr = "keys",
     ):
         """Synchronized dict object.
 

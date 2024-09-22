@@ -148,7 +148,7 @@ def test_dict_equal(a, b, request):
 def test_dct_similar_keys(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
-        dct = znsocket.Dict(r=c, key="list:test")
+        dct = znsocket.Dict(r=c, key="list:test", repr_type="full")
     else:
         dct = {}
 
@@ -173,7 +173,7 @@ def test_dct_similar_keys(client, request):
 def test_dct_None_key_values(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
-        dct = znsocket.Dict(r=c, key="list:test")
+        dct = znsocket.Dict(r=c, key="list:test", repr_type="full")
     else:
         dct = {}
 
