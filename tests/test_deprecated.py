@@ -1,7 +1,7 @@
 import pytest
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_hmset(client, request):
     c = request.getfixturevalue(client)
 

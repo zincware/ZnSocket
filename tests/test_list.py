@@ -14,7 +14,7 @@ def empty() -> None:
     return None
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"])
 def test_list_extend(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
@@ -35,7 +35,7 @@ def test_list_extend(client, request):
     assert lst == [1, 2, 3, 4, 5, 6.28, "7"]
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"])
 def test_list_setitem(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
@@ -69,7 +69,7 @@ def test_list_setitem(client, request):
             lst[:2] = ["a", "b", "c"]
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"])
 def test_list_delitem(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
@@ -98,7 +98,7 @@ def test_list_delitem(client, request):
     assert len(lst) == 2
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"])
 def test_list_append(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
@@ -113,7 +113,7 @@ def test_list_append(client, request):
     assert len(lst) == 5
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"])
 def test_list_insert(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
@@ -129,7 +129,7 @@ def test_list_insert(client, request):
     assert lst[:] == ["y", "1", "x", "2", "3", "4"]
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"])
 def test_list_iter(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
@@ -147,7 +147,7 @@ def test_list_iter(client, request):
         assert a == b
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_list_repr(client, request):
     c = request.getfixturevalue(client)
     lst = znsocket.List(r=c, key="list:test")
@@ -165,8 +165,8 @@ def test_list_repr(client, request):
         repr(lst)
 
 
-@pytest.mark.parametrize("a", ["znsclient", "redisclient", "empty"])
-@pytest.mark.parametrize("b", ["znsclient", "redisclient", "empty"])
+@pytest.mark.parametrize("a", ["znsclient", "znsclient_w_redis", "redisclient", "empty"])
+@pytest.mark.parametrize("b", ["znsclient", "znsclient_w_redis", "redisclient", "empty"])
 def test_list_equal(a, b, request):
     a = request.getfixturevalue(a)
     b = request.getfixturevalue(b)
@@ -193,7 +193,7 @@ def test_list_equal(a, b, request):
     assert lst1 != "unsupported"
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"])
 def test_list_getitem(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
@@ -211,7 +211,7 @@ def test_list_getitem(client, request):
         lst[10]
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"])
 def test_list_numpy(client, request):
     """Test ZnSocket with numpy arrays through znjson."""
     c = request.getfixturevalue(client)
@@ -229,7 +229,7 @@ def test_list_numpy(client, request):
     npt.assert_array_equal(lst[1], np.array([7, 8, 9]))
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"])
 def test_list_set_dict(client, request):
     """Test ZnSocket with numpy arrays through znjson."""
     c = request.getfixturevalue(client)
@@ -243,7 +243,7 @@ def test_list_set_dict(client, request):
         lst["0"] = "Lorem ipsum"
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"])
 def test_list_set_get_negative(client, request):
     """Test ZnSocket with negative indices."""
     c = request.getfixturevalue(client)
@@ -261,7 +261,7 @@ def test_list_set_get_negative(client, request):
     assert lst[-2] == "Hello"
 
 
-@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_list_callbacks(client, request):
     """Test ZnSocket with negative indices."""
     c = request.getfixturevalue(client)
