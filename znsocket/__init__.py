@@ -1,5 +1,5 @@
-from .client import Client
-from .server import Server
-from .utils import Dict, List
+from znsocket.client import Client
+from znsocket.server import Server, attach_events
+from znsocket.utils import Dict, List
 
 __all__ = ["Client", "Server", "List", "Dict"]

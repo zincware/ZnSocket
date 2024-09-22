@@ -97,8 +97,10 @@ class Client:
 
     def lset(self, name, index, value):
         response = self.sio.call("lset", {"name": name, "index": index, "value": value})
+        if isinstance(response, bool):
+            return response
         if response is not None:
-            raise exceptions.ResponseError(response)
+            raise exceptions.ResponseError(str(response))
 
     def lrem(self, name: str, count: int, value: str):
         return self.sio.call("lrem", {"name": name, "count": count, "value": value})

@@ -87,10 +87,8 @@ class Storage:
             response = set()
 
         if not isinstance(response, set):
-            return {
-                "error": "WRONGTYPE Operation against a key holding the wrong kind of value"
-            }
-        return list(response)
+            raise ValueError("WRONGTYPE Operation against a key holding the wrong kind of value")
+        return response
     
     def lrange(self, name, start, end):
         if end == -1:
@@ -172,7 +170,7 @@ class Storage:
         except KeyError:
             return 0
         
-    def hvalls(self, name):
+    def hvals(self, name):
         try:
             return list(self.content[name].values())
         except KeyError:
@@ -192,8 +190,12 @@ class Storage:
         except KeyError:
             return 0
 
+    def hgetall(self, name):
+        try:
+            return self.content[name]
+        except KeyError:
+            return {}
     
-storage = Storage()
 
 
 @dataclasses.dataclass
@@ -232,12 +234,15 @@ def get_sio(
     attach_events(sio, namespace="/znsocket")
     return sio
 
-def attach_events(sio: socketio.Server, namespace: str = "/") -> None:
+def attach_events(sio: socketio.Server, namespace: str = "/znsocket", storage = None) -> None:
+    if storage is None:
+        storage = Storage()
+
     @sio.event(namespace=namespace)
     def hset(sid, data):
         name = data.pop("name")
         mapping = data.pop("mapping")
-        return storage.hset(name, mapping)
+        return storage.hset(name, mapping=mapping)
 
     @sio.event(namespace=namespace)
     def hget(sid, data):
@@ -308,12 +313,15 @@ def attach_events(sio: socketio.Server, namespace: str = "/") -> None:
     @sio.event(namespace=namespace)
     def hgetall(sid, data):
         name = data.pop("name")
-        return storage.get(name, {})
+        return storage.hgetall(name)
 
     @sio.event(namespace=namespace)
     def smembers(sid, data):
         name = data.pop("name")
-        return storage.smembers(name)
+        try:
+            return list(storage.smembers(name))
+        except Exception as e:
+            return {"error": str(e)}
 
     @sio.event(namespace=namespace)
     def lrange(sid, data):
@@ -327,7 +335,10 @@ def attach_events(sio: socketio.Server, namespace: str = "/") -> None:
         name = data.pop("name")
         index = data.pop("index")
         value = data.pop("value")
-        return storage.lset(name, index, value)
+        try:
+            return storage.lset(name, index, value)
+        except Exception as e:
+            return str(e)
 
     @sio.event(namespace=namespace)
     def lrem(sid, data):
@@ -382,7 +393,7 @@ def attach_events(sio: socketio.Server, namespace: str = "/") -> None:
     @sio.event(namespace=namespace)
     def hvals(sid, data):
         name = data.pop("name")
-        return storage.hvalls(name)
+        return storage.hvals(name)
         
 
     @sio.event(namespace=namespace)
