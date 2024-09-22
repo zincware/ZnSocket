@@ -30,7 +30,6 @@ class Server:
         server_app = socketio.WSGIApp(sio)
         eventlet.wsgi.server(eventlet.listen(("localhost", self.port)), server_app)
 
-
 def get_sio(
     max_http_buffer_size: t.Optional[int] = None,
     async_mode: t.Optional[str] = None,
@@ -41,8 +40,11 @@ def get_sio(
     if async_mode is not None:
         kwargs["async_mode"] = async_mode
     sio = socketio.Server(**kwargs)
+    attach_events(sio)
+    return sio
 
-    @sio.event
+def attach_events(sio: socketio.Server, namespace: str = "/") -> None:
+    @sio.event(namespace=namespace)
     def hset(sid, data):
         name = data.pop("name")
         mapping = data.pop("mapping")
@@ -52,7 +54,7 @@ def get_sio(
             except KeyError:
                 storage[name] = {key: value}
 
-    @sio.event
+    @sio.event(namespace=namespace)
     def hget(sid, data):
         name = data.pop("name")
         key = data.pop("key")
@@ -61,7 +63,7 @@ def get_sio(
         except KeyError:
             return None
 
-    @sio.event
+    @sio.event(namespace=namespace)
     def hmget(sid, data):
         name = data.pop("name")
         keys = data.pop("keys")
@@ -73,7 +75,7 @@ def get_sio(
                 response.append(None)
         return response
 
-    @sio.event
+    @sio.event(namespace=namespace)
     def hkeys(sid, data):
         name = data.pop("name")
         try:
@@ -81,7 +83,7 @@ def get_sio(
         except KeyError:
             return []
 
-    @sio.event
+    @sio.event(namespace=namespace)
     def delete(sid, data):
         name = data.pop("name")
         try:
@@ -90,12 +92,12 @@ def get_sio(
         except KeyError:
             return 0
 
-    @sio.event
+    @sio.event(namespace=namespace)
     def exists(sid, data):
         name = data.pop("name")
         return 1 if name in storage else 0
 
-    @sio.event
+    @sio.event(namespace=namespace)
     def llen(sid, data):
         name = data.pop("name")
         try:
@@ -103,7 +105,7 @@ def get_sio(
         except KeyError:
             return 0
 
-    @sio.event
+    @sio.event(namespace=namespace)
     def rpush(sid, data) -> int:
         name = data.pop("name")
         value = data.pop("value")
@@ -114,7 +116,7 @@ def get_sio(
 
         return len(storage[name])
 
-    @sio.event
+    @sio.event(namespace=namespace)
     def lpush(sid, data):
         name = data.pop("name")
         value = data.pop("value")
@@ -123,7 +125,7 @@ def get_sio(
         except KeyError:
             storage[name] = [value]
 
-    @sio.event
+    @sio.event(namespace=namespace)
     def lindex(sid, data):
         name = data.pop("name")
         index = data.pop("index")
@@ -134,23 +136,23 @@ def get_sio(
         except IndexError:
             return None
 
-    @sio.on("set")
+    @sio.on("set", namespace=namespace)
     def set_(sid, data):
         name = data.pop("name")
         value = data.pop("value")
         storage[name] = value
 
-    @sio.event
+    @sio.event(namespace=namespace)
     def get(sid, data):
         name = data.pop("name")
         return storage.get(name)
 
-    @sio.event
+    @sio.event(namespace=namespace)
     def hgetall(sid, data):
         name = data.pop("name")
         return storage.get(name, {})
 
-    @sio.event
+    @sio.event(namespace=namespace)
     def smembers(sid, data):
         name = data.pop("name")
         try:
@@ -164,7 +166,7 @@ def get_sio(
             }
         return list(response)
 
-    @sio.event
+    @sio.event(namespace=namespace)
     def lrange(sid, data):
         name = data.pop("name")
         start = data.pop("start")
@@ -178,7 +180,7 @@ def get_sio(
         except KeyError:
             return []
 
-    @sio.event
+    @sio.event(namespace=namespace)
     def lset(sid, data):
         name = data.pop("name")
         index = data.pop("index")
@@ -190,7 +192,7 @@ def get_sio(
         except IndexError:
             return "index out of range"
 
-    @sio.event
+    @sio.event(namespace=namespace)
     def lrem(sid, data):
         name = data.pop("name")
         count = data.pop("count")
@@ -210,7 +212,7 @@ def get_sio(
                 except KeyError:
                     return 0
 
-    @sio.event
+    @sio.event(namespace=namespace)
     def sadd(sid, data):
         name = data.pop("name")
         value = data.pop("value")
@@ -219,11 +221,11 @@ def get_sio(
         except KeyError:
             storage[name] = {value}
 
-    @sio.event
+    @sio.event(namespace=namespace)
     def flushall(sid, data):
         storage.clear()
 
-    @sio.event
+    @sio.event(namespace=namespace)
     def srem(sid, data):
         name = data.pop("name")
         value = data.pop("value")
@@ -233,7 +235,7 @@ def get_sio(
         except KeyError:
             return 0
 
-    @sio.event
+    @sio.event(namespace=namespace)
     def linsert(sid, data):
         name = data.pop("name")
         where = data.pop("where")
@@ -250,7 +252,7 @@ def get_sio(
         except ValueError:
             return -1
 
-    @sio.event
+    @sio.event(namespace=namespace)
     def hexists(sid, data):
         name = data.pop("name")
         key = data.pop("key")
@@ -259,7 +261,7 @@ def get_sio(
         except KeyError:
             return 0
 
-    @sio.event
+    @sio.event(namespace=namespace)
     def hdel(sid, data):
         name = data.pop("name")
         key = data.pop("key")
@@ -269,7 +271,7 @@ def get_sio(
         except KeyError:
             return 0
 
-    @sio.event
+    @sio.event(namespace=namespace)
     def hlen(sid, data):
         name = data.pop("name")
         try:
@@ -277,7 +279,7 @@ def get_sio(
         except KeyError:
             return 0
 
-    @sio.event
+    @sio.event(namespace=namespace)
     def hvals(sid, data):
         name = data.pop("name")
         try:
@@ -285,7 +287,7 @@ def get_sio(
         except KeyError:
             return []
 
-    @sio.event
+    @sio.event(namespace=namespace)
     def lpop(sid, data) -> t.Optional[t.Any]:
         name = data.pop("name")
         try:
@@ -295,7 +297,7 @@ def get_sio(
         except IndexError:
             return None
 
-    @sio.event
+    @sio.event(namespace=namespace)
     def scard(sid, data) -> int:
         name = data.pop("name")
         try:
