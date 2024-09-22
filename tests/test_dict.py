@@ -195,6 +195,7 @@ def test_dct_numpy(client, request):
     dct["a"] = np.array([1, 2, 3])
     npt.assert_array_equal(dct["a"], np.array([1, 2, 3]))
 
+
 @pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
 def test_dct_get(client, request):
     c = request.getfixturevalue(client)

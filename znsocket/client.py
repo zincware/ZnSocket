@@ -79,7 +79,6 @@ class Client:
     def get(self, name):
         return self.sio.call("get", {"name": name})
 
-
     def hgetall(self, name):
         return self.sio.call("hgetall", {"name": name})
 
