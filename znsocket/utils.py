@@ -13,6 +13,8 @@ class DictCallbackTypedDict(t.TypedDict):
     setitem: t.Callable[[str, t.Any], None]
     delitem: t.Callable[[str, t.Any], None]
 
+DictRepr = t.Union[t.Literal["full"], t.Literal["keys"], t.Literal["minimal"]]
+ListRepr = t.Union[t.Literal["full"], t.Literal["length"], t.Literal["minimal"]]
 
 import znjson
 
@@ -29,6 +31,7 @@ class List(MutableSequence, ZnSocketObject):
         r: Client | t.Any,
         key: str,
         callbacks: ListCallbackTypedDict | None = None,
+        repr_type: ListRepr = "full",
     ):
         """Synchronized list object.
 
@@ -51,6 +54,7 @@ class List(MutableSequence, ZnSocketObject):
         """
         self.redis = r
         self.key = key
+        self.repr_type = repr_type
 
         self._callbacks = {
             "setitem": None,
@@ -144,10 +148,17 @@ class List(MutableSequence, ZnSocketObject):
         return False
 
     def __repr__(self) -> str:
-        data = self.redis.lrange(self.key, 0, -1)
-        data = [znjson.loads(i) for i in data]
+        if self.repr_type == "length":
+            return f"List(len={len(self)})"
+        elif self.repr_type == "minimal":
+            return "List(<unknown>)"
+        elif self.repr_type == "full":
+            data = self.redis.lrange(self.key, 0, -1)
+            data = [znjson.loads(i) for i in data]
 
-        return f"List({data})"
+            return f"List({data})"
+        else:
+            raise ValueError(f"Invalid repr_type: {self.repr_type}")
 
     def append(self, value: t.Any) -> None:
         """Append an item to the end of the list.
@@ -165,6 +176,7 @@ class Dict(MutableMapping, ZnSocketObject):
         r: Client | t.Any,
         key: str,
         callbacks: DictCallbackTypedDict | None = None,
+        repr_type: DictRepr = "full",
     ):
         """Synchronized dict object.
 
@@ -183,6 +195,7 @@ class Dict(MutableMapping, ZnSocketObject):
         """
         self.redis = r
         self.key = key
+        self.repr_type = repr_type
         self._callbacks = {
             "setitem": None,
             "delitem": None,
@@ -233,5 +246,12 @@ class Dict(MutableMapping, ZnSocketObject):
         return self.redis.hexists(self.key, znjson.dumps(key))
 
     def __repr__(self) -> str:
-        data = {a: b for a, b in self.items()}
-        return f"Dict({data})"
+        if self.repr_type == "keys":
+            return f"Dict(keys={self.keys()})"
+        elif self.repr_type == "minimal":
+            return "Dict(<unknown>)"
+        elif self.repr_type == "full":
+            data = {a: b for a, b in self.items()}
+            return f"Dict({data})"
+        else:
+            raise ValueError(f"Invalid repr_type: {self.repr_type}")

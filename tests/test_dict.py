@@ -99,16 +99,21 @@ def test_dct_contains(client, request):
 
 
 @pytest.mark.parametrize("client", ["znsclient", "redisclient"])
-def test_dct_repr(client, request):
+def test_dct_repr_full(client, request):
     c = request.getfixturevalue(client)
-    if c is not None:
-        dct = znsocket.Dict(r=c, key="list:test")
-    else:
-        dct = {}
-
+    dct = znsocket.Dict(r=c, key="list:test")
     dct.update({"a": "1", "b": "2"})
-
+    dct.repr_type = "full"
     assert repr(dct) == "Dict({'a': '1', 'b': '2'})"
+    dct.repr_type = "keys"
+    assert repr(dct) == "Dict(keys=['a', 'b'])"
+    dct.repr_type = "minimal"
+    assert repr(dct) == "Dict(<unknown>)"
+
+    dct.repr_type = "unsupported"
+    with pytest.raises(ValueError, match="Invalid repr_type: unsupported"):
+        repr(dct)
+
 
 
 @pytest.mark.parametrize("a", ["znsclient", "redisclient", "empty"])
