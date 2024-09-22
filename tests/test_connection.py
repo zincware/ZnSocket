@@ -27,10 +27,10 @@ def test_hset_hget(client, request):
 
 
 @pytest.mark.parametrize("client", ["znsclient", "redisclient"])
-def test_hmset_hgetall(client, request):
+def test_hset_hgetall(client, request):
     c = request.getfixturevalue(client)
     data = {"field1": "value1", "field2": "value2"}
-    c.hmset("hash", data)
+    c.hset("hash", mapping=data)
     assert c.hgetall("hash") == data
 
 
@@ -38,7 +38,7 @@ def test_hmset_hgetall(client, request):
 def test_hmget(client, request):
     c = request.getfixturevalue(client)
     data = {"field1": "value1", "field2": "value2"}
-    c.hmset("hash", data)
+    c.hset("hash", mapping=data)
     assert c.hmget("hash", ["field1", "field2"]) == ["value1", "value2"]
     assert c.hmget("hash", ["field1", "nonexistent"]) == ["value1", None]
 
@@ -47,7 +47,7 @@ def test_hmget(client, request):
 def test_hkeys(client, request):
     c = request.getfixturevalue(client)
     data = {"field1": "value1", "field2": "value2"}
-    c.hmset("hash", data)
+    c.hset("hash", mapping=data)
     assert set(c.hkeys("hash")) == {"field1", "field2"}
     assert c.hkeys("hash") == ["field1", "field2"]
     assert c.hkeys("nonexistent") == []
@@ -367,7 +367,13 @@ def test_smembers_on_hash(client, request):
 
 
 @pytest.mark.parametrize("client", ["znsclient", "redisclient"])
-def test_hmset_data_error(client, request):
+def test_hset_data_error(client, request):
     c = request.getfixturevalue(client)
     with pytest.raises(redis.exceptions.DataError):
-        c.hmset("name", {})
+        c.hset("name", mapping={})
+    with pytest.raises(redis.exceptions.DataError):
+        c.hset("name")
+    with pytest.raises(redis.exceptions.DataError):
+        c.hset("name", "key")
+    with pytest.raises(redis.exceptions.DataError):
+        c.hset("name", value="value")

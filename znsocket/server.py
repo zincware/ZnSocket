@@ -45,12 +45,12 @@ def get_sio(
     @sio.event
     def hset(sid, data):
         name = data.pop("name")
-        key = data.pop("key")
-        value = data.pop("value")
-        try:
-            storage[name][key] = value
-        except KeyError:
-            storage[name] = {key: value}
+        mapping = data.pop("mapping")
+        for key, value in mapping.items():
+            try:
+                storage[name][key] = value
+            except KeyError:
+                storage[name] = {key: value}
 
     @sio.event
     def hget(sid, data):
@@ -144,15 +144,6 @@ def get_sio(
     def get(sid, data):
         name = data.pop("name")
         return storage.get(name)
-
-    @sio.event
-    def hmset(sid, data):
-        name = data.pop("name")
-        items = data.pop("data")
-        try:
-            storage[name].update(items)
-        except KeyError:
-            storage[name] = items
 
     @sio.event
     def hgetall(sid, data):
