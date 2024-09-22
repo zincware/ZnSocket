@@ -8,12 +8,6 @@ import znsocket
 from znsocket.utils import ZnSocketObject
 
 
-@pytest.fixture
-def empty() -> None:
-    """Test against Python list implementation"""
-    return None
-
-
 @pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
 def test_dct_set_get_item(client, request):
     c = request.getfixturevalue(client)
@@ -236,20 +230,24 @@ def test_dict_callbacks(client, request):
     delitem_callback.assert_called_once_with("a")
 
 
-# @pytest.mark.parametrize("a", ["znsclient", "redisclient", "empty"])
-# @pytest.mark.parametrize("b", ["znsclient", "redisclient", "empty"])
-# def test_dict_nested(a, b, request):
-#     a = request.getfixturevalue(a)
-#     b = request.getfixturevalue(b)
-#     if a is not None:
-#         dct1 = znsocket.Dict(r=a, key="dict:test:a")
-#     else:
-#         dct1 = {}
+# TODO: if different clients are used, things get weird therefore znsclient is not used in this test
+@pytest.mark.parametrize("a", ["redisclient", "empty"])
+@pytest.mark.parametrize("b", ["redisclient", "empty"])
+def test_dict_nested(a, b, request):
+    a = request.getfixturevalue(a)
+    b = request.getfixturevalue(b)
+    if a is not None:
+        dct1 = znsocket.Dict(r=a, key="dict:test:a")
+    else:
+        dct1 = {}
 
-#     if b is not None:
-#         dct2 = znsocket.Dict(r=b, key="dict:test:b")
-#     else:
-#         dct2 = {}
+    if b is not None:
+        dct2 = znsocket.Dict(r=b, key="dict:test:b")
+    else:
+        dct2 = {}
 
-#     dct1.update({"a": "1", "b": "2"})
-#     dct2.update({"dct1": dct1, "b": "2"})
+    dct1.update({"a": "1", "b": "2"})
+    dct2.update({"dct1": dct1, "b": "2"})
+
+    assert dct2 == {"dct1": {"a": "1", "b": "2"}, "b": "2"}
+    assert dct2["dct1"] == {"a": "1", "b": "2"}
