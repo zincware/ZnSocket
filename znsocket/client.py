@@ -41,8 +41,16 @@ class Client:
     def hget(self, name, key):
         return self.sio.call("hget", {"name": name, "key": key})
 
-    def hset(self, name, key, value):
-        return self.sio.call("hset", {"name": name, "key": key, "value": value})
+    def hset(self, name, key=None, value=None, mapping=None):
+        if key is not None and value is None:
+            raise exceptions.DataError(f"Invalid input of type {type(value)}")
+        if (key is None or value is None) and mapping is None:
+            raise exceptions.DataError("'hset' with no key value pairs")
+        if mapping is None:
+            mapping = {key: value}
+        if len(mapping) == 0:
+            raise exceptions.DataError("Mapping must not be empty")
+        return self.sio.call("hset", {"name": name, "mapping": mapping})
 
     def hmget(self, name, keys):
         return self.sio.call("hmget", {"name": name, "keys": keys})
@@ -71,11 +79,6 @@ class Client:
     def get(self, name):
         return self.sio.call("get", {"name": name})
 
-    @tyex.deprecated("Use hset instead")
-    def hmset(self, name, data):
-        if len(data) == 0:
-            raise exceptions.DataError("data must not be empty")
-        return self.sio.call("hmset", {"name": name, "data": data})
 
     def hgetall(self, name):
         return self.sio.call("hgetall", {"name": name})
