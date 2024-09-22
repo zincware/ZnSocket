@@ -289,21 +289,23 @@ def test_list_callbacks(client, request):
     lst.insert(0, 3)
     insert_callback.assert_called_once_with(0, 3)
 
+# TODO: if different clients are used, things get weird therefore znsclient is not used in this test
+@pytest.mark.parametrize("a", ["redisclient", "empty"])
+@pytest.mark.parametrize("b", ["redisclient", "empty"])
+def test_list_nested(a, b, request):
+    a = request.getfixturevalue(a)
+    b = request.getfixturevalue(b)
+    if a is not None:
+        lst1 = znsocket.List(r=a, key="list:test:a")
+    else:
+        lst1 = []
 
-# @pytest.mark.parametrize("a", ["znsclient", "redisclient", "empty"])
-# @pytest.mark.parametrize("b", ["znsclient", "redisclient", "empty"])
-# def test_list_nested(a, b, request):
-#     a = request.getfixturevalue(a)
-#     b = request.getfixturevalue(b)
-#     if a is not None:
-#         lst1 = znsocket.List(r=a, key="list:test:a")
-#     else:
-#         lst1 = []
+    if b is not None:
+        lst2 = znsocket.List(r=b, key="list:test:b")
+    else:
+        lst2 = []
 
-#     if b is not None:
-#         lst2 = znsocket.List(r=b, key="list:test:b")
-#     else:
-#         lst2 = []
+    lst1.extend(["1", "2", "3", "4"])
+    lst2.extend([lst1, lst1])
 
-#     lst1.extend(["1", "2", "3", "4"])
-#     lst2.extend([lst1, lst1])
+    assert lst2 == [["1", "2", "3", "4"], ["1", "2", "3", "4"]]
