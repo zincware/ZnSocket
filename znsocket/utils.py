@@ -123,6 +123,8 @@ class List(MutableSequence, ZnSocketObject):
             if isinstance(v, Dict):
                 v = f"znsocket.Dict:{v.key}"
             if isinstance(v, List):
+                if value is self:
+                    raise ValueError("Can not set circular reference to self")
                 v = f"znsocket.List:{v.key}"
 
             self.redis.lset(self.key, i, znjson.dumps(v))
@@ -148,6 +150,8 @@ class List(MutableSequence, ZnSocketObject):
         if isinstance(value, Dict):
             value = f"znsocket.Dict:{value.key}"
         if isinstance(value, List):
+            if value is self:
+                raise ValueError("Can not set circular reference to self")
             value = f"znsocket.List:{value.key}"
 
         if index >= len(self):
@@ -191,6 +195,8 @@ class List(MutableSequence, ZnSocketObject):
         if isinstance(value, Dict):
             value = f"znsocket.Dict:{value.key}"
         if isinstance(value, List):
+            if value is self:
+                raise ValueError("Can not set circular reference to self")
             value = f"znsocket.List:{value.key}"
         self.redis.rpush(self.key, znjson.dumps(value))
 
@@ -249,6 +255,8 @@ class Dict(MutableMapping, ZnSocketObject):
         if isinstance(value, List):
             value = f"znsocket.List:{value.key}"
         if isinstance(value, Dict):
+            if value is self:
+                raise ValueError("Can not set circular reference to self")
             value = f"znsocket.Dict:{value.key}"
         self.redis.hset(self.key, znjson.dumps(key), znjson.dumps(value))
         if callback := self._callbacks["setitem"]:
