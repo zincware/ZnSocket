@@ -123,7 +123,7 @@ class List(MutableSequence, ZnSocketObject):
             if isinstance(v, Dict):
                 v = f"znsocket.Dict:{v.key}"
             if isinstance(v, List):
-                if value is self:
+                if value.key == self.key:
                     raise ValueError("Can not set circular reference to self")
                 v = f"znsocket.List:{v.key}"
 
@@ -150,7 +150,7 @@ class List(MutableSequence, ZnSocketObject):
         if isinstance(value, Dict):
             value = f"znsocket.Dict:{value.key}"
         if isinstance(value, List):
-            if value is self:
+            if value.key == self.key:
                 raise ValueError("Can not set circular reference to self")
             value = f"znsocket.List:{value.key}"
 
@@ -195,7 +195,7 @@ class List(MutableSequence, ZnSocketObject):
         if isinstance(value, Dict):
             value = f"znsocket.Dict:{value.key}"
         if isinstance(value, List):
-            if value is self:
+            if value.key == self.key:
                 raise ValueError("Can not set circular reference to self")
             value = f"znsocket.List:{value.key}"
         self.redis.rpush(self.key, znjson.dumps(value))
@@ -255,7 +255,7 @@ class Dict(MutableMapping, ZnSocketObject):
         if isinstance(value, List):
             value = f"znsocket.List:{value.key}"
         if isinstance(value, Dict):
-            if value is self:
+            if value.key == self.key:
                 raise ValueError("Can not set circular reference to self")
             value = f"znsocket.Dict:{value.key}"
         self.redis.hset(self.key, znjson.dumps(key), znjson.dumps(value))
