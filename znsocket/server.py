@@ -4,7 +4,196 @@ import typing as t
 import eventlet.wsgi
 import socketio
 
-storage = {}
+@dataclasses.dataclass
+class Storage:
+    content: dict = dataclasses.field(default_factory=dict)
+
+    def hset(self, name, mapping):
+        for key, value in mapping.items():
+            try:
+                self.content[name][key] = value
+            except KeyError:
+                self.content[name] = {key: value}
+
+    def hget(self, name, key):
+        try:
+            return self.content[name][key]
+        except KeyError:
+            return None
+        
+    def hmget(self, name, keys):
+        response = []
+        for key in keys:
+            try:
+                response.append(self.content[name][key])
+            except KeyError:
+                response.append(None)
+        return response
+    
+    def hkeys(self, name):
+        try:
+            return list(self.content[name].keys())
+        except KeyError:
+            return []
+        
+    def delete(self, name):
+        try:
+            del self.content[name]
+            return 1
+        except KeyError:
+            return 0
+        
+    def exists(self, name):
+        return 1 if name in self.content else 0
+    
+    def llen(self, name):
+        try:
+            return len(self.content[name])
+        except KeyError:
+            return 0
+        
+    def rpush(self, name, value):
+        try:
+            self.content[name].append(value)
+        except KeyError:
+            self.content[name] = [value]
+
+        return len(self.content[name])
+    
+    def lpush(self, name, value):
+        try:
+            self.content[name].insert(0, value)
+        except KeyError:
+            self.content[name] = [value]
+
+    def lindex(self, name, index):
+        try:
+            return self.content[name][index]
+        except KeyError:
+            return None
+        except IndexError:
+            return None
+
+    def set(self, name, value):
+        self.content[name] = value
+
+    def get(self, name, default=None):
+        return self.content.get(name, default)
+
+    def smembers(self, name):
+        try:
+            response = self.content[name]
+        except KeyError:
+            response = set()
+
+        if not isinstance(response, set):
+            return {
+                "error": "WRONGTYPE Operation against a key holding the wrong kind of value"
+            }
+        return list(response)
+    
+    def lrange(self, name, start, end):
+        if end == -1:
+            end = None
+        elif end >= 0:
+            end += 1
+        try:
+            return self.content[name][start:end]
+        except KeyError:
+            return []
+        
+    def lset(self, name, index, value):
+        try:
+            self.content[name][index] = value
+        except KeyError:
+            return "no such key"
+        except IndexError:
+            return "index out of range"
+        
+    def lrem(self, name, count, value):
+        if count == 0:
+            try:
+                self.content[name] = [x for x in self.content[name] if x != value]
+            except KeyError:
+                return 0
+        else:
+            removed = 0
+            while removed < count:
+                try:
+                    self.content[name].remove(value)
+                    removed += 1
+                except KeyError:
+                    return 0
+                
+    def sadd(self, name, value):
+        try:
+            self.content[name].add(value)
+        except KeyError:
+            self.content[name] = {value}
+
+    def flushall(self):
+        self.content.clear()
+
+    def srem(self, name, value ):
+        try:
+            self.content[name].remove(value)
+            return 1
+        except KeyError:
+            return 0
+        
+    def linsert(self, name, where, pivot, value):
+        try:
+            index = self.content[name].index(pivot)
+            if where == "BEFORE":
+                self.content[name].insert(index, value)
+            elif where == "AFTER":
+                self.content[name].insert(index + 1, value)
+        except KeyError:
+            return 0
+        except ValueError:
+            return -1
+        
+    def hexists(self, name, key):
+        try:
+            return 1 if key in self.content[name] else 0
+        except KeyError:
+            return 0
+        
+    def hdel(self, name, key):
+        try:
+            del self.content[name][key]
+            return 1
+        except KeyError:
+            return 0
+        
+    def hlen(self, name):
+        try:
+            return len(self.content[name])
+        except KeyError:
+            return 0
+        
+    def hvalls(self, name):
+        try:
+            return list(self.content[name].values())
+        except KeyError:
+            return []
+        
+    def lpop(self, name):
+        try:
+            return self.content[name].pop(0)
+        except KeyError:
+            return None
+        except IndexError:
+            return None
+        
+    def scard(self, name):
+        try:
+            return len(self.content[name])
+        except KeyError:
+            return 0
+
+    
+storage = Storage()
 
 
 @dataclasses.dataclass
@@ -48,99 +237,68 @@ def attach_events(sio: socketio.Server, namespace: str = "/") -> None:
     def hset(sid, data):
         name = data.pop("name")
         mapping = data.pop("mapping")
-        for key, value in mapping.items():
-            try:
-                storage[name][key] = value
-            except KeyError:
-                storage[name] = {key: value}
+        return storage.hset(name, mapping)
 
     @sio.event(namespace=namespace)
     def hget(sid, data):
         name = data.pop("name")
         key = data.pop("key")
-        try:
-            return storage[name][key]
-        except KeyError:
-            return None
+        return storage.hget(name, key)
+        
 
     @sio.event(namespace=namespace)
     def hmget(sid, data):
         name = data.pop("name")
         keys = data.pop("keys")
-        response = []
-        for key in keys:
-            try:
-                response.append(storage[name][key])
-            except KeyError:
-                response.append(None)
-        return response
+        return storage.hmget(name, keys)
+        
 
     @sio.event(namespace=namespace)
     def hkeys(sid, data):
         name = data.pop("name")
-        try:
-            return list(storage[name].keys())
-        except KeyError:
-            return []
+        return storage.hkeys(name)
+        
 
     @sio.event(namespace=namespace)
     def delete(sid, data):
         name = data.pop("name")
-        try:
-            del storage[name]
-            return 1
-        except KeyError:
-            return 0
+        return storage.delete(name)
+        
 
     @sio.event(namespace=namespace)
     def exists(sid, data):
         name = data.pop("name")
-        return 1 if name in storage else 0
+        return storage.exists(name)
+        
 
     @sio.event(namespace=namespace)
     def llen(sid, data):
         name = data.pop("name")
-        try:
-            return len(storage[name])
-        except KeyError:
-            return 0
+        return storage.llen(name)
 
     @sio.event(namespace=namespace)
     def rpush(sid, data) -> int:
         name = data.pop("name")
         value = data.pop("value")
-        try:
-            storage[name].append(value)
-        except KeyError:
-            storage[name] = [value]
-
-        return len(storage[name])
+        return storage.rpush(name, value)
 
     @sio.event(namespace=namespace)
     def lpush(sid, data):
         name = data.pop("name")
         value = data.pop("value")
-        try:
-            storage[name].insert(0, value)
-        except KeyError:
-            storage[name] = [value]
+        return storage.lpush(name, value)
 
     @sio.event(namespace=namespace)
     def lindex(sid, data):
         name = data.pop("name")
         index = data.pop("index")
-        try:
-            return storage[name][index]
-        except KeyError:
-            return None
-        except IndexError:
-            return None
+        return storage.lindex(name, index)
 
     @sio.on("set", namespace=namespace)
     def set_(sid, data):
         name = data.pop("name")
         value = data.pop("value")
-        storage[name] = value
+        return storage.set(name, value)
 
     @sio.event(namespace=namespace)
     def get(sid, data):
@@ -155,42 +313,21 @@ def attach_events(sio: socketio.Server, namespace: str = "/") -> None:
     @sio.event(namespace=namespace)
     def smembers(sid, data):
         name = data.pop("name")
-        try:
-            response = storage[name]
-        except KeyError:
-            response = set()
-
-        if not isinstance(response, set):
-            return {
-                "error": "WRONGTYPE Operation against a key holding the wrong kind of value"
-            }
-        return list(response)
+        return storage.smembers(name)
 
     @sio.event(namespace=namespace)
     def lrange(sid, data):
         name = data.pop("name")
         start = data.pop("start")
         end = data.pop("end")
-        if end == -1:
-            end = None
-        elif end >= 0:
-            end += 1
-        try:
-            return storage[name][start:end]
-        except KeyError:
-            return []
+        return storage.lrange(name, start, end)
 
     @sio.event(namespace=namespace)
     def lset(sid, data):
         name = data.pop("name")
         index = data.pop("index")
         value = data.pop("value")
-        try:
-            storage[name][index] = value
-        except KeyError:
-            return "no such key"
-        except IndexError:
-            return "index out of range"
+        return storage.lset(name, index, value)
 
     @sio.event(namespace=namespace)
     def lrem(sid, data):
@@ -198,42 +335,23 @@ def attach_events(sio: socketio.Server, namespace: str = "/") -> None:
         count = data.pop("count")
         value = data.pop("value")
 
-        if count == 0:
-            try:
-                storage[name] = [x for x in storage[name] if x != value]
-            except KeyError:
-                return 0
-        else:
-            removed = 0
-            while removed < count:
-                try:
-                    storage[name].remove(value)
-                    removed += 1
-                except KeyError:
-                    return 0
+        return storage.lrem(name, count, value)
 
     @sio.event(namespace=namespace)
     def sadd(sid, data):
         name = data.pop("name")
         value = data.pop("value")
-        try:
-            storage[name].add(value)
-        except KeyError:
-            storage[name] = {value}
+        return storage.sadd(name, value)
 
     @sio.event(namespace=namespace)
     def flushall(sid, data):
-        storage.clear()
+        return storage.flushall()
 
     @sio.event(namespace=namespace)
     def srem(sid, data):
         name = data.pop("name")
         value = data.pop("value")
-        try:
-            storage[name].remove(value)
-            return 1
-        except KeyError:
-            return 0
+        return storage.srem(name, value)
 
     @sio.event(namespace=namespace)
     def linsert(sid, data):
@@ -241,68 +359,40 @@ def attach_events(sio: socketio.Server, namespace: str = "/") -> None:
         where = data.pop("where")
         pivot = data.pop("pivot")
         value = data.pop("value")
-        try:
-            index = storage[name].index(pivot)
-            if where == "BEFORE":
-                storage[name].insert(index, value)
-            elif where == "AFTER":
-                storage[name].insert(index + 1, value)
-        except KeyError:
-            return 0
-        except ValueError:
-            return -1
+        return storage.linsert(name, where, pivot, value)
+        
 
     @sio.event(namespace=namespace)
     def hexists(sid, data):
         name = data.pop("name")
         key = data.pop("key")
-        try:
-            return 1 if key in storage[name] else 0
-        except KeyError:
-            return 0
+        return storage.hexists(name, key)
 
     @sio.event(namespace=namespace)
     def hdel(sid, data):
         name = data.pop("name")
         key = data.pop("key")
-        try:
-            del storage[name][key]
-            return 1
-        except KeyError:
-            return 0
+        return storage.hdel(name, key)
 
     @sio.event(namespace=namespace)
     def hlen(sid, data):
         name = data.pop("name")
-        try:
-            return len(storage[name])
-        except KeyError:
-            return 0
+        return storage.hlen(name)
 
     @sio.event(namespace=namespace)
     def hvals(sid, data):
         name = data.pop("name")
-        try:
-            return list(storage[name].values())
-        except KeyError:
-            return []
+        return storage.hvalls(name)
+        
 
     @sio.event(namespace=namespace)
     def lpop(sid, data) -> t.Optional[t.Any]:
         name = data.pop("name")
-        try:
-            return storage[name].pop(0)
-        except KeyError:
-            return None
-        except IndexError:
-            return None
+        return storage.lpop(name)
 
     @sio.event(namespace=namespace)
     def scard(sid, data) -> int:
         name = data.pop("name")
-        try:
-            return len(storage[name])
-        except KeyError:
-            return 0
+        return storage.scard(name)
 
     return sio
