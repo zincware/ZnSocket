@@ -1,7 +1,8 @@
+from unittest.mock import MagicMock
+
 import numpy as np
 import numpy.testing as npt
 import pytest
-from unittest.mock import MagicMock
 
 import znsocket
 from znsocket.utils import ZnSocketObject
@@ -209,6 +210,7 @@ def test_dct_get(client, request):
     assert dct.get("a") == "1"
     assert dct.get("b") is None
 
+
 @pytest.mark.parametrize("client", ["znsclient", "redisclient"])
 def test_dict_callbacks(client, request):
     """Test ZnSocket with negative indices."""
@@ -228,6 +230,7 @@ def test_dict_callbacks(client, request):
     setitem_callback.assert_called_once_with("a", 1)
     del dct["a"]
     delitem_callback.assert_called_once_with("a")
+
 
 # @pytest.mark.parametrize("a", ["znsclient", "redisclient", "empty"])
 # @pytest.mark.parametrize("b", ["znsclient", "redisclient", "empty"])

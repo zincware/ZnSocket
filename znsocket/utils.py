@@ -1,15 +1,18 @@
 import typing as t
 from collections.abc import MutableMapping, MutableSequence
 
+
 class ListCallbackTypedDict(t.TypedDict):
     setitem: t.Callable[[list[int], t.Any], None]
     delitem: t.Callable[[list[int], t.Any], None]
     insert: t.Callable[[int, t.Any], None]
     append: t.Callable[[t.Any], None]
 
+
 class DictCallbackTypedDict(t.TypedDict):
     setitem: t.Callable[[str, t.Any], None]
     delitem: t.Callable[[str, t.Any], None]
+
 
 import znjson
 
@@ -21,7 +24,12 @@ class ZnSocketObject:
 
 
 class List(MutableSequence, ZnSocketObject):
-    def __init__(self, r: Client | t.Any, key: str, callbacks: ListCallbackTypedDict| None = None):
+    def __init__(
+        self,
+        r: Client | t.Any,
+        key: str,
+        callbacks: ListCallbackTypedDict | None = None,
+    ):
         """Synchronized list object.
 
         The content of this list is stored/read from the
@@ -152,7 +160,12 @@ class List(MutableSequence, ZnSocketObject):
 
 
 class Dict(MutableMapping, ZnSocketObject):
-    def __init__(self, r: Client | t.Any, key: str, callbacks: DictCallbackTypedDict | None = None):
+    def __init__(
+        self,
+        r: Client | t.Any,
+        key: str,
+        callbacks: DictCallbackTypedDict | None = None,
+    ):
         """Synchronized dict object.
 
         The content of this dict is stored/read from the

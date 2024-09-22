@@ -1,7 +1,8 @@
+from unittest.mock import MagicMock
+
 import numpy as np
 import numpy.testing as npt
 import pytest
-from unittest.mock import MagicMock
 
 import znsocket
 from znsocket.utils import ZnSocketObject
