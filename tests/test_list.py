@@ -153,7 +153,16 @@ def test_list_repr(client, request):
     lst = znsocket.List(r=c, key="list:test")
     lst.extend(["1", "2", "3", "4"])
 
+    lst.repr_type = "full"
     assert repr(lst) == "List(['1', '2', '3', '4'])"
+    lst.repr_type = "length"
+    assert repr(lst) == "List(len=4)"
+    lst.repr_type = "minimal"
+    assert repr(lst) == "List(<unknown>)"
+
+    lst.repr_type = "unsupported"
+    with pytest.raises(ValueError, match="Invalid repr_type: unsupported"):
+        repr(lst)
 
 
 @pytest.mark.parametrize("a", ["znsclient", "redisclient", "empty"])
