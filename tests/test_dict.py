@@ -195,6 +195,18 @@ def test_dct_numpy(client, request):
     dct["a"] = np.array([1, 2, 3])
     npt.assert_array_equal(dct["a"], np.array([1, 2, 3]))
 
+@pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
+def test_dct_get(client, request):
+    c = request.getfixturevalue(client)
+    if c is not None:
+        dct = znsocket.Dict(r=c, key="list:test")
+    else:
+        dct = {}
+
+    dct["a"] = "1"
+    assert dct.get("a") == "1"
+    assert dct.get("b") is None
+
 
 # @pytest.mark.parametrize("a", ["znsclient", "redisclient", "empty"])
 # @pytest.mark.parametrize("b", ["znsclient", "redisclient", "empty"])
