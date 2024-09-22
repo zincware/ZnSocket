@@ -13,6 +13,7 @@ class DictCallbackTypedDict(t.TypedDict):
     setitem: t.Callable[[str, t.Any], None]
     delitem: t.Callable[[str, t.Any], None]
 
+
 DictRepr = t.Union[t.Literal["full"], t.Literal["keys"], t.Literal["minimal"]]
 ListRepr = t.Union[t.Literal["full"], t.Literal["length"], t.Literal["minimal"]]
 

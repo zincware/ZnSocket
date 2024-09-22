@@ -115,7 +115,6 @@ def test_dct_repr_full(client, request):
         repr(dct)
 
 
-
 @pytest.mark.parametrize("a", ["znsclient", "redisclient", "empty"])
 @pytest.mark.parametrize("b", ["znsclient", "redisclient", "empty"])
 def test_dict_equal(a, b, request):
