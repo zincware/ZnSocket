@@ -289,6 +289,7 @@ def test_list_callbacks(client, request):
     lst.insert(0, 3)
     insert_callback.assert_called_once_with(0, 3)
 
+
 # TODO: if different clients are used, things get weird therefore znsclient is not used in this test
 @pytest.mark.parametrize("a", ["redisclient", "empty"])
 @pytest.mark.parametrize("b", ["redisclient", "empty"])
