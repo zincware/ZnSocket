@@ -4,6 +4,7 @@ import typing as t
 import eventlet.wsgi
 import socketio
 
+
 @dataclasses.dataclass
 class Storage:
     content: dict = dataclasses.field(default_factory=dict)
@@ -20,7 +21,7 @@ class Storage:
             return self.content[name][key]
         except KeyError:
             return None
-        
+
     def hmget(self, name, keys):
         response = []
         for key in keys:
@@ -29,29 +30,29 @@ class Storage:
             except KeyError:
                 response.append(None)
         return response
-    
+
     def hkeys(self, name):
         try:
             return list(self.content[name].keys())
         except KeyError:
             return []
-        
+
     def delete(self, name):
         try:
             del self.content[name]
             return 1
         except KeyError:
             return 0
-        
+
     def exists(self, name):
         return 1 if name in self.content else 0
-    
+
     def llen(self, name):
         try:
             return len(self.content[name])
         except KeyError:
             return 0
-        
+
     def rpush(self, name, value):
         try:
             self.content[name].append(value)
@@ -59,7 +60,7 @@ class Storage:
             self.content[name] = [value]
 
         return len(self.content[name])
-    
+
     def lpush(self, name, value):
         try:
             self.content[name].insert(0, value)
@@ -87,9 +88,11 @@ class Storage:
             response = set()
 
         if not isinstance(response, set):
-            raise ValueError("WRONGTYPE Operation against a key holding the wrong kind of value")
+            raise ValueError(
+                "WRONGTYPE Operation against a key holding the wrong kind of value"
+            )
         return response
-    
+
     def lrange(self, name, start, end):
         if end == -1:
             end = None
@@ -99,7 +102,7 @@ class Storage:
             return self.content[name][start:end]
         except KeyError:
             return []
-        
+
     def lset(self, name, index, value):
         try:
             self.content[name][index] = value
@@ -107,7 +110,7 @@ class Storage:
             return "no such key"
         except IndexError:
             return "index out of range"
-        
+
     def lrem(self, name, count, value):
         if count == 0:
             try:
@@ -122,7 +125,7 @@ class Storage:
                     removed += 1
                 except KeyError:
                     return 0
-                
+
     def sadd(self, name, value):
         try:
             self.content[name].add(value)
@@ -132,13 +135,13 @@ class Storage:
     def flushall(self):
         self.content.clear()
 
-    def srem(self, name, value ):
+    def srem(self, name, value):
         try:
             self.content[name].remove(value)
             return 1
         except KeyError:
             return 0
-        
+
     def linsert(self, name, where, pivot, value):
         try:
             index = self.content[name].index(pivot)
@@ -150,32 +153,32 @@ class Storage:
             return 0
         except ValueError:
             return -1
-        
+
     def hexists(self, name, key):
         try:
             return 1 if key in self.content[name] else 0
         except KeyError:
             return 0
-        
+
     def hdel(self, name, key):
         try:
             del self.content[name][key]
             return 1
         except KeyError:
             return 0
-        
+
     def hlen(self, name):
         try:
             return len(self.content[name])
         except KeyError:
             return 0
-        
+
     def hvals(self, name):
         try:
             return list(self.content[name].values())
         except KeyError:
             return []
-        
+
     def lpop(self, name):
         try:
             return self.content[name].pop(0)
@@ -183,7 +186,7 @@ class Storage:
             return None
         except IndexError:
             return None
-        
+
     def scard(self, name):
         try:
             return len(self.content[name])
@@ -195,7 +198,6 @@ class Storage:
             return self.content[name]
         except KeyError:
             return {}
-    
 
 
 @dataclasses.dataclass
@@ -221,6 +223,7 @@ class Server:
         server_app = socketio.WSGIApp(sio)
         eventlet.wsgi.server(eventlet.listen(("localhost", self.port)), server_app)
 
+
 def get_sio(
     max_http_buffer_size: t.Optional[int] = None,
     async_mode: t.Optional[str] = None,
@@ -234,7 +237,10 @@ def get_sio(
     attach_events(sio, namespace="/znsocket")
     return sio
 
-def attach_events(sio: socketio.Server, namespace: str = "/znsocket", storage = None) -> None:
+
+def attach_events(
+    sio: socketio.Server, namespace: str = "/znsocket", storage=None
+) -> None:
     if storage is None:
         storage = Storage()
 
@@ -249,32 +255,27 @@ def attach_events(sio: socketio.Server, namespace: str = "/znsocket", storage = 
         name = data.pop("name")
         key = data.pop("key")
         return storage.hget(name, key)
-        
 
     @sio.event(namespace=namespace)
     def hmget(sid, data):
         name = data.pop("name")
         keys = data.pop("keys")
         return storage.hmget(name, keys)
-        
 
     @sio.event(namespace=namespace)
     def hkeys(sid, data):
         name = data.pop("name")
         return storage.hkeys(name)
-        
 
     @sio.event(namespace=namespace)
     def delete(sid, data):
         name = data.pop("name")
         return storage.delete(name)
-        
 
     @sio.event(namespace=namespace)
     def exists(sid, data):
         name = data.pop("name")
         return storage.exists(name)
-        
 
     @sio.event(namespace=namespace)
     def llen(sid, data):
@@ -371,7 +372,6 @@ def attach_events(sio: socketio.Server, namespace: str = "/znsocket", storage = 
         pivot = data.pop("pivot")
         value = data.pop("value")
         return storage.linsert(name, where, pivot, value)
-        
 
     @sio.event(namespace=namespace)
     def hexists(sid, data):
@@ -394,7 +394,6 @@ def attach_events(sio: socketio.Server, namespace: str = "/znsocket", storage = 
     def hvals(sid, data):
         name = data.pop("name")
         return storage.hvals(name)
-        
 
     @sio.event(namespace=namespace)
     def lpop(sid, data) -> t.Optional[t.Any]:

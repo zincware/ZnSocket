@@ -3,7 +3,9 @@ import pytest
 import znsocket
 
 
-@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"])
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+)
 def test_dct_in_list(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
@@ -22,7 +24,9 @@ def test_dct_in_list(client, request):
     assert dct == {"a": "1", "b": "2"}
 
 
-@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"])
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+)
 def test_lst_in_dct(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
@@ -41,7 +45,9 @@ def test_lst_in_dct(client, request):
     assert dct == {"a": ["1", "2"]}
 
 
-@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"])
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+)
 def test_lst_in_lst(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
@@ -62,7 +68,9 @@ def test_lst_in_lst(client, request):
     assert lst2[0][1] == "2"
 
 
-@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"])
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+)
 def test_dct_in_dct(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
@@ -83,7 +91,9 @@ def test_dct_in_dct(client, request):
     assert dct2["c"]["b"] == "2"
 
 
-@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"])
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+)
 def test_lst_clear(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
@@ -98,7 +108,9 @@ def test_lst_clear(client, request):
     assert lst == []
 
 
-@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"])
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+)
 def test_deep_nesting_in_dct(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
@@ -118,7 +130,9 @@ def test_deep_nesting_in_dct(client, request):
     assert dct3["c"]["b"]["a"] == "1"
 
 
-@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"])
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+)
 def test_deep_nesting_in_lst(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
@@ -139,7 +153,9 @@ def test_deep_nesting_in_lst(client, request):
     assert lst[0]["b"]["a"] == "1"
 
 
-@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"])
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+)
 def test_deep_nesting_in_lst2(client, request):
     c = request.getfixturevalue(client)
     if c is not None:

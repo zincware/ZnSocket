@@ -6,8 +6,8 @@ import random
 
 import pytest
 import redis
-import socketio.exceptions
 import socketio
+import socketio.exceptions
 
 from znsocket import Client, Server, attach_events
 
@@ -72,6 +72,7 @@ def znsclient(eventlet_memory_server):
     r = Client.from_url(eventlet_memory_server)
     yield r
     r.flushall()
+
 
 @pytest.fixture
 def znsclient_w_redis(eventlet_memory_server_redis):

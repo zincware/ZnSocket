@@ -16,7 +16,7 @@ class Client:
     namespace: str = "/znsocket"
 
     @classmethod
-    def from_url(cls, url, namespace:str = "/znsocket", **kwargs) -> "Client":
+    def from_url(cls, url, namespace: str = "/znsocket", **kwargs) -> "Client":
         """Connect to a znsocket server using a URL.
 
         Parameters
@@ -27,7 +27,9 @@ class Client:
         namespace : str
             The namespace to connect to. Default is "/znsocket".
         """
-        return cls(address=url.replace("znsocket://", "http://"), namespace=namespace, **kwargs)
+        return cls(
+            address=url.replace("znsocket://", "http://"), namespace=namespace, **kwargs
+        )
 
     def __post_init__(self):
         try:
