@@ -1,4 +1,5 @@
 import pytest
+
 import znsocket
 
 
@@ -96,6 +97,7 @@ def test_lst_clear(client, request):
 
     assert lst == []
 
+
 @pytest.mark.parametrize("client", ["znsclient", "redisclient", "empty"])
 def test_deep_nesting_in_dct(client, request):
     c = request.getfixturevalue(client)
@@ -158,6 +160,7 @@ def test_deep_nesting_in_lst2(client, request):
     assert lst3[0][0] == ["1"]
     assert lst3[0][0][0] == "1"
 
+
 @pytest.mark.parametrize("client", ["znsclient", "redisclient"])
 def test_circular_reference(client, request):
     c = request.getfixturevalue(client)
@@ -166,7 +169,7 @@ def test_circular_reference(client, request):
 
     with pytest.raises(ValueError):
         dct["a"] = dct
-    
+
     with pytest.raises(ValueError):
         lst.append(lst)
     with pytest.raises(ValueError):

@@ -304,7 +304,7 @@ class Dict(MutableMapping, ZnSocketObject):
             return f"Dict({data})"
         else:
             raise ValueError(f"Invalid repr_type: {self.repr_type}")
-        
+
     def __eq__(self, value: object) -> bool:
         if isinstance(value, Dict):
             return dict(self) == dict(value)
