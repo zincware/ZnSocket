@@ -1,6 +1,19 @@
 import typing as t
 from collections.abc import MutableMapping, MutableSequence
 
+
+class ListCallbackTypedDict(t.TypedDict):
+    setitem: t.Callable[[list[int], t.Any], None]
+    delitem: t.Callable[[list[int], t.Any], None]
+    insert: t.Callable[[int, t.Any], None]
+    append: t.Callable[[t.Any], None]
+
+
+class DictCallbackTypedDict(t.TypedDict):
+    setitem: t.Callable[[str, t.Any], None]
+    delitem: t.Callable[[str, t.Any], None]
+
+
 import znjson
 
 from .client import Client
@@ -11,7 +24,12 @@ class ZnSocketObject:
 
 
 class List(MutableSequence, ZnSocketObject):
-    def __init__(self, r: Client | t.Any, key: str):
+    def __init__(
+        self,
+        r: Client | t.Any,
+        key: str,
+        callbacks: ListCallbackTypedDict | None = None,
+    ):
         """Synchronized list object.
 
         The content of this list is stored/read from the
@@ -23,6 +41,9 @@ class List(MutableSequence, ZnSocketObject):
             Connection to the server.
         key: str
             The key in the server to store the data from this list.
+        callbacks: dict[str, Callable]
+            optional function callbacks for methods
+            which modify the database.
 
         Limitations
         -----------
@@ -30,6 +51,15 @@ class List(MutableSequence, ZnSocketObject):
         """
         self.redis = r
         self.key = key
+
+        self._callbacks = {
+            "setitem": None,
+            "delitem": None,
+            "insert": None,
+            "append": None,
+        }
+        if callbacks:
+            self._callbacks.update(callbacks)
 
     def __len__(self) -> int:
         return int(self.redis.llen(self.key))
@@ -77,6 +107,9 @@ class List(MutableSequence, ZnSocketObject):
                 raise IndexError("list index out of range")
             self.redis.lset(self.key, i, znjson.dumps(v))
 
+        if callback := self._callbacks["setitem"]:
+            callback(index, value)
+
     def __delitem__(self, index: int | list | slice) -> None:
         single_item = isinstance(index, int)
         if single_item:
@@ -88,6 +121,9 @@ class List(MutableSequence, ZnSocketObject):
             self.redis.lset(self.key, i, "__DELETED__")
         self.redis.lrem(self.key, 0, "__DELETED__")
 
+        if self._callbacks["delitem"]:
+            self._callbacks["delitem"](index)
+
     def insert(self, index: int, value: t.Any) -> None:
         if index >= len(self):
             self.redis.rpush(self.key, znjson.dumps(value))
@@ -96,6 +132,9 @@ class List(MutableSequence, ZnSocketObject):
         else:
             pivot = self.redis.lindex(self.key, index)
             self.redis.linsert(self.key, "BEFORE", pivot, znjson.dumps(value))
+
+        if callback := self._callbacks["insert"]:
+            callback(index, value)
 
     def __eq__(self, value: object) -> bool:
         if isinstance(value, List):
@@ -115,11 +154,18 @@ class List(MutableSequence, ZnSocketObject):
 
         Override default method for better performance
         """
+        if callback := self._callbacks["append"]:
+            callback(value)
         self.redis.rpush(self.key, znjson.dumps(value))
 
 
 class Dict(MutableMapping, ZnSocketObject):
-    def __init__(self, r: Client | t.Any, key: str):
+    def __init__(
+        self,
+        r: Client | t.Any,
+        key: str,
+        callbacks: DictCallbackTypedDict | None = None,
+    ):
         """Synchronized dict object.
 
         The content of this dict is stored/read from the
@@ -131,9 +177,18 @@ class Dict(MutableMapping, ZnSocketObject):
             Connection to the server.
         key: str
             The key in the server to store the data from this dict.
+        callbacks: dict[str, Callable]
+            optional function callbacks for methods
+            which modify the database.
         """
         self.redis = r
         self.key = key
+        self._callbacks = {
+            "setitem": None,
+            "delitem": None,
+        }
+        if callbacks:
+            self._callbacks.update(callbacks)
 
     def __getitem__(self, key: str) -> t.Any:
         value = self.redis.hget(self.key, znjson.dumps(key))
@@ -143,11 +198,15 @@ class Dict(MutableMapping, ZnSocketObject):
 
     def __setitem__(self, key: str, value: t.Any) -> None:
         self.redis.hset(self.key, znjson.dumps(key), znjson.dumps(value))
+        if callback := self._callbacks["setitem"]:
+            callback(key, value)
 
     def __delitem__(self, key: str) -> None:
         if not self.redis.hexists(self.key, znjson.dumps(key)):
             raise KeyError(key)
         self.redis.hdel(self.key, znjson.dumps(key))
+        if callback := self._callbacks["delitem"]:
+            callback(key)
 
     def __iter__(self):
         return iter(self.keys())

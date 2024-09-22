@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock
+
 import numpy as np
 import numpy.testing as npt
 import pytest
@@ -248,6 +250,35 @@ def test_list_set_get_negative(client, request):
     lst[-1] = "Lorem"
     assert lst[-1] == "Lorem"
     assert lst[-2] == "Hello"
+
+
+@pytest.mark.parametrize("client", ["znsclient", "redisclient"])
+def test_list_callbacks(client, request):
+    """Test ZnSocket with negative indices."""
+    c = request.getfixturevalue(client)
+    append_callback = MagicMock()
+    setitem_callback = MagicMock()
+    delitem_callback = MagicMock()
+    insert_callback = MagicMock()
+
+    lst = znsocket.List(
+        r=c,
+        key="list:test",
+        callbacks={
+            "append": append_callback,
+            "setitem": setitem_callback,
+            "delitem": delitem_callback,
+            "insert": insert_callback,
+        },
+    )
+    lst.append(1)
+    append_callback.assert_called_once_with(1)
+    lst[0] = 2
+    setitem_callback.assert_called_once_with([0], [2])
+    del lst[0]
+    delitem_callback.assert_called_once_with([0])
+    lst.insert(0, 3)
+    insert_callback.assert_called_once_with(0, 3)
 
 
 # @pytest.mark.parametrize("a", ["znsclient", "redisclient", "empty"])
