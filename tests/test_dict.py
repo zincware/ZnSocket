@@ -99,7 +99,7 @@ def test_dct_contains(client, request):
 
 
 @pytest.mark.parametrize("client", ["znsclient", "redisclient"])
-def test_dct_repr_full(client, request):
+def test_dct_repr(client, request):
     c = request.getfixturevalue(client)
     dct = znsocket.Dict(r=c, key="list:test")
     dct.update({"a": "1", "b": "2"})
