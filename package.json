@@ -1,0 +1,30 @@
+{
+  "name": "znsocket",
+  "version": "0.1.0",
+  "description": "JS interface for the python znsocket package",
+  "main": "js/index.js",
+  "type": "module",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zincware/znsocket.git"
+  },
+  "author": "Fabian Zills",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/zincware/znsocket/issues"
+  },
+  "homepage": "https://github.com/zincware/znsocket#readme",
+  "dependencies": {
+    "redis": "^4.7.0",
+    "socket.io-client": "^4.8.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}
