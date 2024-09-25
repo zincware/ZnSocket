@@ -279,12 +279,8 @@ def attach_events(
 
     @sio.event(namespace=namespace)
     def llen(sid, data):
-        import warnings
-        warnings.warn(f"{data =}")
         name = data.pop("name")
-        result = storage.llen(name)
-        warnings.warn(f"{result =}")
-        return result
+        return storage.llen(name)
 
     @sio.event(namespace=namespace)
     def rpush(sid, data) -> int:

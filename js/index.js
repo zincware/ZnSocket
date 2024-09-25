@@ -3,20 +3,60 @@ import { io } from "socket.io-client";  // Removed the unnecessary 'constants' i
 export class Client {
     constructor(url, namespace = "znsocket") {
         // Correct concatenation of URL and namespace for socket connection
-        // const path =`${url}/${namespace}`
+        const path =`${url}/${namespace}`
         // throw new Error(url); // logs ws://127.0.0.1:10063/znsocket
-        this._socket = io(url);
+        this._socket = io(path);
+    }
+
+    close() {
+        this._socket.close();
     }
 
     lLen(key) {
         return new Promise((resolve, reject) => {
-            this._socket.emit("llen", key, (data) => {
+            this._socket.emit("llen", {"name": key}, (data) => {
                 // Check if there is an error or invalid response and reject if necessary
-                if (data && data.error) {
-                    reject(data.error);
-                } else {
-                    resolve(data);
-                }
+                resolve(data);
+            });
+        });
+    }
+
+    lIndex(key, index) {
+        return new Promise((resolve, reject) => {
+            this._socket.emit("lindex", {"name": key, "index": index}, (data) => {
+                resolve(data);
+            });
+        });
+    }
+
+    lSet(key, index, value) {
+        return new Promise((resolve, reject) => {
+            this._socket.emit("lset", {"name": key, "index": index, "value": value}, (data) => {
+                resolve("OK"); // TODO
+            });
+        });
+    }
+
+    lRem(key, count, value) {
+        return new Promise((resolve, reject) => {
+            this._socket.emit("lrem", {"name": key, "count": count, "value": value}, (data) => {
+                resolve("OK"); // TODO
+            });
+        });
+    }
+
+    rPush(key, value) {
+        return new Promise((resolve, reject) => {
+            this._socket.emit("rpush", {"name": key, "value": value}, (data) => {
+                resolve("OK"); // TODO
+            });
+        });
+    }
+
+    lPush(key, value) {
+        return new Promise((resolve, reject) => {
+            this._socket.emit("lpush", {"name": key, "value": value}, (data) => {
+                resolve("OK"); // TODO
             });
         });
     }
