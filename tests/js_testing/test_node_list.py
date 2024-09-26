@@ -4,7 +4,7 @@ import pytest
 
 import znsocket
 
-JEST_PATH = "node --experimental-vm-modules /Users/fzills/tools/znsocket/node_modules/jest/bin/jest.js"
+JEST_PATH = "npm test -- "
 
 
 @pytest.fixture
