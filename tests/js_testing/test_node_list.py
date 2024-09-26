@@ -12,7 +12,7 @@ def run_npm_test():
     def _run_npm_test(name: str, client_url: str = ""):
         import subprocess
 
-        cmd = f"{JEST_PATH} . -t {name}"
+        cmd = f"{JEST_PATH} . -t {name} --verbose"
         env = os.environ.copy()
         env["ZNSOCKET_URL"] = client_url.replace("http://", "ws://")
         run = subprocess.run(cmd, check=False, shell=True, env=env, capture_output=True)
