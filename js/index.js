@@ -71,7 +71,7 @@ export class Client {
 
   hGet(key, field) {
     return new Promise((resolve, reject) => {
-      this._socket.emit("hget", { name: key, field: field }, (data) => {
+      this._socket.emit("hget", { name: key, key: field }, (data) => {
         resolve(data);
       });
     });
@@ -81,7 +81,7 @@ export class Client {
     return new Promise((resolve, reject) => {
       this._socket.emit(
         "hset",
-        { name: key, field: field, value: value },
+        { name: key, mapping: { [field]: value } },
         (data) => {
           resolve("OK"); // TODO
         },
@@ -91,7 +91,7 @@ export class Client {
 
   hDel(key, field) {
     return new Promise((resolve, reject) => {
-      this._socket.emit("hdel", { name: key, field: field }, (data) => {
+      this._socket.emit("hdel", { name: key, key: field }, (data) => {
         resolve("OK"); // TODO
       });
     });
@@ -99,7 +99,7 @@ export class Client {
 
   hExists(key, field) {
     return new Promise((resolve, reject) => {
-      this._socket.emit("hexists", { name: key, field: field }, (data) => {
+      this._socket.emit("hexists", { name: key, key: field }, (data) => {
         resolve(data);
       });
     });
@@ -145,7 +145,6 @@ export class Client {
     });
   }
 }
-
 
 // Python list uses
 // llen, lindex, lset, lrem, rpush, lpush, linsert, lrange, rpush
