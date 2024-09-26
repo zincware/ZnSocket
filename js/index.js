@@ -68,7 +68,84 @@ export class Client {
       });
     });
   }
+
+  hGet(key, field) {
+    return new Promise((resolve, reject) => {
+      this._socket.emit("hget", { name: key, field: field }, (data) => {
+        resolve(data);
+      });
+    });
+  }
+
+  hSet(key, field, value) {
+    return new Promise((resolve, reject) => {
+      this._socket.emit(
+        "hset",
+        { name: key, field: field, value: value },
+        (data) => {
+          resolve("OK"); // TODO
+        },
+      );
+    });
+  }
+
+  hDel(key, field) {
+    return new Promise((resolve, reject) => {
+      this._socket.emit("hdel", { name: key, field: field }, (data) => {
+        resolve("OK"); // TODO
+      });
+    });
+  }
+
+  hExists(key, field) {
+    return new Promise((resolve, reject) => {
+      this._socket.emit("hexists", { name: key, field: field }, (data) => {
+        resolve(data);
+      });
+    });
+  }
+
+  hLen(key) {
+    return new Promise((resolve, reject) => {
+      this._socket.emit("hlen", { name: key }, (data) => {
+        resolve(data);
+      });
+    });
+  }
+
+  hKeys(key) {
+    return new Promise((resolve, reject) => {
+      this._socket.emit("hkeys", { name: key }, (data) => {
+        resolve(data);
+      });
+    });
+  }
+
+  hVals(key) {
+    return new Promise((resolve, reject) => {
+      this._socket.emit("hvals", { name: key }, (data) => {
+        resolve(data);
+      });
+    });
+  }
+
+  hGetAll(key) {
+    return new Promise((resolve, reject) => {
+      this._socket.emit("hgetall", { name: key }, (data) => {
+        resolve(data);
+      });
+    });
+  }
+
+  flushall() {
+    return new Promise((resolve, reject) => {
+      this._socket.emit("flushall", {}, (data) => {
+        resolve("OK"); // TODO
+      });
+    });
+  }
 }
+
 
 // Python list uses
 // llen, lindex, lset, lrem, rpush, lpush, linsert, lrange, rpush

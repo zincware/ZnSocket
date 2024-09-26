@@ -10,7 +10,7 @@ app = typer.Typer()
 
 @app.command()
 def server(
-    port: int = typer.Argument(8080, help="The port to run the server on."),
+    port: int = typer.Option(8080, help="The port to run the server on."),
     max_http_buffer_size: t.Optional[int] = typer.Option(
         100 * 1024 * 1024,
         help="The maximum size of the HTTP buffer. The default value is set to 100 MB. If a single data packet exceeds this size, the server will SILENTLY ignore the packet.",

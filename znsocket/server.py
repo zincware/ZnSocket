@@ -221,7 +221,7 @@ class Server:
             async_mode=self.async_mode,
         )
         server_app = socketio.WSGIApp(sio)
-        eventlet.wsgi.server(eventlet.listen(("localhost", self.port)), server_app)
+        eventlet.wsgi.server(eventlet.listen(("0.0.0.0", self.port)), server_app)
 
 
 def get_sio(
