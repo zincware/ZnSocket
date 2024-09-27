@@ -4,6 +4,8 @@ let client;
 
 beforeEach(async () => {
   client = new createClient({ url: process.env.ZNSOCKET_URL });
+  client.on("error", (err) => console.error("Redis Client Error", err));
+  await client.connect();
 });
 
 afterEach(async () => {

@@ -14,6 +14,17 @@ export class createClient {
       this._socket = manager.socket("/znsocket");
     }
   }
+  connect() {
+    return new Promise((resolve, reject) => {
+      this._socket.on("connect", () => {
+        resolve("Connected");
+      });
+    });
+  }
+
+  on(event, callback) {
+    this._socket.on(event, callback);
+  }
 
   close() {
     this._socket.close();
