@@ -1,6 +1,5 @@
 import pytest
 
-
 JEST_PATH = "npm test -- "
 
 
