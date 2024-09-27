@@ -1,9 +1,10 @@
 // Python dict uses
 // hget, hset, hdel, hexists, hlen, hkeys, hvals, hgetall
 export class Dict {
-  constructor({ client, key }) {
+  constructor({ client, key, callbacks }) {
     this._client = client;
     this._key = key;
+    this._callbacks = callbacks;
   }
 
   async len() {
@@ -11,6 +12,9 @@ export class Dict {
   }
 
   async setitem(key, value) {
+    if (this._callbacks && this._callbacks.setitem) {
+      await this._callbacks.setitem(value);
+    }
     return this._client.hSet(
       this._key,
       JSON.stringify(key),

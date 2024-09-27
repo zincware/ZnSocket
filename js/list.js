@@ -2,9 +2,10 @@
 // llen, lindex, lset, lrem, rpush, lpush, linsert, lrange, rpush
 
 export class List {
-  constructor({ client, key }) {
+  constructor({ client, key, callbacks }) {
     this._client = client;
     this._key = key;
+    this._callbacks = callbacks;
   }
 
   async len() {
@@ -12,10 +13,16 @@ export class List {
   }
 
   async append(value) {
+    if (this._callbacks && this._callbacks.append) {
+      await this._callbacks.append(value);
+    }
     return this._client.rPush(this._key, JSON.stringify(value));
   }
 
   async setitem(index, value) {
+    if (this._callbacks && this._callbacks.setitem) {
+      await this._callbacks.setitem(value);
+    }
     return this._client.lSet(this._key, index, JSON.stringify(value));
   }
 
