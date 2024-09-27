@@ -1,11 +1,18 @@
-import { io } from "socket.io-client"; // Removed the unnecessary 'constants' import
+import { io, Manager } from "socket.io-client"; // Removed the unnecessary 'constants' import
 
 export class Client {
-  constructor(url, namespace = "znsocket") {
+  constructor({ url, namespace = "znsocket", socket }) {
     // Correct concatenation of URL and namespace for socket connection
-    const path = `${url}/${namespace}`;
-    // throw new Error(url); // logs ws://127.0.0.1:10063/znsocket
-    this._socket = io(path);
+    if (socket) {
+      this._socket = socket;
+    } else if (url) {
+      const path = `${url}/${namespace}`;
+      this._socket = io(path);
+    } else {
+      // connect to the default URL with namespace
+      const manager = new Manager();
+      this._socket = manager.socket("/znsocket");
+    }
   }
 
   close() {
