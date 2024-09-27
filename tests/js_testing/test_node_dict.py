@@ -34,6 +34,7 @@ def test_dict_items_znsocket(znsclient, run_npm_test, request):
     assert list(dct.items()) == [("a", {"lorem": "ipsum"}), ("b", 25)]
     run_npm_test(request.node.name, client_url=znsclient.address)
 
+
 def test_dict_getitem_znsocket(znsclient, run_npm_test, request):
     dct = znsocket.Dict(r=znsclient, key="dict:test")
     dct["a"] = {"lorem": "ipsum"}
