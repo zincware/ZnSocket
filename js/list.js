@@ -2,7 +2,7 @@
 // llen, lindex, lset, lrem, rpush, lpush, linsert, lrange, rpush
 
 export class List {
-  constructor(client, key) {
+  constructor({ client, key }) {
     this._client = client;
     this._key = key;
   }
