@@ -1,6 +1,6 @@
 import { io, Manager } from "socket.io-client"; // Removed the unnecessary 'constants' import
 
-export class Client {
+export class createClient {
   constructor({ url, namespace = "znsocket", socket }) {
     // Correct concatenation of URL and namespace for socket connection
     if (socket) {

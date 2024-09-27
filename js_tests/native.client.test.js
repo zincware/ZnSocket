@@ -1,10 +1,10 @@
-import { Client } from "znsocket";
+import { createClient } from "znsocket";
 
 const ZNSOCKET_URL = "http://127.0.0.1:4748";
 let client;
 
 beforeEach(async () => {
-  client = new Client({ url: ZNSOCKET_URL });
+  client = new createClient({ url: ZNSOCKET_URL });
 });
 
 afterEach(async () => {
