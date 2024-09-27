@@ -23,20 +23,22 @@ export class Dict {
     if (value === null) {
       return null;
     }
-    return JSON.stringify(value);
+    return JSON.parse(value);
   }
 
   async keys() {
-    return this._client.hKeys(this._key);
+    const keys = await this._client.hKeys(this._key);
+    return keys.map((x) => JSON.parse(x))
   }
 
   async values() {
-    // JSON
-    return this._client.hVals(this._key);
+    const values = await  this._client.hVals(this._key);
+    return values.map((x) => JSON.parse(x))
   }
 
   async items() {
-    // JSON
-    return this._client.hGetAll(this._key);
+    const entries = await this._client.hGetAll(this._key);
+    // Using Object.entries to return key-value pairs
+    return Object.entries(entries).map(([key, value]) => (JSON.parse(key), JSON.parse(value)));
   }
 }
