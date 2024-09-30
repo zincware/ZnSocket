@@ -284,10 +284,10 @@ def test_dict_refresh_setitem(client, request, znsclient):
 
     dct["a"] = 1
     assert dct == {"a": 1}
-    mock.assert_called_with({"target": "dct:test", "data": {"keys": ["a"]}})
+    mock.assert_called_with({"keys": ["a"]})
     dct["b"] = [1, 2, 3]
     assert dct == {"a": 1, "b": [1, 2, 3]}
-    mock.assert_called_with({"target": "dct:test", "data": {"keys": ["b"]}})
+    mock.assert_called_with({"keys": ["b"]})
 
 
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
@@ -299,7 +299,7 @@ def test_dict_refresh_delitem(client, request, znsclient):
 
     dct["a"] = 1
     assert dct == {"a": 1}
-    mock.assert_called_with({"target": "dct:test", "data": {"keys": ["a"]}})
+    mock.assert_called_with({"keys": ["a"]})
     del dct["a"]
     assert dct == {}
-    mock.assert_called_with({"target": "dct:test", "data": {"keys": ["a"]}})
+    mock.assert_called_with({"keys": ["a"]})

@@ -4,6 +4,7 @@ import socketio.exceptions
 import typing_extensions as tyex
 
 from znsocket import exceptions
+from znsocket.abc import RefreshDataTypeDict
 
 
 @dataclasses.dataclass(frozen=True)
@@ -14,7 +15,7 @@ class Client:
         default_factory=socketio.Client, repr=False, init=False
     )
     namespace: str = "/znsocket"
-    refresh_callbacks: list = dataclasses.field(default_factory=list)
+    refresh_callbacks: dict = dataclasses.field(default_factory=dict)
 
     @classmethod
     def from_url(cls, url, namespace: str = "/znsocket", **kwargs) -> "Client":
@@ -34,9 +35,10 @@ class Client:
 
     def __post_init__(self):
         @self.sio.on("refresh", namespace=self.namespace)
-        def refresh(*args, **kwargs):
-            for callback in self.refresh_callbacks:
-                callback(*args, **kwargs)
+        def refresh(data: RefreshDataTypeDict):
+            for key in self.refresh_callbacks:
+                if data["target"] == key:
+                    self.refresh_callbacks[key](data["data"])
 
         try:
             self.sio.connect(self.address, namespaces=[self.namespace], wait=True)

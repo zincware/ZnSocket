@@ -5,7 +5,7 @@ let client;
 let lst;
 
 beforeEach(async () => {
-  client = new createClient({ url: ZNSOCKET_URL });
+  client = createClient({ url: ZNSOCKET_URL });
 });
 
 afterEach(async () => {
@@ -80,3 +80,30 @@ test("native_list_getitem", async () => {
   expect(await lst.getitem(0)).toBe(5);
   expect(await lst.getitem(1)).toBe(null);
 });
+
+
+test("native_list_len", async () => {
+  lst = new List({ client: client, key: "list:test" });
+  await lst.append(5);
+  expect(await lst.len()).toBe(1);
+  await lst.append(5);
+  expect(await lst.len()).toBe(2);
+});
+
+test("native_list_append_socket_callback", async () => {
+  let callback_value = false;
+  lst = new List({ client: client, key: "list:test", socket: client._socket });
+  lst.add_refresh_listener((data) => {
+    callback_value = data;
+  });
+  await lst.append(5);
+  expect(callback_value).toEqual({ start: 0 });
+
+  await lst.append(5);
+  expect(callback_value).toEqual({ start: 1 });
+
+  await lst.append(5);
+  expect(callback_value).toEqual({ start: 2 });
+});
+
+// TODO: others than append!

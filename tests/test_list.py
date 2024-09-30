@@ -347,13 +347,13 @@ def test_list_refresh_append(client, request, znsclient):
     lst.append(1)
     znsclient.sio.sleep(0.01)
     assert len(lst) == 1
-    mock.assert_called_once_with({"target": "list:test", "data": {"indices": [0]}})
+    mock.assert_called_once_with({"indices": [0]})
 
     # append again
     lst.append(2)
     znsclient.sio.sleep(0.01)
     assert len(lst) == 2
-    mock.assert_called_with({"target": "list:test", "data": {"indices": [1]}})
+    mock.assert_called_with({"indices": [1]})
 
 
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
@@ -366,15 +366,13 @@ def test_list_refresh_insert(client, request, znsclient):
     lst.insert(0, 1)
     znsclient.sio.sleep(0.01)
     assert len(lst) == 1
-    mock.assert_called_once_with(
-        {"target": "list:test", "data": {"start": 0, "stop": None}}
-    )
+    mock.assert_called_once_with({"start": 0, "stop": None})
 
     # insert again
     lst.insert(1, 2)
     znsclient.sio.sleep(0.01)
     assert len(lst) == 2
-    mock.assert_called_with({"target": "list:test", "data": {"start": 1, "stop": None}})
+    mock.assert_called_with({"start": 1, "stop": None})
 
 
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
@@ -393,15 +391,13 @@ def test_list_refresh_delitem(client, request, znsclient):
     lst.pop()
     znsclient.sio.sleep(0.01)
     assert len(lst) == 2
-    mock.assert_called_once_with(
-        {"target": "list:test", "data": {"start": -1, "stop": None}}
-    )
+    mock.assert_called_once_with({"start": -1, "stop": None})
 
     # pop again
     del lst[0]
     znsclient.sio.sleep(0.01)
     assert len(lst) == 1
-    mock.assert_called_with({"target": "list:test", "data": {"start": 0, "stop": None}})
+    mock.assert_called_with({"start": 0, "stop": None})
 
 
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
@@ -420,10 +416,10 @@ def test_list_refresh_setitem(client, request, znsclient):
     lst[0] = 4
     znsclient.sio.sleep(0.01)
     assert len(lst) == 3
-    mock.assert_called_once_with({"target": "list:test", "data": {"indices": [0]}})
+    mock.assert_called_once_with({"indices": [0]})
 
     # set again
     lst[1] = 5
     znsclient.sio.sleep(0.01)
     assert len(lst) == 3
-    mock.assert_called_with({"target": "list:test", "data": {"indices": [1]}})
+    mock.assert_called_with({"indices": [1]})

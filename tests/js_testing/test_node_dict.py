@@ -1,5 +1,5 @@
 import znsocket
-
+from unittest.mock import MagicMock, call
 
 def test_dict_keys_single_znsocket(znsclient, run_npm_test, request):
     dct = znsocket.Dict(r=znsclient, key="dict:test")
@@ -43,7 +43,14 @@ def test_dict_getitem_znsocket(znsclient, run_npm_test, request):
 
 
 def test_dict_setitem_znsocket(znsclient, run_npm_test, request):
+    dct = znsocket.Dict(r=znsclient, socket=znsclient, key="dict:test")
+    mock = MagicMock()
+    dct.on_refresh(mock)
     run_npm_test(request.node.name, client_url=znsclient.address)
-    dct = znsocket.Dict(r=znsclient, key="dict:test")
+
+    assert mock.call_count == 2
+    assert mock.call_args_list == [call({'keys': ['b']}), call({'keys': ['a']})]
+
     assert dct["a"] == {"lorem": "ipsum"}
     assert dct["b"] == 25
+

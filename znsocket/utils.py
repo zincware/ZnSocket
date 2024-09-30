@@ -228,7 +228,7 @@ class List(MutableSequence, ZnSocketObject):
         if self.socket is None:
             raise ValueError("No socket connection available")
 
-        self.socket.refresh_callbacks.append(callback)
+        self.socket.refresh_callbacks[self.key] = callback
 
 
 class Dict(MutableMapping, ZnSocketObject):
@@ -357,4 +357,4 @@ class Dict(MutableMapping, ZnSocketObject):
         if self.socket is None:
             raise ValueError("No socket connection available")
 
-        self.socket.refresh_callbacks.append(callback)
+        self.socket.refresh_callbacks[self.key] = callback

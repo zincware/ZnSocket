@@ -4,7 +4,7 @@ let client;
 let lst;
 
 beforeEach(async () => {
-  client = new createClient({ url: process.env.ZNSOCKET_URL });
+  client = createClient({ url: process.env.ZNSOCKET_URL });
   client.on("error", (err) => console.error("Redis Client Error", err));
   await client.connect();
   lst = new List({ client: client, key: "list:test" });

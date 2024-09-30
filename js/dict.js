@@ -1,8 +1,9 @@
 // Python dict uses
 // hget, hset, hdel, hexists, hlen, hkeys, hvals, hgetall
 export class Dict {
-  constructor({ client, key, callbacks }) {
+  constructor({ client, socket, key, callbacks }) {
     this._client = client;
+    this._socket = socket;
     this._key = key;
     this._callbacks = callbacks;
   }
@@ -14,6 +15,9 @@ export class Dict {
   async setitem(key, value) {
     if (this._callbacks && this._callbacks.setitem) {
       await this._callbacks.setitem(value);
+    }
+    if (this._socket) {
+      this._socket.emit("refresh", { target: this._key, data: {keys: [key]} });
     }
     return this._client.hSet(
       this._key,
@@ -46,5 +50,15 @@ export class Dict {
     return Object.entries(entries).map(
       ([key, value]) => (JSON.parse(key), JSON.parse(value)),
     );
+  }
+
+  add_refresh_listener(callback) {
+    if (this._socket) {
+      this._socket.on("refresh", async ({ target, data }) => {
+        if (target === this._key) {
+          callback(data);
+        }
+      });
+    }
   }
 }

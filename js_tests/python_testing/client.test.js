@@ -3,7 +3,7 @@ import { createClient } from "znsocket";
 let client;
 
 beforeEach(async () => {
-  client = new createClient({ url: process.env.ZNSOCKET_URL });
+  client = createClient({ url: process.env.ZNSOCKET_URL });
 });
 
 afterEach(async () => {

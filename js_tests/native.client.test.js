@@ -5,7 +5,7 @@ const ZNSOCKET_URL = "http://127.0.0.1:4748";
 let client;
 
 beforeEach(async () => {
-  client = new createClient({ url: ZNSOCKET_URL });
+  client = createClient({ url: ZNSOCKET_URL });
   // client = createClient()
   await client.connect();
 });

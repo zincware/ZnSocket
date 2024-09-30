@@ -2,10 +2,11 @@
 // llen, lindex, lset, lrem, rpush, lpush, linsert, lrange, rpush
 
 export class List {
-  constructor({ client, key, callbacks }) {
+  constructor({ client, key, socket, callbacks }) {
     this._client = client;
     this._key = key;
     this._callbacks = callbacks;
+    this._socket = socket;
   }
 
   async len() {
@@ -15,6 +16,9 @@ export class List {
   async append(value) {
     if (this._callbacks && this._callbacks.append) {
       await this._callbacks.append(value);
+    }
+    if (this._socket) {
+      this._socket.emit("refresh", { target: this._key, data: {start: await this.len()} });
     }
     return this._client.rPush(this._key, JSON.stringify(value));
   }
@@ -32,6 +36,16 @@ export class List {
       return null;
     }
     return JSON.parse(value);
+  }
+
+  add_refresh_listener(callback) {
+    if (this._socket) {
+      this._socket.on("refresh", async ({ target, data }) => {
+        if (target === this._key) {
+          callback(data);
+        }
+      });
+    }
   }
 
   [Symbol.asyncIterator]() {
