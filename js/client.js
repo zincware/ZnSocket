@@ -26,7 +26,7 @@ export class createClient {
     this._socket.on(event, callback);
   }
 
-  close() {
+  disconnect() {
     this._socket.close();
   }
 
@@ -42,7 +42,7 @@ export class createClient {
   lIndex(key, index) {
     return new Promise((resolve, reject) => {
       this._socket.emit("lindex", { name: key, index: index }, (data) => {
-        resolve(data);
+        resolve(data || null);
       });
     });
   }
@@ -90,7 +90,7 @@ export class createClient {
   hGet(key, field) {
     return new Promise((resolve, reject) => {
       this._socket.emit("hget", { name: key, key: field }, (data) => {
-        resolve(data);
+        resolve(data || null);
       });
     });
   }
@@ -118,7 +118,11 @@ export class createClient {
   hExists(key, field) {
     return new Promise((resolve, reject) => {
       this._socket.emit("hexists", { name: key, key: field }, (data) => {
-        resolve(data);
+        if (data === 1) {
+          resolve(true);
+        }else{
+          resolve(false);
+        }
       });
     });
   }
@@ -155,7 +159,7 @@ export class createClient {
     });
   }
 
-  flushall() {
+  flushAll() {
     return new Promise((resolve, reject) => {
       this._socket.emit("flushall", {}, (data) => {
         resolve("OK"); // TODO

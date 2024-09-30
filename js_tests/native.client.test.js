@@ -1,15 +1,18 @@
 import { createClient } from "znsocket";
+// import { createClient } from "redis";
 
 const ZNSOCKET_URL = "http://127.0.0.1:4748";
 let client;
 
 beforeEach(async () => {
   client = new createClient({ url: ZNSOCKET_URL });
+  // client = createClient()
+  await client.connect();
 });
 
 afterEach(async () => {
-  await client.flushall();
-  await client.close();
+  await client.flushAll();
+  await client.disconnect();
 });
 
 test("native_client_rPush_lLen", async () => {
@@ -36,6 +39,7 @@ test("native_client_lRem", async () => {
 
   expect(await client.lLen("list:test")).toBe(2);
   expect(await client.lIndex("list:test", 0)).toBe("b");
+  expect(await client.lIndex("list:test", 10)).toBe(null);
 });
 
 test("native_client_lPush", async () => {
@@ -49,15 +53,17 @@ test("native_client_lPush", async () => {
 test("native_client_hSet_hGet", async () => {
   await client.hSet("hash:test", "field1", "value1");
   expect(await client.hGet("hash:test", "field1")).toBe("value1");
+  expect(await client.hGet("hash:test", "field2")).toBe(null);
+
 });
 
 test("native_client_hDel_hExists", async () => {
   await client.hSet("hash:test", "field1", "value1");
 
-  expect(await client.hExists("hash:test", "field1")).toBe(1);
+  expect(await client.hExists("hash:test", "field1")).toBe(true);
 
   await client.hDel("hash:test", "field1");
-  expect(await client.hExists("hash:test", "field1")).toBe(0);
+  expect(await client.hExists("hash:test", "field1")).toBe(false);
 });
 
 test("native_client_hLen_hKeys_hVals", async () => {

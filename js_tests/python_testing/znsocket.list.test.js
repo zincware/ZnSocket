@@ -11,7 +11,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await client.close();
+  await client.disconnect();
 });
 
 test("test_list_append_znsocket", async () => {

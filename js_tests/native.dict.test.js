@@ -9,8 +9,8 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await client.flushall();
-  await client.close();
+  await client.flushAll();
+  await client.disconnect();
 });
 
 test("native_dict_setitem_callback", async () => {

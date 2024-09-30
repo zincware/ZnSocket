@@ -7,7 +7,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await client.close();
+  await client.disconnect();
 });
 
 test("test_client_lLen", async () => {
