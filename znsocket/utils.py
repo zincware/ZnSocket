@@ -1,6 +1,11 @@
 import typing as t
 from collections.abc import MutableMapping, MutableSequence
 
+import znjson
+
+from znsocket.abc import RefreshDataTypeDict, RefreshTypeDict
+from znsocket.client import Client
+
 
 class ListCallbackTypedDict(t.TypedDict):
     setitem: t.Callable[[list[int], t.Any], None]
@@ -17,10 +22,6 @@ class DictCallbackTypedDict(t.TypedDict):
 DictRepr = t.Union[t.Literal["full"], t.Literal["keys"], t.Literal["minimal"]]
 ListRepr = t.Union[t.Literal["full"], t.Literal["length"], t.Literal["minimal"]]
 
-import znjson
-
-from .client import Client
-
 
 class ZnSocketObject:
     """Base class for all znsocket objects."""
@@ -31,6 +32,7 @@ class List(MutableSequence, ZnSocketObject):
         self,
         r: Client | t.Any,
         key: str,
+        socket: Client | None = None,
         callbacks: ListCallbackTypedDict | None = None,
         repr_type: ListRepr = "length",
     ):
@@ -43,6 +45,8 @@ class List(MutableSequence, ZnSocketObject):
         ----------
         r: znsocket.Client|redis.Redis
             Connection to the server.
+        socket: znsocket.Client|None
+            Socket connection for callbacks.
         key: str
             The key in the server to store the data from this list.
         callbacks: dict[str, Callable]
@@ -59,6 +63,8 @@ class List(MutableSequence, ZnSocketObject):
         self.redis = r
         self.key = key
         self.repr_type = repr_type
+        self.socket = socket
+        self._on_refresh = lambda x: None
 
         self._callbacks = {
             "setitem": None,
@@ -131,6 +137,10 @@ class List(MutableSequence, ZnSocketObject):
 
         if callback := self._callbacks["setitem"]:
             callback(index, value)
+        if self.socket is not None:
+            refresh: RefreshTypeDict = {"indices": index}
+            refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
+            self.socket.sio.emit(f"refresh", refresh_data, namespace="/znsocket")
 
     def __delitem__(self, index: int | list | slice) -> None:
         single_item = isinstance(index, int)
@@ -145,6 +155,11 @@ class List(MutableSequence, ZnSocketObject):
 
         if self._callbacks["delitem"]:
             self._callbacks["delitem"](index)
+
+        if self.socket is not None:
+            refresh: RefreshTypeDict = {"start": min(index), "stop": None}
+            refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
+            self.socket.sio.emit(f"refresh", refresh_data, namespace="/znsocket")
 
     def insert(self, index: int, value: t.Any) -> None:
         if isinstance(value, Dict):
@@ -164,6 +179,11 @@ class List(MutableSequence, ZnSocketObject):
 
         if callback := self._callbacks["insert"]:
             callback(index, value)
+
+        if self.socket is not None:
+            refresh: RefreshTypeDict = {"start": index, "stop": None}
+            refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
+            self.socket.sio.emit(f"refresh", refresh_data, namespace="/znsocket")
 
     def __eq__(self, value: object) -> bool:
         if isinstance(value, List):
@@ -199,6 +219,16 @@ class List(MutableSequence, ZnSocketObject):
                 raise ValueError("Can not set circular reference to self")
             value = f"znsocket.List:{value.key}"
         self.redis.rpush(self.key, znjson.dumps(value))
+        if self.socket is not None:
+            refresh: RefreshTypeDict = {"indices": [len(self) - 1]}
+            refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
+            self.socket.sio.emit(f"refresh", refresh_data, namespace="/znsocket")
+
+    def on_refresh(self, callback: t.Callable[[RefreshDataTypeDict], None]) -> None:
+        if self.socket is None:
+            raise ValueError("No socket connection available")
+
+        self.socket.refresh_callbacks.append(callback)
 
 
 class Dict(MutableMapping, ZnSocketObject):
@@ -206,6 +236,7 @@ class Dict(MutableMapping, ZnSocketObject):
         self,
         r: Client | t.Any,
         key: str,
+        socket: Client | None = None,
         callbacks: DictCallbackTypedDict | None = None,
         repr_type: DictRepr = "keys",
     ):
@@ -218,6 +249,8 @@ class Dict(MutableMapping, ZnSocketObject):
         ----------
         r: znsocket.Client|redis.Redis
             Connection to the server.
+        socket: znsocket.Client|None
+            Socket connection for callbacks.
         key: str
             The key in the server to store the data from this dict.
         callbacks: dict[str, Callable]
@@ -228,6 +261,7 @@ class Dict(MutableMapping, ZnSocketObject):
             Reduce for better performance.
         """
         self.redis = r
+        self.socket = socket
         self.key = key
         self.repr_type = repr_type
         self._callbacks = {
@@ -261,6 +295,10 @@ class Dict(MutableMapping, ZnSocketObject):
         self.redis.hset(self.key, znjson.dumps(key), znjson.dumps(value))
         if callback := self._callbacks["setitem"]:
             callback(key, value)
+        if self.socket is not None:
+            refresh: RefreshTypeDict = {"keys": [key]}
+            refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
+            self.socket.sio.emit(f"refresh", refresh_data, namespace="/znsocket")
 
     def __delitem__(self, key: str) -> None:
         if not self.redis.hexists(self.key, znjson.dumps(key)):
@@ -268,6 +306,10 @@ class Dict(MutableMapping, ZnSocketObject):
         self.redis.hdel(self.key, znjson.dumps(key))
         if callback := self._callbacks["delitem"]:
             callback(key)
+        if self.socket is not None:
+            refresh: RefreshTypeDict = {"keys": [key]}
+            refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
+            self.socket.sio.emit(f"refresh", refresh_data, namespace="/znsocket")
 
     def __iter__(self):
         return iter(self.keys())
@@ -310,3 +352,9 @@ class Dict(MutableMapping, ZnSocketObject):
         elif isinstance(value, dict):
             return dict(self) == value
         return False
+
+    def on_refresh(self, callback: t.Callable[[RefreshDataTypeDict], None]) -> None:
+        if self.socket is None:
+            raise ValueError("No socket connection available")
+
+        self.socket.refresh_callbacks.append(callback)

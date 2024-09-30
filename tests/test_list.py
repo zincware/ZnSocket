@@ -5,6 +5,7 @@ import numpy.testing as npt
 import pytest
 
 import znsocket
+import znsocket.client
 from znsocket.utils import ZnSocketObject
 
 
@@ -334,3 +335,95 @@ def test_list_nested(a, b, request):
     lst2.extend([lst1, lst1])
 
     assert lst2 == [["1", "2", "3", "4"], ["1", "2", "3", "4"]]
+
+
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
+def test_list_refresh_append(client, request, znsclient):
+    r = request.getfixturevalue(client)
+    lst = znsocket.List(r=r, key="list:test", socket=znsclient)
+    mock = MagicMock()
+    lst.on_refresh(mock)
+    assert len(lst) == 0
+    lst.append(1)
+    znsclient.sio.sleep(0.01)
+    assert len(lst) == 1
+    mock.assert_called_once_with({"target": "list:test", "data": {"indices": [0]}})
+
+    # append again
+    lst.append(2)
+    znsclient.sio.sleep(0.01)
+    assert len(lst) == 2
+    mock.assert_called_with({"target": "list:test", "data": {"indices": [1]}})
+
+
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
+def test_list_refresh_insert(client, request, znsclient):
+    r = request.getfixturevalue(client)
+    lst = znsocket.List(r=r, key="list:test", socket=znsclient)
+    mock = MagicMock()
+    lst.on_refresh(mock)
+    assert len(lst) == 0
+    lst.insert(0, 1)
+    znsclient.sio.sleep(0.01)
+    assert len(lst) == 1
+    mock.assert_called_once_with(
+        {"target": "list:test", "data": {"start": 0, "stop": None}}
+    )
+
+    # insert again
+    lst.insert(1, 2)
+    znsclient.sio.sleep(0.01)
+    assert len(lst) == 2
+    mock.assert_called_with({"target": "list:test", "data": {"start": 1, "stop": None}})
+
+
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
+def test_list_refresh_delitem(client, request, znsclient):
+    r = request.getfixturevalue(client)
+    lst = znsocket.List(r=r, key="list:test", socket=znsclient)
+    mock = MagicMock()
+    lst.on_refresh(mock)
+    lst.extend([1, 2, 3])
+    znsclient.sio.sleep(0.01)
+    # assert mock called 3 times
+    assert mock.call_count == 3
+    mock.reset_mock()
+
+    assert len(lst) == 3
+    lst.pop()
+    znsclient.sio.sleep(0.01)
+    assert len(lst) == 2
+    mock.assert_called_once_with(
+        {"target": "list:test", "data": {"start": -1, "stop": None}}
+    )
+
+    # pop again
+    del lst[0]
+    znsclient.sio.sleep(0.01)
+    assert len(lst) == 1
+    mock.assert_called_with({"target": "list:test", "data": {"start": 0, "stop": None}})
+
+
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
+def test_list_refresh_setitem(client, request, znsclient):
+    r = request.getfixturevalue(client)
+    lst = znsocket.List(r=r, key="list:test", socket=znsclient)
+    mock = MagicMock()
+    lst.on_refresh(mock)
+    lst.extend([1, 2, 3])
+    znsclient.sio.sleep(0.01)
+    # assert mock called 3 times
+    assert mock.call_count == 3
+    mock.reset_mock()
+
+    assert len(lst) == 3
+    lst[0] = 4
+    znsclient.sio.sleep(0.01)
+    assert len(lst) == 3
+    mock.assert_called_once_with({"target": "list:test", "data": {"indices": [0]}})
+
+    # set again
+    lst[1] = 5
+    znsclient.sio.sleep(0.01)
+    assert len(lst) == 3
+    mock.assert_called_with({"target": "list:test", "data": {"indices": [1]}})
