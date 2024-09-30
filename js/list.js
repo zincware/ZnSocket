@@ -37,7 +37,7 @@ export class List {
   [Symbol.asyncIterator]() {
     let index = 0;
     let length;
-  
+
     return {
       next: async () => {
         // Get the current length of the list from the List instance
@@ -45,12 +45,12 @@ export class List {
           // only get it once, for better performance / might miss some updates
           length = await this.len();
         }
-  
+
         // Check if we've reached the end of the list
         if (index >= length) {
           return { value: undefined, done: true };
         }
-  
+
         // Get the item at the current index from the List instance
         const value = await this.getitem(index);
         index += 1;
