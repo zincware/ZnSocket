@@ -3,24 +3,15 @@ from collections.abc import MutableMapping, MutableSequence
 
 import znjson
 
-from znsocket.abc import RefreshDataTypeDict, RefreshTypeDict
+from znsocket.abc import (
+    DictCallbackTypedDict,
+    DictRepr,
+    ListCallbackTypedDict,
+    ListRepr,
+    RefreshDataTypeDict,
+    RefreshTypeDict,
+)
 from znsocket.client import Client
-
-
-class ListCallbackTypedDict(t.TypedDict):
-    setitem: t.Callable[[list[int], t.Any], None]
-    delitem: t.Callable[[list[int], t.Any], None]
-    insert: t.Callable[[int, t.Any], None]
-    append: t.Callable[[t.Any], None]
-
-
-class DictCallbackTypedDict(t.TypedDict):
-    setitem: t.Callable[[str, t.Any], None]
-    delitem: t.Callable[[str, t.Any], None]
-
-
-DictRepr = t.Union[t.Literal["full"], t.Literal["keys"], t.Literal["minimal"]]
-ListRepr = t.Union[t.Literal["full"], t.Literal["length"], t.Literal["minimal"]]
 
 
 class ZnSocketObject:

@@ -284,9 +284,11 @@ def test_dict_refresh_setitem(client, request, znsclient):
 
     dct["a"] = 1
     assert dct == {"a": 1}
+    znsclient.sio.sleep(0.2)
     mock.assert_called_with({"keys": ["a"]})
     dct["b"] = [1, 2, 3]
     assert dct == {"a": 1, "b": [1, 2, 3]}
+    znsclient.sio.sleep(0.2)
     mock.assert_called_with({"keys": ["b"]})
 
 
@@ -299,7 +301,9 @@ def test_dict_refresh_delitem(client, request, znsclient):
 
     dct["a"] = 1
     assert dct == {"a": 1}
+    znsclient.sio.sleep(0.2)
     mock.assert_called_with({"keys": ["a"]})
     del dct["a"]
     assert dct == {}
+    znsclient.sio.sleep(0.2)
     mock.assert_called_with({"keys": ["a"]})
