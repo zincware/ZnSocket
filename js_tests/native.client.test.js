@@ -54,7 +54,6 @@ test("native_client_hSet_hGet", async () => {
   await client.hSet("hash:test", "field1", "value1");
   expect(await client.hGet("hash:test", "field1")).toBe("value1");
   expect(await client.hGet("hash:test", "field2")).toBe(null);
-
 });
 
 test("native_client_hDel_hExists", async () => {

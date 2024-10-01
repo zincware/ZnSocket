@@ -1,11 +1,10 @@
 import { io, Manager } from "socket.io-client"; // Removed the unnecessary 'constants' import
 
-
 export const createClient = ({ url, namespace = "znsocket", socket }) => {
   return new Client({ url, namespace, socket });
-}
+};
 
-class Client {
+export class Client {
   constructor({ url, namespace = "znsocket", socket }) {
     // Correct concatenation of URL and namespace for socket connection
     if (socket) {
@@ -29,6 +28,10 @@ class Client {
 
   on(event, callback) {
     this._socket.on(event, callback);
+  }
+
+  emit(event, data) {
+    this._socket.emit(event, data);
   }
 
   disconnect() {
@@ -125,7 +128,7 @@ class Client {
       this._socket.emit("hexists", { name: key, key: field }, (data) => {
         if (data === 1) {
           resolve(true);
-        }else{
+        } else {
           resolve(false);
         }
       });

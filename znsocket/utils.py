@@ -38,6 +38,7 @@ class List(MutableSequence, ZnSocketObject):
             Connection to the server.
         socket: znsocket.Client|None
             Socket connection for callbacks.
+            If None, the connection from `r` will be used if it is a Client.
         key: str
             The key in the server to store the data from this list.
         callbacks: dict[str, Callable]
@@ -54,7 +55,7 @@ class List(MutableSequence, ZnSocketObject):
         self.redis = r
         self.key = key
         self.repr_type = repr_type
-        self.socket = socket
+        self.socket = socket if socket else (r if isinstance(r, Client) else None)
         self._on_refresh = lambda x: None
 
         self._callbacks = {
@@ -242,6 +243,7 @@ class Dict(MutableMapping, ZnSocketObject):
             Connection to the server.
         socket: znsocket.Client|None
             Socket connection for callbacks.
+            If None, the connection from `r` will be used if it is a Client.
         key: str
             The key in the server to store the data from this dict.
         callbacks: dict[str, Callable]
@@ -252,7 +254,7 @@ class Dict(MutableMapping, ZnSocketObject):
             Reduce for better performance.
         """
         self.redis = r
-        self.socket = socket
+        self.socket = socket if socket else (r if isinstance(r, Client) else None)
         self.key = key
         self.repr_type = repr_type
         self._callbacks = {

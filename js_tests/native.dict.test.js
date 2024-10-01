@@ -25,13 +25,12 @@ test("native_dict_setitem_callback", async () => {
   expect(callback_value).toBe(true);
 });
 
-
 test("native_dict_setitem_socket_callback", async () => {
   let callback_value = false;
-  lst = new Dict({ client: client, key: "list:test", socket: client._socket });
+  lst = new Dict({ client: client, key: "list:test" });
   lst.add_refresh_listener((data) => {
     callback_value = data;
   });
   await lst.setitem("key", "value");
-  expect(callback_value).toEqual({"keys": ["key"]});
+  expect(callback_value).toEqual({ keys: ["key"] });
 });

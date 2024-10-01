@@ -1,12 +1,13 @@
 // Python list uses
 // llen, lindex, lset, lrem, rpush, lpush, linsert, lrange, rpush
+import { Client as ZnSocketClient } from "./client.js";
 
 export class List {
   constructor({ client, key, socket, callbacks }) {
     this._client = client;
     this._key = key;
     this._callbacks = callbacks;
-    this._socket = socket;
+    this._socket = socket || (client instanceof ZnSocketClient ? client : null);
   }
 
   async len() {
@@ -18,7 +19,10 @@ export class List {
       await this._callbacks.append(value);
     }
     if (this._socket) {
-      this._socket.emit("refresh", { target: this._key, data: {start: await this.len()} });
+      this._socket.emit("refresh", {
+        target: this._key,
+        data: { start: await this.len() },
+      });
     }
     return this._client.rPush(this._key, JSON.stringify(value));
   }
@@ -55,7 +59,7 @@ export class List {
     return {
       next: async () => {
         // Get the current length of the list from the List instance
-        if (length === undefined){
+        if (length === undefined) {
           // only get it once, for better performance / might miss some updates
           length = await this.len();
         }
@@ -70,7 +74,7 @@ export class List {
         index += 1;
 
         return { value, done: false };
-      }
+      },
     };
   }
 }

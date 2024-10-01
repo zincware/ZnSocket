@@ -45,7 +45,7 @@ def test_dict_getitem_znsocket(znsclient, run_npm_test, request):
 
 
 def test_dict_setitem_znsocket(znsclient, run_npm_test, request):
-    dct = znsocket.Dict(r=znsclient, socket=znsclient, key="dict:test")
+    dct = znsocket.Dict(r=znsclient, key="dict:test")
     mock = MagicMock()
     dct.on_refresh(mock)
     run_npm_test(request.node.name, client_url=znsclient.address)

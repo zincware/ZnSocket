@@ -1,9 +1,12 @@
 // Python dict uses
 // hget, hset, hdel, hexists, hlen, hkeys, hvals, hgetall
+import { Client as ZnSocketClient } from "./client.js";
+
 export class Dict {
   constructor({ client, socket, key, callbacks }) {
     this._client = client;
-    this._socket = socket;
+    this._socket = socket || (client instanceof ZnSocketClient ? client : null);
+    // this._socket = socket;
     this._key = key;
     this._callbacks = callbacks;
   }
@@ -17,7 +20,10 @@ export class Dict {
       await this._callbacks.setitem(value);
     }
     if (this._socket) {
-      this._socket.emit("refresh", { target: this._key, data: {keys: [key]} });
+      this._socket.emit("refresh", {
+        target: this._key,
+        data: { keys: [key] },
+      });
     }
     return this._client.hSet(
       this._key,

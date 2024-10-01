@@ -7,7 +7,7 @@ beforeEach(async () => {
   client = createClient({ url: process.env.ZNSOCKET_URL });
   client.on("error", (err) => console.error("Redis Client Error", err));
   await client.connect();
-  dct = new Dict({ client: client, key: "dict:test", socket: client._socket });
+  dct = new Dict({ client: client, key: "dict:test" });
 });
 
 afterEach(async () => {

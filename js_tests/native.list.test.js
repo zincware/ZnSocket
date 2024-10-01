@@ -39,7 +39,6 @@ test("native_list_setitem_callback", async () => {
   expect(callback_value).toBe(true);
 });
 
-
 test("native_list_iter", async () => {
   lst = new List({ client: client, key: "list:test" });
 
@@ -73,14 +72,12 @@ test("native_list_iter", async () => {
   expect(newResult).toEqual(["item1", "item2", "item3", "item4"]);
 });
 
-
 test("native_list_getitem", async () => {
   lst = new List({ client: client, key: "list:test" });
   await lst.append(5);
   expect(await lst.getitem(0)).toBe(5);
   expect(await lst.getitem(1)).toBe(null);
 });
-
 
 test("native_list_len", async () => {
   lst = new List({ client: client, key: "list:test" });
@@ -92,7 +89,7 @@ test("native_list_len", async () => {
 
 test("native_list_append_socket_callback", async () => {
   let callback_value = false;
-  lst = new List({ client: client, key: "list:test", socket: client._socket });
+  lst = new List({ client: client, key: "list:test" });
   lst.add_refresh_listener((data) => {
     callback_value = data;
   });
