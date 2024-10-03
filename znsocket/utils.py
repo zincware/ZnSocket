@@ -19,7 +19,16 @@ class ZnSocketObject:
     """Base class for all znsocket objects."""
 
 
-# TODO: List/Dict support znjson converter via cls=znjson.ZnEncoder.from_converters([ASEConverter]), ...
+def _encode(self, data: t.Any) -> str:
+    if self.converter is not None:
+        return json.dumps(data, cls=znjson.ZnEncoder.from_converters(self.converter))
+    return json.dumps(data)
+
+
+def _decode(self, data: str) -> t.Any:
+    if self.converter is not None:
+        return json.loads(data, cls=znjson.ZnDecoder.from_converters(self.converter))
+    return json.loads(data)
 
 
 class List(MutableSequence, ZnSocketObject):
@@ -89,12 +98,7 @@ class List(MutableSequence, ZnSocketObject):
             if value is None:
                 item = None
             else:
-                if self.converter is not None:
-                    item = json.loads(
-                        value, cls=znjson.ZnDecoder.from_converters(self.converter)
-                    )
-                else:
-                    item = json.loads(value)
+                item = _decode(self, value)
             if item is None:
                 raise IndexError("list index out of range")
             if isinstance(item, str):
@@ -135,14 +139,7 @@ class List(MutableSequence, ZnSocketObject):
                 if value.key == self.key:
                     raise ValueError("Can not set circular reference to self")
                 v = f"znsocket.List:{v.key}"
-            if self.converter is not None:
-                self.redis.lset(
-                    self.key,
-                    i,
-                    json.dumps(v, cls=znjson.ZnEncoder.from_converters(self.converter)),
-                )
-            else:
-                self.redis.lset(self.key, i, json.dumps(v))
+            self.redis.lset(self.key, i, _encode(self, v))
 
         if callback := self._callbacks["setitem"]:
             callback(index, value)
@@ -179,38 +176,12 @@ class List(MutableSequence, ZnSocketObject):
             value = f"znsocket.List:{value.key}"
 
         if index >= len(self):
-            if self.converter is not None:
-                self.redis.rpush(
-                    self.key,
-                    json.dumps(
-                        value, cls=znjson.ZnEncoder.from_converters(self.converter)
-                    ),
-                )
-            else:
-                self.redis.rpush(self.key, json.dumps(value))
+            self.redis.rpush(self.key, _encode(self, value))
         elif index == 0:
-            if self.converter is not None:
-                self.redis.lpush(
-                    self.key,
-                    json.dumps(
-                        value, cls=znjson.ZnEncoder.from_converters(self.converter)
-                    ),
-                )
-            else:
-                self.redis.lpush(self.key, json.dumps(value))
+            self.redis.lpush(self.key, _encode(self, value))
         else:
             pivot = self.redis.lindex(self.key, index)
-            if self.converter is not None:
-                self.redis.linsert(
-                    self.key,
-                    "BEFORE",
-                    pivot,
-                    json.dumps(
-                        value, cls=znjson.ZnEncoder.from_converters(self.converter)
-                    ),
-                )
-            else:
-                self.redis.linsert(self.key, "BEFORE", pivot, json.dumps(value))
+            self.redis.linsert(self.key, "BEFORE", pivot, _encode(self, value))
 
         if callback := self._callbacks["insert"]:
             callback(index, value)
@@ -234,13 +205,7 @@ class List(MutableSequence, ZnSocketObject):
             return "List(<unknown>)"
         elif self.repr_type == "full":
             data = self.redis.lrange(self.key, 0, -1)
-            if self.converter is not None:
-                data = [
-                    json.loads(i, cls=znjson.ZnDecoder.from_converters(self.converter))
-                    for i in data
-                ]
-            else:
-                data = [json.loads(i) for i in data]
+            data = [_decode(self, i) for i in data]
 
             return f"List({data})"
         else:
@@ -259,13 +224,7 @@ class List(MutableSequence, ZnSocketObject):
             if value.key == self.key:
                 raise ValueError("Can not set circular reference to self")
             value = f"znsocket.List:{value.key}"
-        if self.converter is not None:
-            self.redis.rpush(
-                self.key,
-                json.dumps(value, cls=znjson.ZnEncoder.from_converters(self.converter)),
-            )
-        else:
-            self.redis.rpush(self.key, json.dumps(value))
+        self.redis.rpush(self.key, _encode(self, value))
         if self.socket is not None:
             refresh: RefreshTypeDict = {"indices": [len(self) - 1]}
             refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
@@ -329,12 +288,7 @@ class Dict(MutableMapping, ZnSocketObject):
         value = self.redis.hget(self.key, json.dumps(key))
         if value is None:
             raise KeyError(key)  # TODO: items can not be None?
-        if self.converter is not None:
-            value = json.loads(
-                value, cls=znjson.ZnDecoder.from_converters(self.converter)
-            )
-        else:
-            value = json.loads(value)
+        value = _decode(self, value)
         if isinstance(value, str):
             if value.startswith("znsocket.List:"):
                 key = value.split(":", 1)[1]
@@ -351,15 +305,7 @@ class Dict(MutableMapping, ZnSocketObject):
             if value.key == self.key:
                 raise ValueError("Can not set circular reference to self")
             value = f"znsocket.Dict:{value.key}"
-
-        if self.converter is not None:
-            self.redis.hset(
-                self.key,
-                json.dumps(key),
-                json.dumps(value, cls=znjson.ZnEncoder.from_converters(self.converter)),
-            )
-        else:
-            self.redis.hset(self.key, json.dumps(key), json.dumps(value))
+        self.redis.hset(self.key, _encode(self, key), _encode(self, value))
         if callback := self._callbacks["setitem"]:
             callback(key, value)
         if self.socket is not None:
@@ -368,12 +314,7 @@ class Dict(MutableMapping, ZnSocketObject):
             self.socket.sio.emit(f"refresh", refresh_data, namespace="/znsocket")
 
     def __delitem__(self, key: str) -> None:
-        if self.converter is not None:
-            json_key = json.dumps(
-                key, cls=znjson.ZnEncoder.from_converters(self.converter)
-            )
-        else:
-            json_key = json.dumps(key)
+        json_key = _encode(self, key)
 
         if not self.redis.hexists(self.key, json_key):
             raise KeyError(key)
@@ -392,49 +333,22 @@ class Dict(MutableMapping, ZnSocketObject):
         return self.redis.hlen(self.key)
 
     def keys(self) -> list[t.Any]:
-        if self.converter is not None:
-            return [
-                json.loads(k, cls=znjson.ZnDecoder.from_converters(self.converter))
-                for k in self.redis.hkeys(self.key)
-            ]
-        return [json.loads(k) for k in self.redis.hkeys(self.key)]
+        return [_decode(self, k) for k in self.redis.hkeys(self.key)]
 
     def values(self) -> list[t.Any]:
         response = []
         for v in self.redis.hvals(self.key):
-            if self.converter is not None:
-                response.append(
-                    json.loads(v, cls=znjson.ZnDecoder.from_converters(self.converter))
-                )
-            else:
-                response.append(json.loads(v))
+            response.append(_decode(self, v))
         return response
 
     def items(self) -> list[t.Tuple[t.Any, t.Any]]:
         response = []
         for k, v in self.redis.hgetall(self.key).items():
-            if self.converter is not None:
-                response.append(
-                    (
-                        json.loads(
-                            k, cls=znjson.ZnDecoder.from_converters(self.converter)
-                        ),
-                        json.loads(
-                            v, cls=znjson.ZnDecoder.from_converters(self.converter)
-                        ),
-                    )
-                )
-            else:
-                response.append((json.loads(k), json.loads(v)))
+            response.append((_decode(self, k), _decode(self, v)))
         return response
 
     def __contains__(self, key: object) -> bool:
-        if self.converter is not None:
-            return self.redis.hexists(
-                self.key,
-                json.dumps(key, cls=znjson.ZnEncoder.from_converters(self.converter)),
-            )
-        return self.redis.hexists(self.key, json.dumps(key))
+        return self.redis.hexists(self.key, _encode(self, key))
 
     def __repr__(self) -> str:
         if self.repr_type == "keys":
