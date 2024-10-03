@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 import numpy as np
 import numpy.testing as npt
 import pytest
+import znjson
 
 import znsocket
 from znsocket.utils import ZnSocketObject
@@ -208,7 +209,9 @@ def test_dct_None_key_values(client, request):
 def test_dct_numpy(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
-        dct = znsocket.Dict(r=c, key="list:test")
+        dct = znsocket.Dict(
+            r=c, key="list:test", converter=[znjson.converter.NumpyConverter]
+        )
     else:
         dct = {}
 
