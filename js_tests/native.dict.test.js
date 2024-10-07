@@ -28,7 +28,7 @@ test("native_dict_setitem_callback", async () => {
 test("native_dict_setitem_socket_callback", async () => {
   let callback_value = false;
   lst = new Dict({ client: client, key: "list:test" });
-  lst.add_refresh_listener((data) => {
+  lst.onRefresh((data) => {
     callback_value = data;
   });
   await lst.setitem("key", "value");

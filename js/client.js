@@ -29,6 +29,9 @@ export class Client {
   on(event, callback) {
     this._socket.on(event, callback);
   }
+  off(event, callback) {
+    this._socket.off(event, callback);
+  }
 
   emit(event, data) {
     this._socket.emit(event, data);

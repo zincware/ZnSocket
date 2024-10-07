@@ -9,6 +9,7 @@ export class Dict {
     // this._socket = socket;
     this._key = key;
     this._callbacks = callbacks;
+    this._refresh_callback = undefined;
   }
 
   async len() {
@@ -58,13 +59,22 @@ export class Dict {
     );
   }
 
-  add_refresh_listener(callback) {
+  onRefresh(callback) {
     if (this._socket) {
-      this._socket.on("refresh", async ({ target, data }) => {
+      this._refresh_callback = async ({ target, data }) => {
         if (target === this._key) {
           callback(data);
         }
-      });
+      };
+      this._socket.on("refresh", this._refresh_callback);
+    } else {
+      throw new Error("Socket not available");
+    }
+  }
+
+  offRefresh() {
+    if (this._socket && this._refresh_callback) {
+      this._socket.off("refresh", this._refresh_callback);
     }
   }
 }
