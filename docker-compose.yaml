@@ -1,0 +1,10 @@
+services:
+  znsocket:
+    image: pythonf/znsocket:latest
+    ports:
+      - "4748:4748"
+    healthcheck:
+      test: python healthcheck.py
+      interval: 10s
+      timeout: 5s
+      retries: 5

@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 import numpy as np
 import numpy.testing as npt
 import pytest
+import znjson
 
 import znsocket
 from znsocket.utils import ZnSocketObject
@@ -208,7 +209,9 @@ def test_dct_None_key_values(client, request):
 def test_dct_numpy(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
-        dct = znsocket.Dict(r=c, key="list:test")
+        dct = znsocket.Dict(
+            r=c, key="list:test", converter=[znjson.converter.NumpyConverter]
+        )
     else:
         dct = {}
 
@@ -273,3 +276,37 @@ def test_dict_nested(a, b, request):
 
     assert dct2 == {"dct1": {"a": "1", "b": "2"}, "b": "2"}
     assert dct2["dct1"] == {"a": "1", "b": "2"}
+
+
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
+def test_dict_refresh_setitem(client, request, znsclient):
+    r = request.getfixturevalue(client)
+    dct = znsocket.Dict(r=r, key="dct:test", socket=znsclient)
+    mock = MagicMock()
+    dct.on_refresh(mock)
+
+    dct["a"] = 1
+    assert dct == {"a": 1}
+    znsclient.sio.sleep(0.2)
+    mock.assert_called_with({"keys": ["a"]})
+    dct["b"] = [1, 2, 3]
+    assert dct == {"a": 1, "b": [1, 2, 3]}
+    znsclient.sio.sleep(0.2)
+    mock.assert_called_with({"keys": ["b"]})
+
+
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
+def test_dict_refresh_delitem(client, request, znsclient):
+    r = request.getfixturevalue(client)
+    dct = znsocket.Dict(r=r, key="dct:test", socket=znsclient)
+    mock = MagicMock()
+    dct.on_refresh(mock)
+
+    dct["a"] = 1
+    assert dct == {"a": 1}
+    znsclient.sio.sleep(0.2)
+    mock.assert_called_with({"keys": ["a"]})
+    del dct["a"]
+    assert dct == {}
+    znsclient.sio.sleep(0.2)
+    mock.assert_called_with({"keys": ["a"]})
