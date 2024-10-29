@@ -4,6 +4,8 @@ import typing as t
 import eventlet.wsgi
 import socketio
 
+from znsocket.abc import RefreshDataTypeDict
+
 
 @dataclasses.dataclass
 class Storage:
@@ -221,7 +223,7 @@ class Server:
             async_mode=self.async_mode,
         )
         server_app = socketio.WSGIApp(sio)
-        eventlet.wsgi.server(eventlet.listen(("localhost", self.port)), server_app)
+        eventlet.wsgi.server(eventlet.listen(("0.0.0.0", self.port)), server_app)
 
 
 def get_sio(
@@ -404,5 +406,9 @@ def attach_events(
     def scard(sid, data) -> int:
         name = data.pop("name")
         return storage.scard(name)
+
+    @sio.event(namespace=namespace)
+    def refresh(sid, data: RefreshDataTypeDict) -> None:
+        sio.emit("refresh", data, namespace=namespace)
 
     return sio

@@ -12,12 +12,12 @@ python-socketio = {extras = ["client"], version = "^5.11"}
 eventlet = "^0"
 typer = "^0"
 znjson = "^0.2.3"
+redis = "^5"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.4"
 pytest = "^8.2"
 coverage = "^7.5.1"
-redis = "^5"
 numpy = "^1"
 
 [build-system]
