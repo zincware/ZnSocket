@@ -79,3 +79,15 @@ test("native_dict_values", async () => {
   const values = await dct.values();
   expect(values).toEqual(["A5", "A6"]);
 });
+
+test("native_dict_clear", async () => {
+  dct = new Dict({ client: client, key: "dict:test" });
+  await dct.setitem(5, "A5");
+  await dct.setitem(6, "A6");
+
+  expect(await dct.items()).toEqual([[5, "A5"], [6, "A6"]]);
+
+  await dct.clear();
+  const items = await dct.items();
+  expect(items).toEqual([]);
+});

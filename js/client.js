@@ -126,6 +126,14 @@ export class Client {
     });
   }
 
+  del(key) {
+    return new Promise((resolve, reject) => {
+      this._socket.emit("delete", { name: key }, (data) => {
+        resolve("OK"); // TODO
+      });
+    });
+  }
+
   hExists(key, field) {
     return new Promise((resolve, reject) => {
       this._socket.emit("hexists", { name: key, key: field }, (data) => {
