@@ -118,6 +118,14 @@ export class Client {
     });
   }
 
+  hMSet(key, mapping) {
+    return new Promise((resolve, reject) => {
+      this._socket.emit("hset", { name: key, mapping: mapping }, (data) => {
+        resolve("OK"); // TODO
+      });
+    });
+  }
+
   hDel(key, field) {
     return new Promise((resolve, reject) => {
       this._socket.emit("hdel", { name: key, key: field }, (data) => {

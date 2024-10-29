@@ -33,6 +33,23 @@ export class Dict {
     );
   }
 
+  async update(dict) {
+    if (this._callbacks && this._callbacks.update) {
+      await this._callbacks.update(dict);
+    }
+    if (this._socket) {
+      this._socket.emit("refresh", {
+        target: this._key,
+        data: { keys: Object.keys(dict) },
+      });
+    }
+    // TODO: we do not properly stringify the keys
+    const entries = Object.entries(dict).map(([key, value]) => [key,
+      JSON.stringify(value),
+    ]);
+    return this._client.hMSet(this._key, Object.fromEntries(entries));
+  }
+
   async getitem(key) {
     const value = await this._client.hGet(this._key, JSON.stringify(key));
     if (value === null) {
