@@ -2,15 +2,18 @@ import { createClient, Dict } from "znsocket";
 
 const ZNSOCKET_URL = "http://127.0.0.1:4748";
 let client;
+let client2;
 let dct;
 
 beforeEach(async () => {
   client = createClient({ url: ZNSOCKET_URL });
+  client2 = createClient({ url: ZNSOCKET_URL });
 });
 
 afterEach(async () => {
   await client.flushAll();
   await client.disconnect();
+  await client2.disconnect();
 });
 
 test("native_dict_setitem_callback", async () => {
@@ -25,15 +28,30 @@ test("native_dict_setitem_callback", async () => {
   expect(callback_value).toBe(true);
 });
 
-test("native_dict_setitem_socket_callback", async () => {
+test("native_dict_setitem_socket_callback_self", async () => {
   let callback_value = false;
   dct = new Dict({ client: client, key: "dict:test" });
   dct.onRefresh((data) => {
     callback_value = data;
   });
   await dct.setitem("key", "value");
+  await new Promise(resolve => setTimeout(resolve, 100));
+  // we don't want the callback to trigger for the self-instance
+  expect(callback_value).toBe(false);
+});
+
+test("native_dict_setitem_socket_callback", async () => {
+  let callback_value = false;
+  dct = new Dict({ client: client, key: "dict:test" });
+  let dct2 = new Dict({ client: client2, key: "dict:test" });
+  dct2.onRefresh((data) => {
+    callback_value = data;
+  });
+  await dct.setitem("key", "value");
+  await new Promise(resolve => setTimeout(resolve, 100));
   expect(callback_value).toEqual({ keys: ["key"] });
 });
+
 
 test("native_dict_items", async () => {
   dct = new Dict({ client: client, key: "dict:test" });

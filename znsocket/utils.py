@@ -284,7 +284,7 @@ class Dict(MutableMapping, ZnSocketObject):
         if callbacks:
             self._callbacks.update(callbacks)
 
-    def __getitem__(self, key: str) -> t.Any:
+    def __getitem__(self, key: str|float|int) -> t.Any:
         value = self.redis.hget(self.key, json.dumps(key))
         if value is None:
             raise KeyError(key)  # TODO: items can not be None?
@@ -298,7 +298,7 @@ class Dict(MutableMapping, ZnSocketObject):
                 value = Dict(r=self.redis, key=key)
         return value
 
-    def __setitem__(self, key: str, value: t.Any) -> None:
+    def __setitem__(self, key: str|float|int, value: t.Any) -> None:
         if isinstance(value, List):
             value = f"znsocket.List:{value.key}"
         if isinstance(value, Dict):

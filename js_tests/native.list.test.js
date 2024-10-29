@@ -2,15 +2,18 @@ import { createClient, List } from "znsocket";
 
 const ZNSOCKET_URL = "http://127.0.0.1:4748";
 let client;
+let client2;
 let lst;
 
 beforeEach(async () => {
   client = createClient({ url: ZNSOCKET_URL });
+  client2 = createClient({ url: ZNSOCKET_URL });
 });
 
 afterEach(async () => {
   await client.flushAll();
   await client.disconnect();
+  await client2.disconnect();
 });
 
 test("native_list_append_callback", async () => {
@@ -87,19 +90,40 @@ test("native_list_len", async () => {
   expect(await lst.len()).toBe(2);
 });
 
-test("native_list_append_socket_callback", async () => {
+test("native_list_append_socket_callback_self", async () => {
   let callback_value = false;
   lst = new List({ client: client, key: "list:test" });
   lst.onRefresh((data) => {
     callback_value = data;
   });
   await lst.append(5);
+  await new Promise(resolve => setTimeout(resolve, 100));
+  expect(callback_value).toBe(false);
+  await lst.append(5);
+  await new Promise(resolve => setTimeout(resolve, 100));
+  expect(callback_value).toBe(false);
+  await lst.append(5);
+  await new Promise(resolve => setTimeout(resolve, 100));
+  expect(callback_value).toBe(false);
+});
+
+test("native_list_append_socket_callback", async () => {
+  let callback_value = false;
+  lst = new List({ client: client, key: "list:test" });
+  let lst2 = new List({ client: client2, key: "list:test" });
+  lst2.onRefresh((data) => {
+    callback_value = data;
+  });
+  await lst.append(5);
+  await new Promise(resolve => setTimeout(resolve, 100));
   expect(callback_value).toEqual({ start: 0 });
 
   await lst.append(5);
+  await new Promise(resolve => setTimeout(resolve, 100));
   expect(callback_value).toEqual({ start: 1 });
 
   await lst.append(5);
+  await new Promise(resolve => setTimeout(resolve, 100));
   expect(callback_value).toEqual({ start: 2 });
 });
 

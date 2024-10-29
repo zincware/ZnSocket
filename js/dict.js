@@ -41,6 +41,10 @@ export class Dict {
     return JSON.parse(value);
   }
 
+  async clear() {
+    return this._client.del(this._key);
+  }
+
   async keys() {
     const keys = await this._client.hKeys(this._key);
     return keys.map((x) => JSON.parse(x));

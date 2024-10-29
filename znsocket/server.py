@@ -409,6 +409,6 @@ def attach_events(
 
     @sio.event(namespace=namespace)
     def refresh(sid, data: RefreshDataTypeDict) -> None:
-        sio.emit("refresh", data, namespace=namespace)
+        sio.emit("refresh", data, namespace=namespace, skip_sid=sid)
 
     return sio
