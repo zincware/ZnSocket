@@ -322,11 +322,10 @@ def test_dct_clear(client, request):
         assert isinstance(dct, ZnSocketObject)
     else:
         dct = {}
-    
+
     assert len(dct) == 0
     dct.clear()
     assert len(dct) == 0
     dct.update({"a": "1", "b": "2"})
     assert len(dct) == 2
     assert dct == {"a": "1", "b": "2"}
-    
