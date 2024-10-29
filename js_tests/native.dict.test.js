@@ -98,4 +98,8 @@ test("native_dict_update", async () => {
 
   const items = await dct.items();
   expect(items).toEqual([[5, "A5"], [6, "A6"]]);
+
+  await dct.update({ 6: "B6", 7: "B7" });
+  const items2 = await dct.items();
+  expect(items2).toEqual([[5, "A5"], [6, "B6"], [7, "B7"]]);
 });
