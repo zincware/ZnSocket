@@ -41,7 +41,7 @@ test("native_dict_items", async () => {
   await dct.setitem(6, "A6");
 
   const items = await dct.items();
-  expect(items).toEqual([(5, "A5"), (6, "A6")]);
+  expect(items).toEqual([[5, "A5"], [6, "A6"]]);
 });
 
 test("native_dict_keys", async () => {
