@@ -41,6 +41,10 @@ export class Dict {
     return JSON.parse(value);
   }
 
+  async clear() {
+    return this._client.del(this._key);
+  }
+
   async keys() {
     const keys = await this._client.hKeys(this._key);
     return keys.map((x) => JSON.parse(x));
@@ -55,7 +59,7 @@ export class Dict {
     const entries = await this._client.hGetAll(this._key);
     // Using Object.entries to return key-value pairs
     return Object.entries(entries).map(
-      ([key, value]) => (JSON.parse(key), JSON.parse(value)),
+      ([key, value]) => [JSON.parse(key), JSON.parse(value)]
     );
   }
 

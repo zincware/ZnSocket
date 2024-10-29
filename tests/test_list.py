@@ -344,8 +344,11 @@ def test_list_nested(a, b, request):
 def test_list_refresh_append(client, request, znsclient):
     r = request.getfixturevalue(client)
     lst = znsocket.List(r=r, key="list:test", socket=znsclient)
+    lst2 = znsocket.List(
+        r=r, key="list:test", socket=znsocket.Client.from_url(znsclient.address)
+    )
     mock = MagicMock()
-    lst.on_refresh(mock)
+    lst2.on_refresh(mock)
     assert len(lst) == 0
     lst.append(1)
     znsclient.sio.sleep(0.01)
@@ -363,8 +366,11 @@ def test_list_refresh_append(client, request, znsclient):
 def test_list_refresh_insert(client, request, znsclient):
     r = request.getfixturevalue(client)
     lst = znsocket.List(r=r, key="list:test", socket=znsclient)
+    lst2 = znsocket.List(
+        r=r, key="list:test", socket=znsocket.Client.from_url(znsclient.address)
+    )
     mock = MagicMock()
-    lst.on_refresh(mock)
+    lst2.on_refresh(mock)
     assert len(lst) == 0
     lst.insert(0, 1)
     znsclient.sio.sleep(0.01)
@@ -382,8 +388,11 @@ def test_list_refresh_insert(client, request, znsclient):
 def test_list_refresh_delitem(client, request, znsclient):
     r = request.getfixturevalue(client)
     lst = znsocket.List(r=r, key="list:test", socket=znsclient)
+    lst2 = znsocket.List(
+        r=r, key="list:test", socket=znsocket.Client.from_url(znsclient.address)
+    )
     mock = MagicMock()
-    lst.on_refresh(mock)
+    lst2.on_refresh(mock)
     lst.extend([1, 2, 3])
     znsclient.sio.sleep(0.01)
     # assert mock called 3 times
@@ -407,8 +416,11 @@ def test_list_refresh_delitem(client, request, znsclient):
 def test_list_refresh_setitem(client, request, znsclient):
     r = request.getfixturevalue(client)
     lst = znsocket.List(r=r, key="list:test", socket=znsclient)
+    lst2 = znsocket.List(
+        r=r, key="list:test", socket=znsocket.Client.from_url(znsclient.address)
+    )
     mock = MagicMock()
-    lst.on_refresh(mock)
+    lst2.on_refresh(mock)
     lst.extend([1, 2, 3])
     znsclient.sio.sleep(0.01)
     # assert mock called 3 times
@@ -426,3 +438,27 @@ def test_list_refresh_setitem(client, request, znsclient):
     znsclient.sio.sleep(0.01)
     assert len(lst) == 3
     mock.assert_called_with({"indices": [1]})
+
+
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
+def test_list_refresh_setitem_self_trigger(client, request, znsclient):
+    r = request.getfixturevalue(client)
+    lst = znsocket.List(r=r, key="list:test", socket=znsclient)
+    mock = MagicMock()
+    lst.on_refresh(mock)
+    lst.extend([1, 2, 3])
+    znsclient.sio.sleep(0.01)
+    mock.assert_not_called()
+
+    assert len(lst) == 3
+    lst[0] = 4
+    znsclient.sio.sleep(0.01)
+    assert len(lst) == 3
+    # assert mock was not called
+    mock.assert_not_called()
+
+    # set again
+    lst[1] = 5
+    znsclient.sio.sleep(0.01)
+    assert len(lst) == 3
+    mock.assert_not_called()

@@ -31,7 +31,7 @@ test("test_dict_values_multiple_znsocket", async () => {
 });
 
 test("test_dict_items_znsocket", async () => {
-  expect(await dct.items()).toEqual([("a", { lorem: "ipsum" }), ("b", 25)]);
+  expect(await dct.items()).toEqual([["a", { lorem: "ipsum" }], ["b", 25]]);
 });
 
 test("test_dict_getitem_znsocket", async () => {
