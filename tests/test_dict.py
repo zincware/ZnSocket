@@ -310,3 +310,23 @@ def test_dict_refresh_delitem(client, request, znsclient):
     assert dct == {}
     znsclient.sio.sleep(0.2)
     mock.assert_called_with({"keys": ["a"]})
+
+
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+)
+def test_dct_clear(client, request):
+    c = request.getfixturevalue(client)
+    if c is not None:
+        dct = znsocket.Dict(r=c, key="list:test")
+        assert isinstance(dct, ZnSocketObject)
+    else:
+        dct = {}
+    
+    assert len(dct) == 0
+    dct.clear()
+    assert len(dct) == 0
+    dct.update({"a": "1", "b": "2"})
+    assert len(dct) == 2
+    assert dct == {"a": "1", "b": "2"}
+    
