@@ -282,8 +282,9 @@ def test_dict_nested(a, b, request):
 def test_dict_refresh_setitem(client, request, znsclient):
     r = request.getfixturevalue(client)
     dct = znsocket.Dict(r=r, key="dct:test", socket=znsclient)
+    dct2 = znsocket.Dict(r=r, key="dct:test", socket=znsocket.Client.from_url(znsclient.address))
     mock = MagicMock()
-    dct.on_refresh(mock)
+    dct2.on_refresh(mock)
 
     dct["a"] = 1
     assert dct == {"a": 1}
@@ -299,8 +300,9 @@ def test_dict_refresh_setitem(client, request, znsclient):
 def test_dict_refresh_delitem(client, request, znsclient):
     r = request.getfixturevalue(client)
     dct = znsocket.Dict(r=r, key="dct:test", socket=znsclient)
+    dct2 = znsocket.Dict(r=r, key="dct:test", socket=znsocket.Client.from_url(znsclient.address))
     mock = MagicMock()
-    dct.on_refresh(mock)
+    dct2.on_refresh(mock)
 
     dct["a"] = 1
     assert dct == {"a": 1}
@@ -310,6 +312,23 @@ def test_dict_refresh_delitem(client, request, znsclient):
     assert dct == {}
     znsclient.sio.sleep(0.2)
     mock.assert_called_with({"keys": ["a"]})
+
+
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
+def test_dict_refresh_delitem_self(client, request, znsclient):
+    r = request.getfixturevalue(client)
+    dct = znsocket.Dict(r=r, key="dct:test", socket=znsclient)
+    mock = MagicMock()
+    dct.on_refresh(mock)
+
+    dct["a"] = 1
+    assert dct == {"a": 1}
+    znsclient.sio.sleep(0.2)
+    mock.assert_not_called()
+    del dct["a"]
+    assert dct == {}
+    znsclient.sio.sleep(0.2)
+    mock.assert_not_called()
 
 
 @pytest.mark.parametrize(
