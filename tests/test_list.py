@@ -344,7 +344,9 @@ def test_list_nested(a, b, request):
 def test_list_refresh_append(client, request, znsclient):
     r = request.getfixturevalue(client)
     lst = znsocket.List(r=r, key="list:test", socket=znsclient)
-    lst2 = znsocket.List(r=r, key="list:test", socket=znsocket.Client.from_url(znsclient.address))
+    lst2 = znsocket.List(
+        r=r, key="list:test", socket=znsocket.Client.from_url(znsclient.address)
+    )
     mock = MagicMock()
     lst2.on_refresh(mock)
     assert len(lst) == 0
@@ -364,7 +366,9 @@ def test_list_refresh_append(client, request, znsclient):
 def test_list_refresh_insert(client, request, znsclient):
     r = request.getfixturevalue(client)
     lst = znsocket.List(r=r, key="list:test", socket=znsclient)
-    lst2 = znsocket.List(r=r, key="list:test", socket=znsocket.Client.from_url(znsclient.address))
+    lst2 = znsocket.List(
+        r=r, key="list:test", socket=znsocket.Client.from_url(znsclient.address)
+    )
     mock = MagicMock()
     lst2.on_refresh(mock)
     assert len(lst) == 0
@@ -384,7 +388,9 @@ def test_list_refresh_insert(client, request, znsclient):
 def test_list_refresh_delitem(client, request, znsclient):
     r = request.getfixturevalue(client)
     lst = znsocket.List(r=r, key="list:test", socket=znsclient)
-    lst2 = znsocket.List(r=r, key="list:test", socket=znsocket.Client.from_url(znsclient.address))
+    lst2 = znsocket.List(
+        r=r, key="list:test", socket=znsocket.Client.from_url(znsclient.address)
+    )
     mock = MagicMock()
     lst2.on_refresh(mock)
     lst.extend([1, 2, 3])
@@ -410,7 +416,9 @@ def test_list_refresh_delitem(client, request, znsclient):
 def test_list_refresh_setitem(client, request, znsclient):
     r = request.getfixturevalue(client)
     lst = znsocket.List(r=r, key="list:test", socket=znsclient)
-    lst2 = znsocket.List(r=r, key="list:test", socket=znsocket.Client.from_url(znsclient.address))
+    lst2 = znsocket.List(
+        r=r, key="list:test", socket=znsocket.Client.from_url(znsclient.address)
+    )
     mock = MagicMock()
     lst2.on_refresh(mock)
     lst.extend([1, 2, 3])

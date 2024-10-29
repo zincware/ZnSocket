@@ -282,7 +282,9 @@ def test_dict_nested(a, b, request):
 def test_dict_refresh_setitem(client, request, znsclient):
     r = request.getfixturevalue(client)
     dct = znsocket.Dict(r=r, key="dct:test", socket=znsclient)
-    dct2 = znsocket.Dict(r=r, key="dct:test", socket=znsocket.Client.from_url(znsclient.address))
+    dct2 = znsocket.Dict(
+        r=r, key="dct:test", socket=znsocket.Client.from_url(znsclient.address)
+    )
     mock = MagicMock()
     dct2.on_refresh(mock)
 
@@ -300,7 +302,9 @@ def test_dict_refresh_setitem(client, request, znsclient):
 def test_dict_refresh_delitem(client, request, znsclient):
     r = request.getfixturevalue(client)
     dct = znsocket.Dict(r=r, key="dct:test", socket=znsclient)
-    dct2 = znsocket.Dict(r=r, key="dct:test", socket=znsocket.Client.from_url(znsclient.address))
+    dct2 = znsocket.Dict(
+        r=r, key="dct:test", socket=znsocket.Client.from_url(znsclient.address)
+    )
     mock = MagicMock()
     dct2.on_refresh(mock)
 
