@@ -37,12 +37,27 @@ test("native_dict_setitem_socket_callback", async () => {
 
 test("native_dict_items", async () => {
   dct = new Dict({ client: client, key: "dict:test" });
-  await dct.setitem(5, "5");
-  await dct.setitem(6, "6");
+  await dct.setitem(5, "A5");
+  await dct.setitem(6, "A6");
 
   const items = await dct.items();
-  expect(items).toEqual([
-    [5, "5"],
-    [6, "6"],
-  ]);
+  expect(items).toEqual([(5, "A5"), (6, "A6")]);
+});
+
+test("native_dict_keys", async () => {
+  dct = new Dict({ client: client, key: "dict:test" });
+  await dct.setitem(5, "A5");
+  await dct.setitem(6, "A6");
+
+  const keys = await dct.keys();
+  expect(keys).toEqual([5, 6]);
+});
+
+test("native_dict_values", async () => {
+  dct = new Dict({ client: client, key: "dict:test" });
+  await dct.setitem(5, "A5");
+  await dct.setitem(6, "A6");
+
+  const values = await dct.values();
+  expect(values).toEqual(["A5", "A6"]);
 });
