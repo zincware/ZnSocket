@@ -352,3 +352,25 @@ def test_dct_clear(client, request):
     dct.update({"a": "1", "b": "2"})
     assert len(dct) == 2
     assert dct == {"a": "1", "b": "2"}
+
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "redisclient"]
+)
+def test_dct_copy(client, request):
+    c = request.getfixturevalue(client)
+    dct = znsocket.Dict(r=c, key="list:test")
+    assert isinstance(dct, ZnSocketObject)
+
+    dct.update({"a": "1", "b": "2"})
+    dct_copy = dct.copy(key="list:test:copy")
+    
+    assert dct == dct_copy
+    assert dct is not dct_copy
+
+    dct_copy["c"] = "3"
+    assert dct != dct_copy
+    assert dct == {"a": "1", "b": "2"}
+    assert dct_copy == {"a": "1", "b": "2", "c": "3"}
+
+    with pytest.raises(ValueError):
+        dct.copy(key="list:test:copy")

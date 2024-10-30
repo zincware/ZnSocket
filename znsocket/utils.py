@@ -230,6 +230,17 @@ class List(MutableSequence, ZnSocketObject):
             refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
             self.socket.sio.emit(f"refresh", refresh_data, namespace="/znsocket")
 
+    def copy(self, key: str) -> "List":
+        """Copy the list to a new key.
+        
+        This will not trigger any callbacks as 
+        the data is not modified.
+        """
+        if not self.redis.copy(self.key, key):
+            raise ValueError("Could not copy list")
+
+        return List(r=self.redis, key=key, socket=self.socket)
+
     def on_refresh(self, callback: t.Callable[[RefreshDataTypeDict], None]) -> None:
         if self.socket is None:
             raise ValueError("No socket connection available")
@@ -367,6 +378,17 @@ class Dict(MutableMapping, ZnSocketObject):
         elif isinstance(value, dict):
             return dict(self) == value
         return False
+    
+    def copy(self, key: str) -> "Dict":
+        """Copy the dict to a new key.
+        
+        This will not trigger any callbacks as 
+        the data is not modified.
+        """
+        if not self.redis.copy(self.key, key):
+            raise ValueError("Could not copy dict")
+
+        return Dict(r=self.redis, key=key, socket=self.socket)
 
     def on_refresh(self, callback: t.Callable[[RefreshDataTypeDict], None]) -> None:
         if self.socket is None:
