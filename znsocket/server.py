@@ -200,6 +200,10 @@ class Storage:
             return self.content[name]
         except KeyError:
             return {}
+        
+    def copy(self, src, dst):
+        self.content[dst] = self.content[src]
+        return True
 
 
 @dataclasses.dataclass
@@ -406,6 +410,12 @@ def attach_events(
     def scard(sid, data) -> int:
         name = data.pop("name")
         return storage.scard(name)
+    
+    @sio.event(namespace=namespace)
+    def copy(sid, data):
+        src = data.pop("src")
+        dst = data.pop("dst")
+        return storage.copy(src, dst)
 
     @sio.event(namespace=namespace)
     def refresh(sid, data: RefreshDataTypeDict) -> None:

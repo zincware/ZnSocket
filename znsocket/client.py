@@ -182,6 +182,9 @@ class Client:
 
     def scard(self, name):
         return self.sio.call("scard", {"name": name}, namespace=self.namespace)
+    
+    def copy(self, src, dst):
+        return self.sio.call("copy", {"src": src, "dst": dst}, namespace=self.namespace)
 
     @tyex.deprecated("hmset() is deprecated. Use hset() instead.")
     def hmset(self, name, mapping):
