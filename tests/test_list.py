@@ -462,3 +462,24 @@ def test_list_refresh_setitem_self_trigger(client, request, znsclient):
     znsclient.sio.sleep(0.01)
     assert len(lst) == 3
     mock.assert_not_called()
+
+
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
+def test_list_copy(client, request):
+    c = request.getfixturevalue(client)
+    lst = znsocket.List(r=c, key="list:test")
+    assert isinstance(lst, ZnSocketObject)
+
+    lst.extend(["1", "2", "3", "4"])
+    lst2 = lst.copy(key="list:test:copy")
+
+    assert lst == lst2
+    assert lst is not lst2
+
+    lst2.append("5")
+    assert lst != lst2
+    assert lst == ["1", "2", "3", "4"]
+    assert lst2 == ["1", "2", "3", "4", "5"]
+
+    with pytest.raises(ValueError):
+        lst.copy(key="list:test:copy")

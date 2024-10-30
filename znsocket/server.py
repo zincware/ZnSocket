@@ -1,5 +1,6 @@
 import dataclasses
 import typing as t
+from copy import deepcopy
 
 import eventlet.wsgi
 import socketio
@@ -200,6 +201,16 @@ class Storage:
             return self.content[name]
         except KeyError:
             return {}
+
+    def copy(self, src, dst):
+        if src == dst:
+            return False
+        if src not in self.content:
+            return False
+        if dst in self.content:
+            return False
+        self.content[dst] = deepcopy(self.content[src])
+        return True
 
 
 @dataclasses.dataclass
@@ -406,6 +417,12 @@ def attach_events(
     def scard(sid, data) -> int:
         name = data.pop("name")
         return storage.scard(name)
+
+    @sio.event(namespace=namespace)
+    def copy(sid, data):
+        src = data.pop("src")
+        dst = data.pop("dst")
+        return storage.copy(src, dst)
 
     @sio.event(namespace=namespace)
     def refresh(sid, data: RefreshDataTypeDict) -> None:
