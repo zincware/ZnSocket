@@ -386,12 +386,20 @@ def test_copy_hset(client, request):
     assert c.copy("hash", "hash2") == 1
     assert c.hget("hash2", "field") == "value"
 
+    c.hset("hash", "field", "value2")
+    assert c.hget("hash", "field") == "value2"
+    assert c.hget("hash2", "field") == "value"
+
 
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_copy(client, request):
     c = request.getfixturevalue(client)
     c.set("name", "Alice")
     assert c.copy("name", "name2") == 1
+    assert c.get("name2") == "Alice"
+
+    c.set("name", "Bob")
+    assert c.get("name") == "Bob"
     assert c.get("name2") == "Alice"
 
 
@@ -401,6 +409,10 @@ def test_copy_lpush(client, request):
     c.rpush("list", "element1")
     c.rpush("list", "element2")
     assert c.copy("list", "list2") is True
+    assert c.lrange("list2", 0, -1) == ["element1", "element2"]
+
+    c.rpush("list", "element3")
+    assert c.lrange("list", 0, -1) == ["element1", "element2", "element3"]
     assert c.lrange("list2", 0, -1) == ["element1", "element2"]
 
 

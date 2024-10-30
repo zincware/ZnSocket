@@ -3,6 +3,7 @@ import typing as t
 
 import eventlet.wsgi
 import socketio
+from copy import deepcopy
 
 from znsocket.abc import RefreshDataTypeDict
 
@@ -206,7 +207,7 @@ class Storage:
             return False
         if dst in self.content:
             return False
-        self.content[dst] = self.content[src]
+        self.content[dst] = deepcopy(self.content[src])
         return True
 
 
