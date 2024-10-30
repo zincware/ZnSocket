@@ -232,8 +232,8 @@ class List(MutableSequence, ZnSocketObject):
 
     def copy(self, key: str) -> "List":
         """Copy the list to a new key.
-        
-        This will not trigger any callbacks as 
+
+        This will not trigger any callbacks as
         the data is not modified.
         """
         if not self.redis.copy(self.key, key):
@@ -378,11 +378,11 @@ class Dict(MutableMapping, ZnSocketObject):
         elif isinstance(value, dict):
             return dict(self) == value
         return False
-    
+
     def copy(self, key: str) -> "Dict":
         """Copy the dict to a new key.
-        
-        This will not trigger any callbacks as 
+
+        This will not trigger any callbacks as
         the data is not modified.
         """
         if not self.redis.copy(self.key, key):

@@ -463,9 +463,8 @@ def test_list_refresh_setitem_self_trigger(client, request, znsclient):
     assert len(lst) == 3
     mock.assert_not_called()
 
-@pytest.mark.parametrize(
-    "client", ["znsclient", "znsclient_w_redis", "redisclient"]
-)
+
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_list_copy(client, request):
     c = request.getfixturevalue(client)
     lst = znsocket.List(r=c, key="list:test")
