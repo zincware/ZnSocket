@@ -378,12 +378,14 @@ def test_hset_data_error(client, request):
     with pytest.raises(redis.exceptions.DataError):
         c.hset("name", value="value")
 
+
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_copy_hset(client, request):
     c = request.getfixturevalue(client)
     c.hset("hash", "field", "value")
     assert c.copy("hash", "hash2") == 1
     assert c.hget("hash2", "field") == "value"
+
 
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_copy(client, request):
@@ -392,6 +394,7 @@ def test_copy(client, request):
     assert c.copy("name", "name2") == 1
     assert c.get("name2") == "Alice"
 
+
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_copy_lpush(client, request):
     c = request.getfixturevalue(client)
@@ -399,6 +402,7 @@ def test_copy_lpush(client, request):
     c.rpush("list", "element2")
     assert c.copy("list", "list2") is True
     assert c.lrange("list2", 0, -1) == ["element1", "element2"]
+
 
 # @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 # def test_copy_error(client, request):
