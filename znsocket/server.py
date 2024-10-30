@@ -1,9 +1,9 @@
 import dataclasses
 import typing as t
+from copy import deepcopy
 
 import eventlet.wsgi
 import socketio
-from copy import deepcopy
 
 from znsocket.abc import RefreshDataTypeDict
 
