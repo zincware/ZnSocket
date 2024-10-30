@@ -202,6 +202,10 @@ class Storage:
             return {}
 
     def copy(self, src, dst):
+        if src not in self.content:
+            return False
+        if dst in self.content:
+            return False
         self.content[dst] = self.content[src]
         return True
 

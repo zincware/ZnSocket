@@ -404,8 +404,16 @@ def test_copy_lpush(client, request):
     assert c.lrange("list2", 0, -1) == ["element1", "element2"]
 
 
-# @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
-# def test_copy_error(client, request):
-#     c = request.getfixturevalue(client)
-#     with pytest.raises(znsocket.exceptions.CopyError):
-#         c.copy("name", "name2")
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
+def test_copy_over_existing(client, request):
+    c = request.getfixturevalue(client)
+    c.set("name", "Alice")
+    c.set("name2", "Bob")
+    assert c.copy("name", "name2") is False
+    assert c.get("name2") == "Bob"
+
+
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
+def test_copy_error(client, request):
+    c = request.getfixturevalue(client)
+    assert c.copy("name", "name2") is False
