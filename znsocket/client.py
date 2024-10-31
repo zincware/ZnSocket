@@ -5,6 +5,7 @@ import typing_extensions as tyex
 
 from znsocket import exceptions
 from znsocket.abc import RefreshDataTypeDict
+from znsocket.utils import parse_url
 
 
 @dataclasses.dataclass(frozen=True)
@@ -40,8 +41,15 @@ class Client:
                 if data["target"] == key:
                     self.refresh_callbacks[key](data["data"])
 
+        _url, _path = parse_url(self.address)
         try:
-            self.sio.connect(self.address, namespaces=[self.namespace], wait=True)
+            self.sio.connect(
+                _url,
+                namespaces=[self.namespace],
+                wait=True,
+                socketio_path=f"{_path}/socket.io" if _path else "socket.io",
+            )
+
         except socketio.exceptions.ConnectionError as err:
             raise exceptions.ConnectionError(self.address) from err
 

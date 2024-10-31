@@ -7,7 +7,7 @@ import znjson
 
 import znsocket
 import znsocket.client
-from znsocket.utils import ZnSocketObject
+from znsocket.objects import ZnSocketObject
 
 
 @pytest.fixture
@@ -483,3 +483,24 @@ def test_list_copy(client, request):
 
     with pytest.raises(ValueError):
         lst.copy(key="list:test:copy")
+
+
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+)
+def test_list_delete_empty(client, request):
+    c = request.getfixturevalue(client)
+    if c is not None:
+        lst = znsocket.List(r=c, key="list:test")
+    else:
+        lst = []
+
+    lst.extend(["1", "2", "3", "4"])
+    del lst[:]
+    del lst[:]  # run twice
+    assert lst == []
+    assert len(lst) == 0
+    assert lst[:] == []
+
+    with pytest.raises(IndexError):
+        del lst[0]
