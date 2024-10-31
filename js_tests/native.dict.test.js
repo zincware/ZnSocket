@@ -103,3 +103,36 @@ test("native_dict_update", async () => {
   const items2 = await dct.items();
   expect(items2).toEqual([[5, "A5"], [6, "B6"], [7, "B7"]]);
 });
+
+test("native_dict_update_socket_callback_self", async () => {
+  let callback_value = false;
+  dct = new Dict({ client: client, key: "dict:test" });
+  dct.onRefresh((data) => {
+    callback_value = data;
+  });
+  await dct.update({ 5: "A5", 6: "A6" });
+  await new Promise(resolve => setTimeout(resolve, 100));
+  expect(callback_value).toBe(false);
+});
+
+test("native_dict_update_socket_callback", async () => {
+  let callback_value = false;
+  dct = new Dict({ client: client, key: "dict:test" });
+  let dct2 = new Dict({ client: client2, key: "dict:test" });
+  dct2.onRefresh((data) => {
+    callback_value = data;
+  });
+  await dct.update({ 1: "A5", 2: "A6" });
+  // TODO: there is an issue with int -> string conversion
+  await new Promise(resolve => setTimeout(resolve, 100));
+  expect(callback_value).toEqual({ keys: ["1", "2"] });
+
+  await dct.update({ 2: "B6", 3: "B7" });
+  await new Promise(resolve => setTimeout(resolve, 100));
+  // TODO: there is an issue with int -> string conversion
+  expect(callback_value).toEqual({ keys: ["2", "3"] });
+
+  expect(await dct.items()).toEqual([[1, "A5"], [2, "B6"], [3, "B7"]]);
+});
+
+// TODO: test non-int keys!
