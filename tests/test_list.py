@@ -485,8 +485,9 @@ def test_list_copy(client, request):
         lst.copy(key="list:test:copy")
 
 
-
-@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"])
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+)
 def test_list_delete_empty(client, request):
     c = request.getfixturevalue(client)
     if c is not None:
@@ -496,7 +497,7 @@ def test_list_delete_empty(client, request):
 
     lst.extend(["1", "2", "3", "4"])
     del lst[:]
-    del lst[:] # run twice
+    del lst[:]  # run twice
     assert lst == []
     assert len(lst) == 0
     assert lst[:] == []

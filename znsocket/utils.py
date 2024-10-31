@@ -1,5 +1,5 @@
-from urllib.parse import urlparse
 import typing as t
+from urllib.parse import urlparse
 
 
 def parse_url(input_url) -> t.Tuple[str, t.Optional[str]]:

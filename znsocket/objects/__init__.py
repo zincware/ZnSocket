@@ -2,6 +2,7 @@ import json
 import typing as t
 from collections.abc import MutableMapping, MutableSequence
 
+import redis.exceptions
 import znjson
 
 from znsocket.abc import (
@@ -12,8 +13,8 @@ from znsocket.abc import (
     RefreshDataTypeDict,
     RefreshTypeDict,
 )
-import redis.exceptions
 from znsocket.client import Client
+
 
 class ZnSocketObject:
     """Base class for all znsocket objects."""
@@ -154,16 +155,16 @@ class List(MutableSequence, ZnSocketObject):
             index = [index]
         if isinstance(index, slice):
             index = list(range(*index.indices(len(self))))
-        
+
         if len(index) == 0:
-            return # nothing to delete
-        
+            return  # nothing to delete
+
         try:
             for i in index:
                 self.redis.lset(self.key, i, "__DELETED__")
         except redis.exceptions.ResponseError:
             raise IndexError("list index out of range")
-        
+
         self.redis.lrem(self.key, 0, "__DELETED__")
 
         if self._callbacks["delitem"]:

@@ -43,7 +43,12 @@ class Client:
 
         _url, _path = parse_url(self.address)
         try:
-            self.sio.connect(_url, namespaces=[self.namespace], wait=True, socketio_path=f"{_path}/socket.io" if _path else "socket.io")
+            self.sio.connect(
+                _url,
+                namespaces=[self.namespace],
+                wait=True,
+                socketio_path=f"{_path}/socket.io" if _path else "socket.io",
+            )
 
         except socketio.exceptions.ConnectionError as err:
             raise exceptions.ConnectionError(self.address) from err
