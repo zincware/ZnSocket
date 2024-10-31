@@ -154,6 +154,9 @@ class List(MutableSequence, ZnSocketObject):
             index = [index]
         if isinstance(index, slice):
             index = list(range(*index.indices(len(self))))
+        
+        if len(index) == 0:
+            return # nothing to delete
 
         for i in index:
             self.redis.lset(self.key, i, "__DELETED__")
