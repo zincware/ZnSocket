@@ -77,7 +77,7 @@ class Storage:
             return None
         except IndexError:
             return None
-        except TypeError: # index is not an integer
+        except TypeError:  # index is not an integer
             return None
 
     def set(self, name, value):
