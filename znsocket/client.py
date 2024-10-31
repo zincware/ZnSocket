@@ -94,6 +94,8 @@ class Client:
         )
 
     def lindex(self, name, index):
+        if name is None or index is None:
+            raise exceptions.DataError("Invalid input")
         return self.sio.call(
             "lindex", {"name": name, "index": index}, namespace=self.namespace
         )
@@ -135,6 +137,8 @@ class Client:
             raise exceptions.ResponseError(str(response))
 
     def lrem(self, name: str, count: int, value: str):
+        if name is None or count is None or value is None:
+            raise exceptions.DataError("Invalid input")
         return self.sio.call(
             "lrem",
             {"name": name, "count": count, "value": value},

@@ -32,7 +32,26 @@ export class List {
     if (this._callbacks && this._callbacks.setitem) {
       await this._callbacks.setitem(value);
     }
+    if (this._socket) {
+      this._socket.emit("refresh", {
+        target: this._key,
+        data: { indices: [index] },
+      });
+    }
     return this._client.lSet(this._key, index, JSON.stringify(value));
+  }
+
+  async clear() {
+    if (this._callbacks && this._callbacks.clear) {
+      await this._callbacks.clear();
+    }
+    if (this._socket) {
+      this._socket.emit("refresh", {
+        target: this._key,
+        data: { start: 0 },
+      });
+    }
+    return this._client.del(this._key);
   }
 
   async getitem(index) {
