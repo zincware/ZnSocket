@@ -89,6 +89,14 @@ def test_lset(client, request):
     ):
         c.lset("list", 10, "new_element2")
 
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
+def test_lindex_none(client, request):
+    c = request.getfixturevalue(client)
+    c.rpush("list", "element1")
+    assert c.lindex("list", 1) is None
+    with pytest.raises(redis.exceptions.DataError):
+        c.lindex("list", None)
+
 
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_lrem(client, request):
@@ -135,6 +143,17 @@ def test_lrem(client, request):
     # remove from non-existent key with count
     response = c.lrem("nonexistent", 1, "element1")
     assert response == 0
+
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
+def test_lrem_none(client, request):
+    c = request.getfixturevalue(client)
+    c.rpush("list", "element1")
+    with pytest.raises(redis.exceptions.DataError):
+        c.lrem("list", None, "element1")
+    with pytest.raises(redis.exceptions.DataError):
+        c.lrem("list", 0, None)
+    with pytest.raises(redis.exceptions.DataError):
+        c.lrem(None, 0, "element1")
 
 
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
