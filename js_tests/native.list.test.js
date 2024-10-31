@@ -127,4 +127,67 @@ test("native_list_append_socket_callback", async () => {
   expect(callback_value).toEqual({ start: 2 });
 });
 
+
+test("native_list_setitem_socket_callback_self", async () => {
+  let callback_value = false;
+  lst = new List({ client: client, key: "list:test" });
+  lst.onRefresh((data) => {
+    callback_value = data;
+  });
+  await lst.append(5);
+  await new Promise(resolve => setTimeout(resolve, 100));
+  expect(callback_value).toBe(false);
+  await lst.setitem(0, 5);
+  await new Promise(resolve => setTimeout(resolve, 100));
+  expect(callback_value).toBe(false);
+});
+
+test("native_list_setitem_socket_callback", async () => {
+  let callback_value = false;
+  lst = new List({ client: client, key: "list:test" });
+  let lst2 = new List({ client: client2, key: "list:test" });
+  lst2.onRefresh((data) => {
+    callback_value = data;
+  });
+  await lst.append(5);
+  await new Promise(resolve => setTimeout(resolve, 100));
+  expect(callback_value).toEqual({ start: 0 });
+
+  await lst.setitem(0, 5);
+  await new Promise(resolve => setTimeout(resolve, 100));
+  expect(callback_value).toEqual({ indices: [0] });
+});
+
+test("native_list_clear_socket_callback_self", async () => {
+  let callback_value = false;
+  lst = new List({ client: client, key: "list:test" });
+  lst.onRefresh((data) => {
+    callback_value = data;
+  });
+  await lst.append(5);
+  await new Promise(resolve => setTimeout(resolve, 100));
+  expect(callback_value).toBe(false);
+  await lst.clear();
+  await new Promise(resolve => setTimeout(resolve, 100));
+  expect(callback_value).toBe(false);
+
+  expect(await lst.len()).toBe(0);
+});
+
+test("native_list_clear_socket_callback", async () => {
+  let callback_value = false;
+  lst = new List({ client: client, key: "list:test" });
+  let lst2 = new List({ client: client2, key: "list:test" });
+  lst2.onRefresh((data) => {
+    callback_value = data;
+  });
+  await lst.append(5);
+  await new Promise(resolve => setTimeout(resolve, 100));
+  expect(callback_value).toEqual({ start: 0 });
+
+  await lst.clear();
+  await new Promise(resolve => setTimeout(resolve, 100));
+  expect(callback_value).toEqual({ start: 0 });
+});
+
 // TODO: others than append!
