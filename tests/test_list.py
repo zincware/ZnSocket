@@ -486,11 +486,13 @@ def test_list_copy(client, request):
 
 
 
-@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"])
 def test_list_delete_empty(client, request):
     c = request.getfixturevalue(client)
-    lst = znsocket.List(r=c, key="list:test")
-    assert isinstance(lst, ZnSocketObject)
+    if c is not None:
+        lst = znsocket.List(r=c, key="list:test")
+    else:
+        lst = []
 
     lst.extend(["1", "2", "3", "4"])
     del lst[:]
@@ -498,3 +500,6 @@ def test_list_delete_empty(client, request):
     assert lst == []
     assert len(lst) == 0
     assert lst[:] == []
+
+    with pytest.raises(IndexError):
+        del lst[0]

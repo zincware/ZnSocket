@@ -12,6 +12,7 @@ from znsocket.abc import (
     RefreshDataTypeDict,
     RefreshTypeDict,
 )
+import redis.exceptions
 from znsocket.client import Client
 
 
@@ -157,9 +158,13 @@ class List(MutableSequence, ZnSocketObject):
         
         if len(index) == 0:
             return # nothing to delete
-
-        for i in index:
-            self.redis.lset(self.key, i, "__DELETED__")
+        
+        try:
+            for i in index:
+                self.redis.lset(self.key, i, "__DELETED__")
+        except redis.exceptions.ResponseError:
+            raise IndexError("list index out of range")
+        
         self.redis.lrem(self.key, 0, "__DELETED__")
 
         if self._callbacks["delitem"]:
