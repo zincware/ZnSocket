@@ -2,24 +2,30 @@
 // hget, hset, hdel, hexists, hlen, hkeys, hvals, hgetall
 import { Client as ZnSocketClient } from "./client.js";
 
+function toJSONStringified(value) {
+  return JSON.stringify(value);
+}
+
+function fromJSONStringified(value) {
+  return JSON.parse(value);
+}
+
 export class Dict {
   constructor({ client, socket, key, callbacks }) {
     this._client = client;
     this._socket = socket || (client instanceof ZnSocketClient ? client : null);
-    // this._socket = socket;
     this._key = key;
     this._callbacks = callbacks;
     this._refresh_callback = undefined;
 
     // Use Proxy to enable bracket notation for getting and setting
     return new Proxy(this, {
-      // get that does nothing
       get: (target, property, receiver) => {
         // Check if property is a method or direct property on target
         if (typeof target[property] === "function" || property in target) {
           return Reflect.get(target, property, receiver).bind(target);
         }
-    
+
         // For dictionary-style access, return the promise directly
         return target.getitem(property);
       },
@@ -46,14 +52,10 @@ export class Dict {
     if (this._socket) {
       this._socket.emit("refresh", {
         target: this._key,
-        data: { keys: [key] },
+        data: { keys: [toJSONStringified(key)] }, // Ensure key is stringified
       });
     }
-    return this._client.hSet(
-      this._key,
-      key,
-      JSON.stringify(value),
-    );
+    return this._client.hSet(this._key, toJSONStringified(key), toJSONStringified(value)); // Stringify both key and value
   }
 
   async update(dict) {
@@ -63,22 +65,23 @@ export class Dict {
     if (this._socket) {
       this._socket.emit("refresh", {
         target: this._key,
-        data: { keys: Object.keys(dict) },
+        data: { keys: Object.keys(dict).map(key => toJSONStringified(key)) }, // Stringify keys
       });
     }
-    // TODO: we do not properly stringify the keys
-    const entries = Object.entries(dict).map(([key, value]) => [key,
-      JSON.stringify(value),
+    
+    const entries = Object.entries(dict).map(([key, value]) => [
+      toJSONStringified(key),   // Stringify the key
+      toJSONStringified(value), // Stringify the value
     ]);
     return this._client.hMSet(this._key, Object.fromEntries(entries));
   }
 
   async getitem(key) {
-    return this._client.hGet(this._key, key).then((value) => {
+    return this._client.hGet(this._key, toJSONStringified(key)).then((value) => {
       if (value === null) {
         return null;
       }
-      return JSON.parse(value);
+      return fromJSONStringified(value); // Parse the value
     });
   }
 
@@ -88,19 +91,18 @@ export class Dict {
 
   async keys() {
     const keys = await this._client.hKeys(this._key);
-    return keys.map((x) => JSON.parse(x));
+    return keys.map((x) => fromJSONStringified(x)); // Parse the keys
   }
 
   async values() {
     const values = await this._client.hVals(this._key);
-    return values.map((x) => JSON.parse(x));
+    return values.map((x) => fromJSONStringified(x)); // Parse the values
   }
 
   async items() {
     const entries = await this._client.hGetAll(this._key);
-    // Using Object.entries to return key-value pairs
     return Object.entries(entries).map(
-      ([key, value]) => [JSON.parse(key), JSON.parse(value)]
+      ([key, value]) => [fromJSONStringified(key), fromJSONStringified(value)] // Parse both keys and values
     );
   }
 
@@ -108,6 +110,7 @@ export class Dict {
     if (this._socket) {
       this._refresh_callback = async ({ target, data }) => {
         if (target === this._key) {
+          data.keys = data.keys.map((key) => fromJSONStringified(key));
           callback(data);
         }
       };

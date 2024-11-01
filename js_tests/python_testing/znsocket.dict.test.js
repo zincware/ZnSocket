@@ -40,8 +40,8 @@ test("test_dict_getitem_znsocket", async () => {
 });
 
 test("test_dict_setitem_znsocket", async () => {
-  await dct.setitem("b", 25);
+  await dct.setitem("b", "25");
   await dct.setitem("a", { lorem: "ipsum" });
-  expect(await dct.getitem("b")).toBe(25);
+  expect(await dct.getitem("b")).toBe("25");
   expect(await dct.getitem("a")).toEqual({ lorem: "ipsum" });
 });
