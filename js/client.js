@@ -81,7 +81,7 @@ export class Client {
       );
     });
   }
-  
+
   lRange(key, start, end) {
     return new Promise((resolve, reject) => {
       this._socket.emit("lrange", { name: key, start: start, end: end -1 }, (data) => {

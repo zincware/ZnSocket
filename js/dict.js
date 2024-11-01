@@ -68,7 +68,7 @@ export class Dict {
         data: { keys: Object.keys(dict).map(key => toJSONStringified(key)) }, // Stringify keys
       });
     }
-    
+
     const entries = Object.entries(dict).map(([key, value]) => [
       toJSONStringified(key),   // Stringify the key
       toJSONStringified(value), // Stringify the value

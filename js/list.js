@@ -16,7 +16,7 @@ export class List {
         if (typeof prop === "symbol" || isNaN(Number(prop))) {
           return target[prop];
         }
-    
+
         // Convert the property to a number if it's a numeric index
         const index = Number(prop);
         return target.getitem(index);
@@ -27,7 +27,7 @@ export class List {
           target[prop] = value;
           return true;
         }
-    
+
         // Convert the property to a number if it's a numeric index
         const index = Number(prop);
         target.setitem(index, value);

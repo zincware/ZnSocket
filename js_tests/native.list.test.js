@@ -244,7 +244,7 @@ test("native_list_slice", async () => {
   let sliced = await lst.slice(0, 2);
   // Assert the sliced list
   expect(sliced).toEqual(["item1", "item2"]);
-  
+
   sliced = await lst.slice(0, 1);
   expect(sliced).toEqual(["item1"]);
   sliced = await lst.slice(1, 2);
