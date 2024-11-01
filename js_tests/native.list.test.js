@@ -190,4 +190,66 @@ test("native_list_clear_socket_callback", async () => {
   expect(callback_value).toEqual({ start: 0 });
 });
 
-// TODO: others than append!
+test("native_list_get_via_index", async () => {
+  lst = new List({ client: client, key: "list:test" });
+
+  // Append an item to the list
+  await lst.append("testItem");
+
+  // Access item directly using array-like syntax
+  const item = await lst[0];
+  expect(item).toBe("testItem");
+
+  // Access an out-of-bounds index, expecting null
+  const outOfBoundsItem = await lst[1];
+  expect(outOfBoundsItem).toBe(null);
+});
+
+test("native_list_set_via_index", async () => {
+  lst = new List({ client: client, key: "list:test" });
+
+  // Append an initial item
+  await lst.append("initialItem");
+  expect(await lst[0]).toBe("initialItem");
+
+  // Modify the item at index 0 directly using array-like syntax
+  lst[0] = "updatedItem";
+  await new Promise(resolve => setTimeout(resolve, 100));
+
+  // Verify the item was updated
+  const item = await lst[0];
+  expect(item).toBe("updatedItem");
+});
+
+test("native_list_slice", async () => {
+  const jslst = ["item1", "item2", "item3"];
+  let jsSliced = jslst.slice(0, 2);
+  // Assert the sliced list
+  expect(jsSliced).toEqual(["item1", "item2"]);
+  jsSliced = jslst.slice(0, 1);
+  expect(jsSliced).toEqual(["item1"]);
+  jsSliced = jslst.slice(1, 2);
+  expect(jsSliced).toEqual(["item2"]);
+  jsSliced = jslst.slice(1, 3);
+  expect(jsSliced).toEqual(["item2", "item3"]);
+  // now with out list
+  lst = new List({ client: client, key: "list:test" });
+
+  // Add initial data to the list
+  await lst.append("item1");
+  await lst.append("item2");
+  await lst.append("item3");
+
+  // Slice the list
+  let sliced = await lst.slice(0, 2);
+  // Assert the sliced list
+  expect(sliced).toEqual(["item1", "item2"]);
+  
+  sliced = await lst.slice(0, 1);
+  expect(sliced).toEqual(["item1"]);
+  sliced = await lst.slice(1, 2);
+  expect(sliced).toEqual(["item2"]);
+  sliced = await lst.slice(1, 3);
+  expect(sliced).toEqual(["item2", "item3"]);
+
+});

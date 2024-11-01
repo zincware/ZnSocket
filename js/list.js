@@ -1,7 +1,7 @@
 // Python list uses
 // llen, lindex, lset, lrem, rpush, lpush, linsert, lrange, rpush
+// see also https://gist.github.com/stelf/d97ab0156461ffc5fbc65be54b936abf
 import { Client as ZnSocketClient } from "./client.js";
-
 export class List {
   constructor({ client, key, socket, callbacks }) {
     this._client = client;
@@ -9,10 +9,40 @@ export class List {
     this._callbacks = callbacks;
     this._socket = socket || (client instanceof ZnSocketClient ? client : null);
     this._refresh_callback = undefined;
+
+    return new Proxy(this, {
+      get: (target, prop) => {
+        // If the property is a symbol or a non-numeric property, return it directly
+        if (typeof prop === "symbol" || isNaN(Number(prop))) {
+          return target[prop];
+        }
+    
+        // Convert the property to a number if it's a numeric index
+        const index = Number(prop);
+        return target.getitem(index);
+      },
+      set: (target, prop, value) => {
+        // If the property is a symbol or a non-numeric property, set it directly
+        if (typeof prop === "symbol" || isNaN(Number(prop))) {
+          target[prop] = value;
+          return true;
+        }
+    
+        // Convert the property to a number if it's a numeric index
+        const index = Number(prop);
+        target.setitem(index, value);
+        return true;
+      }
+    });
   }
 
   async len() {
     return this._client.lLen(this._key);
+  }
+
+  async slice(start, end) {
+    const values = await this._client.lRange(this._key, start, end);
+    return values.map((value) => JSON.parse(value));
   }
 
   async append(value) {
@@ -87,21 +117,14 @@ export class List {
 
     return {
       next: async () => {
-        // Get the current length of the list from the List instance
         if (length === undefined) {
-          // only get it once, for better performance / might miss some updates
           length = await this.len();
         }
-
-        // Check if we've reached the end of the list
         if (index >= length) {
           return { value: undefined, done: true };
         }
-
-        // Get the item at the current index from the List instance
         const value = await this.getitem(index);
         index += 1;
-
         return { value, done: false };
       },
     };
