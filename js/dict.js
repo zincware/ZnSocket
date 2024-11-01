@@ -31,16 +31,7 @@ export class Dict {
         }
         await target.setitem(prop, value); // Await the async setitem call
         return true; // Indicate success
-      }
-    //   ownKeys: async (target) => {
-    //     // For Object.keys
-    //     const keys = await target.keys();
-    //     return keys;
-    //   },
-    //   getOwnPropertyDescriptor: () => ({
-    //     enumerable: true,
-    //     configurable: true
-    //   })
+      },
     });
   }
 

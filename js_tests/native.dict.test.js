@@ -147,7 +147,7 @@ test("native_dict_getitem", async () => {
   await dct.update({ 5: "A5", 6: "A6" });
   expect(await dct[5]).toBe("A5");
   expect(await dct[6]).toBe("A6");
-  
+
 });
 
 
@@ -160,4 +160,28 @@ test("native_dict_setitem_x", async () => {
   expect(await dct.getitem("A")).toBe(5);
   expect(await dct.getitem("B")).toBe(6);
   expect(await dct.getitem("C")).toBe(7);
+});
+
+test("native_dict_object_keys", async () => {
+  dct = new Dict({ client: client, key: "dict:test" });
+  dct[5] = "A";
+  dct[6] = "B";
+  dct[7] = "C";
+  expect(await dct.keys()).toEqual([5, 6, 7]);
+});
+
+test("native_dict_object_values", async () => {
+  dct = new Dict({ client: client, key: "dict:test" });
+  dct[5] = "A";
+  dct[6] = "B";
+  dct[7] = "C";
+  expect(await dct.values()).toEqual(["A", "B", "C"]);
+});
+
+test("native_dict_object_entries", async () => {
+  dct = new Dict({ client: client, key: "dict:test" });
+  dct[5] = 5;
+  dct[6] = 6;
+  dct[7] = 7;
+  expect(await dct.items()).toEqual([[5, 5], [6, 6], [7, 7]]);
 });
