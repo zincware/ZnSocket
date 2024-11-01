@@ -201,3 +201,15 @@ test("native_dict_json_test", async () => {
 });
 
 // !! keys are for some reason always strings
+
+// not really a test but a reminder of what JSON does
+test("native_dict_toJSONStringified", async () => {
+  expect(JSON.stringify(5)).toBe("5");
+  expect(JSON.stringify("5")).toBe("\"5\"");
+  expect(JSON.stringify({ a: 5 })).toBe("{\"a\":5}");
+
+  expect(JSON.parse("5")).toBe(5);
+  expect(JSON.parse("\"5\"")).toBe("5");
+  expect(JSON.parse("{\"a\":5}")).toEqual({ a: 5 });
+  // expect(5).toBe("5");
+});
