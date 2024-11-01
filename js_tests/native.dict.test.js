@@ -135,4 +135,29 @@ test("native_dict_update_socket_callback", async () => {
   expect(await dct.items()).toEqual([[1, "A5"], [2, "B6"], [3, "B7"]]);
 });
 
-// TODO: test non-int keys!
+test("native_dict_getitem", async () => {
+  dct = new Dict({ client: client, key: "dict:test" });
+
+  dct.setitem("a", "A5");
+  dct.setitem("b", "A6");
+
+  expect(await dct["a"]).toBe("A5");
+  expect(await dct["b"]).toBe("A6");
+
+  await dct.update({ 5: "A5", 6: "A6" });
+  expect(await dct[5]).toBe("A5");
+  expect(await dct[6]).toBe("A6");
+  
+});
+
+
+test("native_dict_setitem_x", async () => {
+  dct = new Dict({ client: client, key: "dict:test" });
+  dct["A"] = 5; // right now only works with strings
+  dct.B = 6;
+  dct["C"] = 7;
+  await new Promise(resolve => setTimeout(resolve, 100));
+  expect(await dct.getitem("A")).toBe(5);
+  expect(await dct.getitem("B")).toBe(6);
+  expect(await dct.getitem("C")).toBe(7);
+});

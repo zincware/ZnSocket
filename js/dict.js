@@ -10,6 +10,38 @@ export class Dict {
     this._key = key;
     this._callbacks = callbacks;
     this._refresh_callback = undefined;
+
+    // Use Proxy to enable bracket notation for getting and setting
+    return new Proxy(this, {
+      // get that does nothing
+      get: (target, property, receiver) => {
+        // Check if property is a method or direct property on target
+        if (typeof target[property] === "function" || property in target) {
+          return Reflect.get(target, property, receiver).bind(target);
+        }
+    
+        // For dictionary-style access, return the promise directly
+        return target.getitem(property);
+      },
+
+      set: async (target, prop, value) => {
+        if (prop in target) {
+          target[prop] = value;
+          return true; // Indicate success
+        }
+        await target.setitem(prop, value); // Await the async setitem call
+        return true; // Indicate success
+      }
+    //   ownKeys: async (target) => {
+    //     // For Object.keys
+    //     const keys = await target.keys();
+    //     return keys;
+    //   },
+    //   getOwnPropertyDescriptor: () => ({
+    //     enumerable: true,
+    //     configurable: true
+    //   })
+    });
   }
 
   async len() {
@@ -28,7 +60,7 @@ export class Dict {
     }
     return this._client.hSet(
       this._key,
-      JSON.stringify(key),
+      key,
       JSON.stringify(value),
     );
   }
@@ -51,11 +83,12 @@ export class Dict {
   }
 
   async getitem(key) {
-    const value = await this._client.hGet(this._key, JSON.stringify(key));
-    if (value === null) {
-      return null;
-    }
-    return JSON.parse(value);
+    return this._client.hGet(this._key, key).then((value) => {
+      if (value === null) {
+        return null;
+      }
+      return JSON.parse(value);
+    });
   }
 
   async clear() {
