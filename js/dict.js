@@ -21,19 +21,18 @@ export class Dict {
       get: (target, property, receiver) => {
         // Check if property is a method or direct property on target
         if (typeof target[property] === "function" || property in target) {
-          return Reflect.get(target, property, receiver).bind(target);
+          return Reflect.get(target, property, receiver);
         }
 
         // For dictionary-style access, return the promise directly
         return target.get(property);
       },
 
-      set: async (target, prop, value) => {
+      set: (target, prop, value) => {
         if (prop in target) {
-          target[prop] = value;
-          return true; // Indicate success
+          return Reflect.set(target, prop, value);
         }
-        await target.set(prop, value); // Await the async set call
+        target.set(prop, value);
         return true; // Indicate success
       },
     });

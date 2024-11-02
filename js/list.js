@@ -9,10 +9,10 @@ export class List {
     this._refreshCallback = undefined;
 
     return new Proxy(this, {
-      get: (target, prop) => {
+      get: (target, prop, receiver) => {
         // If the property is a symbol or a non-numeric property, return it directly
         if (typeof prop === "symbol" || isNaN(Number(prop))) {
-          return target[prop];
+          return Reflect.get(target, prop, receiver);
         }
 
         // Convert the property to a number if it's a numeric index
@@ -22,8 +22,7 @@ export class List {
       set: (target, prop, value) => {
         // If the property is a symbol or a non-numeric property, set it directly
         if (typeof prop === "symbol" || isNaN(Number(prop))) {
-          target[prop] = value;
-          return true;
+          return Reflect.set(target, prop, value);
         }
 
         // Convert the property to a number if it's a numeric index
