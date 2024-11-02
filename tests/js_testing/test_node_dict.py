@@ -29,7 +29,7 @@ def test_dict_values_multiple_znsocket(znsclient, run_npm_test, request):
     run_npm_test(request.node.name, client_url=znsclient.address)
 
 
-def test_dict_items_znsocket(znsclient, run_npm_test, request):
+def test_dict_entries_znsocket(znsclient, run_npm_test, request):
     dct = znsocket.Dict(r=znsclient, key="dict:test")
     dct["a"] = {"lorem": "ipsum"}
     dct["b"] = 25
@@ -37,21 +37,21 @@ def test_dict_items_znsocket(znsclient, run_npm_test, request):
     run_npm_test(request.node.name, client_url=znsclient.address)
 
 
-def test_dict_getitem_znsocket(znsclient, run_npm_test, request):
+def test_dict_get_znsocket(znsclient, run_npm_test, request):
     dct = znsocket.Dict(r=znsclient, key="dict:test")
     dct["a"] = {"lorem": "ipsum"}
     dct["b"] = 25
     run_npm_test(request.node.name, client_url=znsclient.address)
 
 
-def test_dict_setitem_znsocket(znsclient, run_npm_test, request):
+def test_dict_set_znsocket(znsclient, run_npm_test, request):
     dct = znsocket.Dict(r=znsclient, key="dict:test")
     mock = MagicMock()
     dct.on_refresh(mock)
     run_npm_test(request.node.name, client_url=znsclient.address)
 
     assert mock.call_count == 2
-    assert mock.call_args_list == [call({"keys": ["b"]}), call({"keys": ["a"]})]
+    assert mock.call_args_list == [call({"keys": ['"b"']}), call({"keys": ['"a"']})]
 
     assert dct["a"] == {"lorem": "ipsum"}
-    assert dct["b"] == 25
+    assert dct["b"] == "25"

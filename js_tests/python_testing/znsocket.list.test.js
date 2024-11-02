@@ -14,12 +14,12 @@ afterEach(async () => {
   await client.disconnect();
 });
 
-test("test_list_append_znsocket", async () => {
+test("test_list_push_znsocket", async () => {
   // Test length of the list
-  const length = await lst.len();
+  const length = await lst.length();
   expect(length).toBe(5); // Jest uses `expect()` for assertions
   for (let i = 0; i < length; i++) {
-    expect(await lst.getitem(i)).toBe(i);
+    expect(await lst.get(i)).toBe(i);
   }
-  await lst.append(5);
+  await lst.push(5);
 });
