@@ -1,4 +1,5 @@
 import { Client as ZnSocketClient } from "./client.js";
+import { Dict as ZnSocketDict } from "./dict.js";
 
 export class List {
   constructor({ client, key, socket, callbacks }) {
@@ -52,6 +53,11 @@ export class List {
         data: { start: await this.length() },
       });
     }
+    if (value instanceof List) {
+      value = `znsocket.List:${value._key}`;
+    } else if (value instanceof ZnSocketDict) {
+      value = `znsocket.Dict:${value._key}`;
+    }
     return this._client.rPush(this._key, JSON.stringify(value));
   }
 
@@ -64,6 +70,11 @@ export class List {
         target: this._key,
         data: { indices: [index] },
       });
+    }
+    if (value instanceof List) {
+      value = `znsocket.List:${value._key}`;
+    } else if (value instanceof ZnSocketDict) {
+      value = `znsocket.Dict:${value._key}`;
     }
     return this._client.lSet(this._key, index, JSON.stringify(value));
   }
@@ -82,11 +93,21 @@ export class List {
   }
 
   async get(index) { // Renamed from getitem to get
-    const value = await this._client.lIndex(this._key, index);
+    let value = await this._client.lIndex(this._key, index);
     if (value === null) {
       return null;
     }
-    return JSON.parse(value);
+    value = JSON.parse(value); // Parse the value
+    if (typeof value === "string") {
+      if (value.startsWith("znsocket.List:")) {
+        const refKey = value.split(/:(.+)/)[1];
+        return new List({ client: this._client,socket: this._socket , key: refKey});
+      } else if (value.startsWith("znsocket.Dict:")) {
+        const refKey = value.split(/:(.+)/)[1];
+        return new ZnSocketDict({ client: this._client, socket: this._socket , key: refKey});
+      }
+    }
+    return value;
   }
 
   onRefresh(callback) {
