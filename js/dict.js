@@ -1,12 +1,5 @@
 import { Client as ZnSocketClient } from "./client.js";
 
-function toJSONStringified(value) {
-  return JSON.stringify(value);
-}
-
-function fromJSONStringified(value) {
-  return JSON.parse(value);
-}
 
 export class Dict {
   constructor({ client, socket, key, callbacks }) {
