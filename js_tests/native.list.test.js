@@ -258,7 +258,7 @@ test("native_list_slice", async () => {
 test("native_list_in_list", async () => {
   let lst1 = new List({ client: client, key: "list:test:1" });
   let lst2 = new List({ client: client, key: "list:test:2" });
-  
+
   lst1.push(1);
   lst2.push(lst1);
 
