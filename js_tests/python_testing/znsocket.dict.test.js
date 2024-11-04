@@ -1,4 +1,4 @@
-import { createClient, Dict } from "znsocket";
+import { createClient, Dict, List } from "znsocket";
 
 let client;
 let dct;
@@ -44,4 +44,22 @@ test("test_dict_set_znsocket", async () => {
   await dct.set("a", { lorem: "ipsum" });
   expect(await dct.get("b")).toBe("25");
   expect(await dct.get("a")).toEqual({ lorem: "ipsum" });
+});
+
+
+test("test_dict_with_list_and_dict", async () => {
+  const referencedList = await dct.get("A");
+  const referencedDict = await dct.get("B");
+
+  expect(referencedList._key).toBe("list:referenced");
+  expect(referencedDict._key).toBe("dict:referenced");
+
+  expect(referencedList).toBeInstanceOf(List);
+  expect(referencedDict).toBeInstanceOf(Dict);
+
+  expect(await referencedList.get(0)).toBe("Hello World");
+  expect(await referencedDict.get("key")).toBe("value");
+
+  await referencedList.push("New Value");
+  await referencedDict.set("new_key", "new_value");
 });
