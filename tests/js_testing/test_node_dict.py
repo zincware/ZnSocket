@@ -61,7 +61,7 @@ def test_dict_with_list_and_dict(znsclient, run_npm_test, request):
     dct = znsocket.Dict(r=znsclient, key="dict:test")
     referenced_list = znsocket.List(r=znsclient, key="list:referenced")
     referenced_list.append("Hello World")
-    
+
     referenced_dict = znsocket.Dict(r=znsclient, key="dict:referenced")
     referenced_dict["key"] = "value"
 
