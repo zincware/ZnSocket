@@ -303,8 +303,8 @@ class Dict(MutableMapping, ZnSocketObject):
         if callbacks:
             self._callbacks.update(callbacks)
 
-    def __getitem__(self, key: str | float | int) -> t.Any:
-        value = self.redis.hget(self.key, json.dumps(key))
+    def __getitem__(self, key: str) -> t.Any:
+        value = self.redis.hget(self.key, key)
         if value is None:
             raise KeyError(key)  # TODO: items can not be None?
         value = _decode(self, value)
@@ -317,14 +317,14 @@ class Dict(MutableMapping, ZnSocketObject):
                 value = Dict(r=self.redis, key=key)
         return value
 
-    def __setitem__(self, key: str | float | int, value: t.Any) -> None:
+    def __setitem__(self, key: str, value: t.Any) -> None:
         if isinstance(value, List):
             value = f"znsocket.List:{value.key}"
         if isinstance(value, Dict):
             if value.key == self.key:
                 raise ValueError("Can not set circular reference to self")
             value = f"znsocket.Dict:{value.key}"
-        self.redis.hset(self.key, _encode(self, key), _encode(self, value))
+        self.redis.hset(self.key, key, _encode(self, value))
         if callback := self._callbacks["setitem"]:
             callback(key, value)
         if self.socket is not None:
@@ -333,11 +333,9 @@ class Dict(MutableMapping, ZnSocketObject):
             self.socket.sio.emit(f"refresh", refresh_data, namespace="/znsocket")
 
     def __delitem__(self, key: str) -> None:
-        json_key = _encode(self, key)
-
-        if not self.redis.hexists(self.key, json_key):
+        if not self.redis.hexists(self.key, key):
             raise KeyError(key)
-        self.redis.hdel(self.key, json_key)
+        self.redis.hdel(self.key, key)
         if callback := self._callbacks["delitem"]:
             callback(key)
         if self.socket is not None:
@@ -351,8 +349,8 @@ class Dict(MutableMapping, ZnSocketObject):
     def __len__(self) -> int:
         return self.redis.hlen(self.key)
 
-    def keys(self) -> list[t.Any]:
-        return [_decode(self, k) for k in self.redis.hkeys(self.key)]
+    def keys(self) -> list[str]:
+        return self.redis.hkeys(self.key)
 
     def values(self) -> list[t.Any]:
         response = []
@@ -360,14 +358,14 @@ class Dict(MutableMapping, ZnSocketObject):
             response.append(_decode(self, v))
         return response
 
-    def items(self) -> list[t.Tuple[t.Any, t.Any]]:
+    def items(self) -> list[t.Tuple[str, t.Any]]:
         response = []
         for k, v in self.redis.hgetall(self.key).items():
-            response.append((_decode(self, k), _decode(self, v)))
+            response.append((k, _decode(self, v)))
         return response
 
-    def __contains__(self, key: object) -> bool:
-        return self.redis.hexists(self.key, _encode(self, key))
+    def __contains__(self, key: str) -> bool:
+        return self.redis.hexists(self.key, key)
 
     def __repr__(self) -> str:
         if self.repr_type == "keys":
