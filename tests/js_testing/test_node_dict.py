@@ -55,3 +55,22 @@ def test_dict_set_znsocket(znsclient, run_npm_test, request):
 
     assert dct["a"] == {"lorem": "ipsum"}
     assert dct["b"] == "25"
+
+
+def test_dict_with_list_and_dict(znsclient, run_npm_test, request):
+    dct = znsocket.Dict(r=znsclient, key="dict:test")
+    referenced_list = znsocket.List(r=znsclient, key="list:referenced")
+    referenced_list.append("Hello World")
+    
+    referenced_dict = znsocket.Dict(r=znsclient, key="dict:referenced")
+    referenced_dict["key"] = "value"
+
+    dct.update({"A": referenced_list, "B": referenced_dict})
+
+    assert dct["A"][0] == "Hello World"
+    assert dct["B"]["key"] == "value"
+
+    run_npm_test(request.node.name, client_url=znsclient.address)
+
+    assert referenced_list[1] == "New Value"
+    assert referenced_dict["new_key"] == "new_value"
