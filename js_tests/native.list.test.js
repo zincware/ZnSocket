@@ -1,4 +1,4 @@
-import { createClient, List } from "znsocket";
+import { createClient, List, Dict } from "znsocket";
 
 const ZNSOCKET_URL = "http://127.0.0.1:4748";
 let client;
@@ -252,4 +252,36 @@ test("native_list_slice", async () => {
   sliced = await lst.slice(1, 3);
   expect(sliced).toEqual(["item2", "item3"]);
 
+});
+
+
+test("native_list_in_list", async () => {
+  let lst1 = new List({ client: client, key: "list:test:1" });
+  let lst2 = new List({ client: client, key: "list:test:2" });
+
+  lst1.push(1);
+  lst2.push(lst1);
+
+  await new Promise(resolve => setTimeout(resolve, 100));
+
+  let item = await lst2.get(0);
+  expect(item).toBeInstanceOf(List);
+  expect(await item.get(0)).toBe(1);
+});
+
+test("native_list_with_dict", async () => {
+  let lst = new List({ client: client, key: "list:test" });
+  let dct = new Dict({ client: client, key: "dict:test" });
+
+  await dct.set("a", "A5");
+  await dct.set("b", "A6");
+
+  await lst.push(dct);
+
+  await new Promise(resolve => setTimeout(resolve, 100));
+
+  let item = await lst.get(0);
+  expect(item).toBeInstanceOf(Dict);
+  expect(await item.get("a")).toBe("A5");
+  expect(await item.get("b")).toBe("A6");
 });

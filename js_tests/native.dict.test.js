@@ -1,4 +1,4 @@
-import { createClient, Dict } from "znsocket";
+import { createClient, Dict, List } from "znsocket";
 
 const ZNSOCKET_URL = "http://127.0.0.1:4748";
 let client;
@@ -209,4 +209,45 @@ test("native_dict_json_test", async () => {
   expect(await dct.values()).toEqual([5, "6", 7, "8"]);
   // expect(await dct.entries()).toEqual([[5, 5], [6, "6"], [7, 7], [8, "8"]]);
   // expect(await dct.entries()).toEqual([["5", 5], ["6", "6"], ["7", 7], ["8", "8"]]); // WRONG!  but what we get right now
+});
+
+
+test("native_dict_in_dict", async () => {
+  let dct1 = new Dict({ client: client, key: "dict:test:1" });
+  let dct2 = new Dict({ client: client, key: "dict:test:2" });
+
+  await dct1.set("Hello", "World");
+  await dct2.set("dict", dct1);
+
+  const dictInstance = await dct2.get("dict");
+  expect(dictInstance).toBeInstanceOf(Dict);
+  expect(dictInstance._key).toBe(dct1._key);
+  const helloValue = await dictInstance.get("Hello");
+  expect(helloValue).toBe("World");
+
+  await dct1.update({ "dct2": dct2 });
+
+  const dictInstance2 = await dct1.get("dct2");
+  expect(dictInstance2).toBeInstanceOf(Dict);
+  expect(dictInstance2._key).toBe(dct2._key);
+  const dictValue = await dictInstance2.get("dict");
+  expect(dictValue).toBeInstanceOf(Dict);
+  expect(dictValue._key).toBe(dct1._key);
+  const helloValue2 = await dictValue.get("Hello");
+  expect(helloValue2).toBe("World");
+});
+
+test("native_dict_with_list", async () => {
+  let lst = new List({ client: client, key: "list:test" });
+  let dct = new Dict({ client: client, key: "dict:test" });
+
+  await lst.push("A");
+  await lst.push("B");
+  await dct.set("list", lst);
+
+  const listInstance = await dct.get("list");
+  expect(listInstance).toBeInstanceOf(List);
+  expect(listInstance._key).toBe(lst._key);
+  expect(await listInstance.get(0)).toBe("A");
+  expect(await listInstance.get(1)).toBe("B");
 });

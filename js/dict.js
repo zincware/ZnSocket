@@ -1,4 +1,5 @@
 import { Client as ZnSocketClient } from "./client.js";
+import {List as ZnSocketList} from "./list.js";
 
 
 export class Dict {
@@ -45,6 +46,13 @@ export class Dict {
         data: { keys: [key] },
       });
     }
+
+    if (value instanceof ZnSocketList) {
+      value = `znsocket.List:${value._key}`;
+    } else if (value instanceof Dict) {
+      value = `znsocket.Dict:${value._key}`;
+    }
+
     return this._client.hSet(this._key, key, JSON.stringify(value));
   }
 
@@ -59,6 +67,16 @@ export class Dict {
       });
     }
 
+    // iterate over the entries and check if the value is a List or Dict
+    Object.entries(dict).forEach(([key, value]) => {
+      if (value instanceof ZnSocketList) {
+        dict[key] = `znsocket.List:${value._key}`;
+      } else if (value instanceof Dict) {
+        dict[key] = `znsocket.Dict:${value._key}`;
+      }
+    }
+    );
+
     const entries = Object.entries(dict).map(([key, value]) => [
       key,
       JSON.stringify(value),
@@ -71,7 +89,17 @@ export class Dict {
       if (value === null) {
         return null;
       }
-      return JSON.parse(value); // Parse the value
+      value = JSON.parse(value); // Parse the value
+      if (typeof value === "string") {
+        if (value.startsWith("znsocket.List:")) {
+          const refKey = value.split(/:(.+)/)[1];
+          return new ZnSocketList({ client: this._client,socket: this._socket , key: refKey});
+        } else if (value.startsWith("znsocket.Dict:")) {
+          const refKey = value.split(/:(.+)/)[1];
+          return new Dict({ client: this._client, socket: this._socket , key: refKey});
+        }
+      }
+      return value;
     });
   }
 
