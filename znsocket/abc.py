@@ -11,7 +11,7 @@ class RefreshTypeDict(t.TypedDict):
     stop: NotRequired[int | None]
     step: NotRequired[int | None]
     indices: NotRequired[list[int]]
-    keys: NotRequired[list[str]]
+    keys: NotRequired[list[str | int | float]]
 
 
 class RefreshDataTypeDict(t.TypedDict):

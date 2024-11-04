@@ -210,17 +210,3 @@ test("native_dict_json_test", async () => {
   // expect(await dct.entries()).toEqual([[5, 5], [6, "6"], [7, 7], [8, "8"]]);
   // expect(await dct.entries()).toEqual([["5", 5], ["6", "6"], ["7", 7], ["8", "8"]]); // WRONG!  but what we get right now
 });
-
-// !! keys are for some reason always strings
-
-// not really a test but a reminder of what JSON does
-test("native_dict_toJSONStringified", async () => {
-  expect(JSON.stringify(5)).toBe("5");
-  expect(JSON.stringify("5")).toBe("\"5\"");
-  expect(JSON.stringify({ a: 5 })).toBe("{\"a\":5}");
-
-  expect(JSON.parse("5")).toBe(5);
-  expect(JSON.parse("\"5\"")).toBe("5");
-  expect(JSON.parse("{\"a\":5}")).toEqual({ a: 5 });
-  // expect(5).toBe("5");
-});
