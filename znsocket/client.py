@@ -13,6 +13,28 @@ from znsocket.abc import RefreshDataTypeDict
 from znsocket.utils import parse_url
 
 
+def _handle_error(result):
+    """Handle errors in the server response."""
+
+    if "error" not in result:
+        return
+
+    error_map = {
+        "DataError": exceptions.DataError,
+        "TypeError": TypeError,
+        "IndexError": IndexError,
+        "KeyError": KeyError,
+        "UnknownEventError": exceptions.UnknownEventError,
+        "ResponseError": exceptions.ResponseError,
+    }
+
+    error_type = result["error"].get("type")
+    error_msg = result["error"].get("msg", "Unknown error")
+
+    # Raise the mapped exception if it exists, else raise a generic ZnSocketError
+    raise error_map.get(error_type, exceptions.ZnSocketError)(error_msg)
+
+
 @dataclasses.dataclass(frozen=True)
 class Client:
     address: str
@@ -69,24 +91,8 @@ class Client:
         result = self.sio.call(command, [args, kwargs], namespace=self.namespace)
         if result is None:
             raise exceptions.ZnSocketError("No response from server")
-        if "error" in result:
-            if result["error"]["type"] == "DataError":
-                raise exceptions.DataError(result["error"]["msg"])
-            elif result["error"]["type"] == "TypeError":
-                raise TypeError(result["error"]["msg"])
-            elif result["error"]["type"] == "IndexError":
-                raise IndexError(result["error"]["msg"])
-            elif result["error"]["type"] == "KeyError":
-                raise KeyError(result["error"]["msg"])
-            elif result["error"]["type"] == "UnknownEventError":
-                raise exceptions.UnknownEventError(result["error"]["msg"])
-            elif result["error"]["type"] == "ResponseError":
-                raise exceptions.ResponseError(result["error"]["msg"])
-            else:
-                raise exceptions.ZnSocketError(
-                    f"{result['error']['type']}: {result['error']['msg']} -- for command {command}"
-                )
-            # raise exceptions.DataError(result["error"])
+        _handle_error(result)
+
         if "type" in result and result["type"] == "set":
             return set(result["data"])
         return result["data"]
@@ -131,31 +137,19 @@ class Pipeline:
         # then send the message, collect the results and continue
 
         def _send_message(message) -> list:
+            """Send a message to the server and process the response."""
             result = self.client.sio.call(
                 "pipeline",
                 {"pipeline": message},
                 namespace=self.client.namespace,
             )
+
             if result is None:
                 raise exceptions.ZnSocketError("No response from server")
-            if "error" in result:
-                if result["error"]["type"] == "DataError":
-                    raise exceptions.DataError(result["error"]["msg"])
-                elif result["error"]["type"] == "TypeError":
-                    raise TypeError(result["error"]["msg"])
-                elif result["error"]["type"] == "IndexError":
-                    raise IndexError(result["error"]["msg"])
-                elif result["error"]["type"] == "KeyError":
-                    raise KeyError(result["error"]["msg"])
-                elif result["error"]["type"] == "UnknownEventError":
-                    raise exceptions.UnknownEventError(result["error"]["msg"])
-                elif result["error"]["type"] == "ResponseError":
-                    raise exceptions.ResponseError(result["error"]["msg"])
-                else:
-                    raise exceptions.ZnSocketError(
-                        f"{result['error']['type']}: {result['error']['msg']} -- for command {command}"
-                    )
-            return result["data"]
+            _handle_error(result)
+
+            # Process and return results with list comprehension
+            return [set(res["data"]) if res.get("type") == "set" else res["data"] for res in result["data"]]
 
         message = []
         results = []

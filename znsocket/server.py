@@ -108,6 +108,8 @@ class Storage:
             return None
 
     def set(self, name, value):
+        if value is None or name is None:
+            raise DataError("Invalid input of type None")
         self.content[name] = value
         return True
 
@@ -356,6 +358,6 @@ def attach_events(
                         "type": "UnknownEventError",
                     }
                 }
-        return {"data": [x["data"] for x in results]}
+        return {"data": results}
 
     return sio

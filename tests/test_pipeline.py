@@ -1,4 +1,5 @@
 import pytest
+import redis.exceptions
 
 
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
@@ -151,16 +152,16 @@ def test_lindex(client, request):
 
 
 # fails
-# @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
-# def test_smembers(client, request):
-#     c = request.getfixturevalue(client)
-#     c.sadd("foo", "bar")
-#     c.sadd("foo", "lorem")
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
+def test_smembers(client, request):
+    c = request.getfixturevalue(client)
+    c.sadd("foo", "bar")
+    c.sadd("foo", "lorem")
 
-#     pipeline = c.pipeline()
-#     pipeline.smembers("foo")
+    pipeline = c.pipeline()
+    pipeline.smembers("foo")
 
-#     assert pipeline.execute() == [{"bar", "lorem"}]
+    assert pipeline.execute() == [{"bar", "lorem"}]
 
 
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
@@ -173,3 +174,28 @@ def test_hgetall(client, request):
     pipeline.hgetall("foo")
 
     assert pipeline.execute() == [{"bar": "baz", "lorem": "ipsum"}]
+
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
+def test_set_none(client, request):
+    c = request.getfixturevalue(client)
+    pipeline = c.pipeline()
+    pipeline.set("foo", "bar")
+    pipeline.set("lorem", None)
+    pipeline.set("ipsum", "dolor")
+
+    with pytest.raises(redis.exceptions.DataError):
+        pipeline.execute()
+    # TODO: redis fails all operations of the pipeline if one fails
+    # while znsocket only stops operations AFTER the failed operation
+    # assert c.get("foo") is None # REDIS
+    # assert c.get("foo") == "bar" # ZNSOCKET
+    
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis"])
+def test_set_large_message(client, request, caplog):
+    c = request.getfixturevalue(client)
+    pipeline = c.pipeline(max_message_size=3000)
+    for _ in range(100):
+        pipeline.set("foo", "bar")
+
+    with pytest.warns(UserWarning): # assert that the messae is too large and is being split
+        assert pipeline.execute() == [True] * 100
