@@ -62,203 +62,35 @@ class Client:
         if not self.decode_responses:
             raise NotImplementedError("decode_responses=False is not supported yet")
 
-    @functools.wraps(Redis.delete)
-    def delete(self, *args, **kwargs):
-        return self.sio.call("delete", [args, kwargs], namespace=self.namespace)
+    def _redis_command(self, command, *args, **kwargs):
+        """Generic handler for Redis commands."""
+        result = self.sio.call(command, [args, kwargs], namespace=self.namespace)
+        if "error" in result:
+            if result["error"]["type"] == "DataError":
+                raise exceptions.DataError(result["error"]["msg"])
+            elif result["error"]["type"] == "TypeError":
+                raise TypeError(result["error"]["msg"])
+            elif result["error"]["type"] == "IndexError":
+                raise IndexError(result["error"]["msg"])
+            elif result["error"]["type"] == "KeyError":
+                raise KeyError(result["error"]["msg"])
+            elif result["error"]["type"] == "UnknownEventError":
+                raise exceptions.UnknownEventError(result["error"]["msg"])
+            elif result["error"]["type"] == "ResponseError":
+                raise exceptions.ResponseError(result["error"]["msg"])
+            else:
+                raise exceptions.ZnSocketError(f"{result['error']['type']}: {result['error']['msg']} -- for command {command}")
+            # raise exceptions.DataError(result["error"])
+        if "type" in result and result["type"] == "set":
+            return set(result["data"])
+        return result["data"]
 
-    @functools.wraps(Redis.hget)
-    def hget(self, *args, **kwargs):
-        return self.sio.call(
-            "hget", [args, kwargs], namespace=self.namespace
-        )
-
-    @functools.wraps(Redis.hset)
-    def hset(self, *args, **kwargs):
-        return self.sio.call("hset", [args, kwargs], namespace=self.namespace)
-
-    @functools.wraps(Redis.hmget)
-    def hmget(self, *args, **kwargs):
-        return self.sio.call(
-            "hmget", [args, kwargs], namespace=self.namespace
-        )
-
-    @functools.wraps(Redis.hmset)
-    def hkeys(self, *args, **kwargs):
-        return self.sio.call("hkeys", [args, kwargs], namespace=self.namespace)
-
-    @functools.wraps(Redis.exists)
-    def exists(self, *args, **kwargs):
-        return self.sio.call("exists", [args, kwargs], namespace=self.namespace)
-
-    @functools.wraps(Redis.llen)
-    def llen(self, *args, **kwargs):
-        return self.sio.call("llen", [args, kwargs], namespace=self.namespace)
-
-    @functools.wraps(Redis.rpush)
-    def rpush(self, *args, **kwargs):
-        return self.sio.call(
-            "rpush", [args, kwargs], namespace=self.namespace
-        )
-
-    @functools.wraps(Redis.lpush)
-    def lpush(self, *args, **kwargs):
-        return self.sio.call(
-            "lpush", [args, kwargs], namespace=self.namespace
-        )
-
-    @functools.wraps(Redis.lindex)
-    def lindex(self, *args, **kwargs):
-        return self.sio.call(
-            "lindex", [args, kwargs], namespace=self.namespace
-        )
-
-    @functools.wraps(Redis.set)
-    def set(self, *args, **kwargs):
-        return self.sio.call(
-            "set", [args, kwargs], namespace=self.namespace
-        )
-
-    @functools.wraps(Redis.get)
-    def get(self, *args, **kwargs):
-        return self.sio.call("get", [args, kwargs], namespace=self.namespace)
-
-    @functools.wraps(Redis.hgetall)
-    def hgetall(self, *args, **kwargs):
-        return self.sio.call("hgetall", [args, kwargs], namespace=self.namespace)
-
-    @functools.wraps(Redis.smembers)
-    def smembers(self, *args, **kwargs):
-        # response = self.sio.call("smembers", {"name": name}, namespace=self.namespace)
-        # # check if response should raise an exception
-        # if isinstance(response, dict) and "error" in response:
-        #     raise exceptions.ResponseError(response["error"])
-        # return set(response)
-        return self.sio.call("smembers", [args, kwargs], namespace=self.namespace)
-
-    @functools.wraps(Redis.lrange)
-    def lrange(self, *args, **kwargs):
-        return self.sio.call(
-            "lrange",
-            [args, kwargs],
-            namespace=self.namespace,
-        )
-
-    @functools.wraps(Redis.lset)
-    def lset(self, *args, **kwargs):
-        return self.sio.call(
-            "lset",
-            [args, kwargs],
-            namespace=self.namespace,
-        )
-
-        # response = self.sio.call(
-        #     "lset",
-        #     {"name": name, "index": index, "value": value},
-        #     namespace=self.namespace,
-        # )
-        # if isinstance(response, bool):
-        #     return response
-        # if response is not None:
-        #     raise exceptions.ResponseError(str(response))
-
-    @functools.wraps(Redis.lrem)
-    def lrem(self, *args, **kwargs):
-        return self.sio.call(
-            "lrem",
-            [args, kwargs],
-            namespace=self.namespace,
-        )
-        # if name is None or count is None or value is None:
-        #     raise exceptions.DataError("Invalid input")
-        # return self.sio.call(
-        #     "lrem",
-        #     {"name": name, "count": count, "value": value},
-        #     namespace=self.namespace,
-        # )
-
-    @functools.wraps(Redis.sadd)
-    def sadd(self, *args, **kwargs):
-        return self.sio.call(
-            "sadd",
-            [args, kwargs],
-            namespace=self.namespace,
-        )
-        
-    @functools.wraps(Redis.srem)
-    def srem(self, *args, **kwargs):
-        return self.sio.call(
-            "srem",
-            [args, kwargs],
-            namespace=self.namespace,
-        )
-
-    @functools.wraps(Redis.linsert)
-    def linsert(self, *args, **kwargs):
-        return self.sio.call(
-            "linsert",
-            [args, kwargs],
-            namespace=self.namespace,
-        )
-
-    @functools.wraps(Redis.flushall)
-    def flushall(self):
-        return self.sio.call("flushall", [(), {}], namespace=self.namespace)
-
-    @functools.wraps(Redis.hexists)
-    def hexists(self, *args, **kwargs):
-        return self.sio.call(
-            "hexists",
-            [args, kwargs],
-            namespace=self.namespace,
-        )
-
-    @functools.wraps(Redis.hdel)
-    def hdel(self, *args, **kwargs):
-        return self.sio.call(
-            "hdel",
-            [args, kwargs],
-            namespace=self.namespace,
-        )
-
-    @functools.wraps(Redis.hlen)
-    def hlen(self, *args, **kwargs):
-        return self.sio.call(
-            "hlen",
-            [args, kwargs],
-            namespace=self.namespace,
-        )
-
-    @functools.wraps(Redis.hvals)
-    def hvals(self, *args, **kwargs):
-        return self.sio.call(
-            "hvals",
-            [args, kwargs],
-            namespace=self.namespace,
-        )
-
-    @functools.wraps(Redis.lpop)
-    def lpop(self, *args, **kwargs):
-        return self.sio.call(
-            "lpop",
-            [args, kwargs],
-            namespace=self.namespace,
-        )
-
-    @functools.wraps(Redis.rpop)
-    def scard(self, *args, **kwargs):
-        return self.sio.call(
-            "scard",
-            [args, kwargs],
-            namespace=self.namespace,
-        )
-
-    @functools.wraps(Redis.copy)
-    def copy(self, *args, **kwargs):
-        return self.sio.call(
-            "copy",
-            [args, kwargs],
-            namespace=self.namespace,
-        )
+    def __getattr__(self, name):
+        """Intercepts method calls to dynamically route Redis commands."""
+        # Check if name corresponds to a Redis command
+        if hasattr(Redis, name):
+            return functools.partial(self._redis_command, name)
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
 
     @tyex.deprecated("hmset() is deprecated. Use hset() instead.")
     def hmset(self, name, mapping):

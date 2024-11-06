@@ -6,7 +6,7 @@ import eventlet.wsgi
 import socketio
 
 from znsocket.abc import RefreshDataTypeDict
-from znsocket.exceptions import DataError
+from znsocket.exceptions import DataError, ResponseError
 
 
 @dataclasses.dataclass
@@ -23,6 +23,8 @@ class Storage:
     ):
         if key is None and not mapping and not items:
             raise DataError("'hset' with no key value pairs")
+        if value is None and not mapping and not items:
+            raise DataError(f"Invalid input of type {type(value)}")
         pieces = []
         if items:
             pieces.extend(items)
@@ -94,6 +96,8 @@ class Storage:
         return len(self.content[name])
 
     def lindex(self, name, index):
+        if index is None:
+            raise DataError("Invalid input of type None")
         try:
             return self.content[name][index]
         except KeyError:
@@ -117,7 +121,7 @@ class Storage:
             response = set()
 
         if not isinstance(response, set):
-            raise ValueError(
+            raise ResponseError(
                 "WRONGTYPE Operation against a key holding the wrong kind of value"
             )
         return response
@@ -136,11 +140,13 @@ class Storage:
         try:
             self.content[name][index] = value
         except KeyError:
-            return "no such key"
+            raise  ResponseError("no such key")
         except IndexError:
-            return "index out of range"
+            raise ResponseError("index out of range")
 
     def lrem(self, name, count, value):
+        if count is None or value is None or name is None:
+            raise DataError("Invalid input of type None")
         if count == 0:
             try:
                 self.content[name] = [x for x in self.content[name] if x != value]
@@ -272,7 +278,7 @@ def get_sio(
         kwargs["max_http_buffer_size"] = max_http_buffer_size
     if async_mode is not None:
         kwargs["async_mode"] = async_mode
-    sio = socketio.Server(**kwargs)
+    sio = socketio.Server(**kwargs, logger=True, engineio_logger=True)
     attach_events(sio, namespace="/znsocket")
     return sio
 
@@ -289,13 +295,17 @@ def attach_events(
         if hasattr(storage, event):
             try:
                 # Call the storage method with the data as keyword arguments
-                return getattr(storage, event)(*data[0], **data[1])
+                result = {"data" : getattr(storage, event)(*data[0], **data[1])}
+                if event == "smembers":
+                    result["data"] = list(result["data"])
+                    result["type"] = "set"
+                return result
             except TypeError as e:
-                return {"error": f"Invalid arguments for {event}: {str(e)}"}
+                return {"error": {"msg": f"Invalid arguments for {event}: {str(e)}", "type": "TypeError"}}
             except Exception as e:
-                return {"error": str(e)}
+                return {"error": {"msg": str(e), "type": type(e).__name__}}
         else:
-            return {"error": f"Unknown event: {event}"}
+            return {"error": {"msg": f"Unknown event: {event}", "type": "UnknownEventError"}}
 
     # Pipeline event for handling batch commands
     @sio.event(namespace=namespace)
