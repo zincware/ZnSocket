@@ -250,6 +250,7 @@ class Server:
     port: int = 5000
     max_http_buffer_size: t.Optional[int] = None
     async_mode: t.Optional[str] = None
+    logger: bool = False
 
     @classmethod
     def from_url(cls, url: str, **kwargs) -> "Server":
@@ -264,21 +265,17 @@ class Server:
         sio = get_sio(
             max_http_buffer_size=self.max_http_buffer_size,
             async_mode=self.async_mode,
+            logger=self.logger,
+            engineio_logger=self.logger,
         )
         server_app = socketio.WSGIApp(sio)
         eventlet.wsgi.server(eventlet.listen(("0.0.0.0", self.port)), server_app)
 
 
 def get_sio(
-    max_http_buffer_size: t.Optional[int] = None,
-    async_mode: t.Optional[str] = None,
+    **kwargs,
 ) -> socketio.Server:
-    kwargs = {}
-    if max_http_buffer_size is not None:
-        kwargs["max_http_buffer_size"] = max_http_buffer_size
-    if async_mode is not None:
-        kwargs["async_mode"] = async_mode
-    sio = socketio.Server(**kwargs, logger=True, engineio_logger=True)
+    sio = socketio.Server(**kwargs)
     attach_events(sio, namespace="/znsocket")
     return sio
 
