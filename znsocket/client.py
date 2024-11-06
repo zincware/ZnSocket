@@ -6,6 +6,9 @@ import typing_extensions as tyex
 from znsocket import exceptions
 from znsocket.abc import RefreshDataTypeDict
 from znsocket.utils import parse_url
+from redis import Redis
+
+import functools
 
 
 @dataclasses.dataclass(frozen=True)
@@ -59,26 +62,19 @@ class Client:
         if not self.decode_responses:
             raise NotImplementedError("decode_responses=False is not supported yet")
 
-    def delete(self, name):
-        return self.sio.call("delete", {"name": name}, namespace=self.namespace)
+    @functools.wraps(Redis.delete)
+    def delete(self, *args, **kwargs):
+        return self.sio.call("delete", [args, kwargs], namespace=self.namespace)
 
-    def hget(self, name, key):
+    @functools.wraps(Redis.hget)
+    def hget(self, *args, **kwargs):
         return self.sio.call(
-            "hget", {"name": name, "key": key}, namespace=self.namespace
+            "hget", [args, kwargs], namespace=self.namespace
         )
 
-    def hset(self, name, key=None, value=None, mapping=None):
-        if key is not None and value is None:
-            raise exceptions.DataError(f"Invalid input of type {type(value)}")
-        if (key is None or value is None) and mapping is None:
-            raise exceptions.DataError("'hset' with no key value pairs")
-        if mapping is None:
-            mapping = {key: value}
-        if len(mapping) == 0:
-            raise exceptions.DataError("Mapping must not be empty")
-        return self.sio.call(
-            "hset", {"name": name, "mapping": mapping}, namespace=self.namespace
-        )
+    @functools.wraps(Redis.hset)
+    def hset(self, *args, **kwargs):
+        return self.sio.call("hset", [args, kwargs], namespace=self.namespace)
 
     def hmget(self, name, keys):
         return self.sio.call(
@@ -209,6 +205,7 @@ class Client:
 class Pipeline:
     client: Client
     pipeline: list = dataclasses.field(default_factory=list)
+    # TODO: max number of messages to be sent at once (check size?)
 
     def set(self, name, value):
         self.pipeline.append(("set", {"name": name, "value": value}))

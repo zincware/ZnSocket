@@ -6,19 +6,39 @@ import eventlet.wsgi
 import socketio
 
 from znsocket.abc import RefreshDataTypeDict
+from znsocket.exceptions import DataError
 
 
 @dataclasses.dataclass
 class Storage:
     content: dict = dataclasses.field(default_factory=dict)
 
-    def hset(self, name, mapping):
-        for key, value in mapping.items():
-            try:
-                self.content[name][key] = value
-            except KeyError:
-                self.content[name] = {key: value}
-        return len(mapping)
+    def hset(
+        self,
+        name: str,
+        key: t.Optional[str] = None,
+        value: t.Optional[str] = None,
+        mapping: t.Optional[dict] = None,
+        items: t.Optional[list] = None,
+    ):
+        if key is None and not mapping and not items:
+            raise DataError("'hset' with no key value pairs")
+        pieces = []
+        if items:
+            pieces.extend(items)
+        if key is not None:
+            pieces.extend((key, value))
+        if mapping:
+            for pair in mapping.items():
+                pieces.extend(pair)
+        
+        if name not in self.content:
+            self.content[name] = {}
+        for i in range(0, len(pieces), 2):
+            self.content[name][pieces[i]] = pieces[i + 1]
+        return len(pieces) // 2
+
+        # return self.execute_command("HSET", name, *pieces)
 
     def hget(self, name, key):
         try:
@@ -263,186 +283,35 @@ def attach_events(
     if storage is None:
         storage = Storage()
 
+    @sio.on("*", namespace=namespace)
+    def handle_all_events(event, sid, data):
+        """Handle any event dynamically by mapping event name to storage method."""
+        if hasattr(storage, event):
+            try:
+                # Call the storage method with the data as keyword arguments
+                return getattr(storage, event)(*data[0], **data[1])
+            except TypeError as e:
+                return {"error": f"Invalid arguments for {event}: {str(e)}"}
+            except Exception as e:
+                return {"error": str(e)}
+        else:
+            return {"error": f"Unknown event: {event}"}
+
+    # Pipeline event for handling batch commands
     @sio.event(namespace=namespace)
-    def pipeline(sid, data):
+    def pipeline(sid, data): 
         commands = data.pop("pipeline")
         results = []
         for cmd in commands:
-            if cmd[0] == "hset":
-                results.append(storage.hset(cmd[1]["name"], mapping=cmd[1]["mapping"]))
+            event = cmd[0]
+            func_data = cmd[1]
+            if hasattr(storage, event):
+                try:
+                    results.append(getattr(storage, event)(**func_data))
+                except Exception as e:
+                    results.append({"error": str(e)})
             else:
-                results.append(getattr(storage, cmd[0])(*cmd[1].values()))
+                results.append({"error": f"Unknown command: {event}"})
         return results
-
-    @sio.event(namespace=namespace)
-    def hset(sid, data):
-        name = data.pop("name")
-        mapping = data.pop("mapping")
-        return storage.hset(name, mapping=mapping)
-
-    @sio.event(namespace=namespace)
-    def hget(sid, data):
-        name = data.pop("name")
-        key = data.pop("key")
-        return storage.hget(name, key)
-
-    @sio.event(namespace=namespace)
-    def hmget(sid, data):
-        name = data.pop("name")
-        keys = data.pop("keys")
-        return storage.hmget(name, keys)
-
-    @sio.event(namespace=namespace)
-    def hkeys(sid, data):
-        name = data.pop("name")
-        return storage.hkeys(name)
-
-    @sio.event(namespace=namespace)
-    def delete(sid, data):
-        name = data.pop("name")
-        return storage.delete(name)
-
-    @sio.event(namespace=namespace)
-    def exists(sid, data):
-        name = data.pop("name")
-        return storage.exists(name)
-
-    @sio.event(namespace=namespace)
-    def llen(sid, data):
-        name = data.pop("name")
-        return storage.llen(name)
-
-    @sio.event(namespace=namespace)
-    def rpush(sid, data) -> int:
-        name = data.pop("name")
-        value = data.pop("value")
-        return storage.rpush(name, value)
-
-    @sio.event(namespace=namespace)
-    def lpush(sid, data):
-        name = data.pop("name")
-        value = data.pop("value")
-        return storage.lpush(name, value)
-
-    @sio.event(namespace=namespace)
-    def lindex(sid, data):
-        name = data.pop("name")
-        index = data.pop("index")
-        return storage.lindex(name, index)
-
-    @sio.on("set", namespace=namespace)
-    def set_(sid, data):
-        name = data.pop("name")
-        value = data.pop("value")
-        return storage.set(name, value)
-
-    @sio.event(namespace=namespace)
-    def get(sid, data):
-        name = data.pop("name")
-        return storage.get(name)
-
-    @sio.event(namespace=namespace)
-    def hgetall(sid, data):
-        name = data.pop("name")
-        return storage.hgetall(name)
-
-    @sio.event(namespace=namespace)
-    def smembers(sid, data):
-        name = data.pop("name")
-        try:
-            return list(storage.smembers(name))
-        except Exception as e:
-            return {"error": str(e)}
-
-    @sio.event(namespace=namespace)
-    def lrange(sid, data):
-        name = data.pop("name")
-        start = data.pop("start")
-        end = data.pop("end")
-        return storage.lrange(name, start, end)
-
-    @sio.event(namespace=namespace)
-    def lset(sid, data):
-        name = data.pop("name")
-        index = data.pop("index")
-        value = data.pop("value")
-        try:
-            return storage.lset(name, index, value)
-        except Exception as e:
-            return str(e)
-
-    @sio.event(namespace=namespace)
-    def lrem(sid, data):
-        name = data.pop("name")
-        count = data.pop("count")
-        value = data.pop("value")
-
-        return storage.lrem(name, count, value)
-
-    @sio.event(namespace=namespace)
-    def sadd(sid, data):
-        name = data.pop("name")
-        value = data.pop("value")
-        return storage.sadd(name, value)
-
-    @sio.event(namespace=namespace)
-    def flushall(sid, data):
-        return storage.flushall()
-
-    @sio.event(namespace=namespace)
-    def srem(sid, data):
-        name = data.pop("name")
-        value = data.pop("value")
-        return storage.srem(name, value)
-
-    @sio.event(namespace=namespace)
-    def linsert(sid, data):
-        name = data.pop("name")
-        where = data.pop("where")
-        pivot = data.pop("pivot")
-        value = data.pop("value")
-        return storage.linsert(name, where, pivot, value)
-
-    @sio.event(namespace=namespace)
-    def hexists(sid, data):
-        name = data.pop("name")
-        key = data.pop("key")
-        return storage.hexists(name, key)
-
-    @sio.event(namespace=namespace)
-    def hdel(sid, data):
-        name = data.pop("name")
-        key = data.pop("key")
-        return storage.hdel(name, key)
-
-    @sio.event(namespace=namespace)
-    def hlen(sid, data):
-        name = data.pop("name")
-        return storage.hlen(name)
-
-    @sio.event(namespace=namespace)
-    def hvals(sid, data):
-        name = data.pop("name")
-        return storage.hvals(name)
-
-    @sio.event(namespace=namespace)
-    def lpop(sid, data) -> t.Optional[t.Any]:
-        name = data.pop("name")
-        return storage.lpop(name)
-
-    @sio.event(namespace=namespace)
-    def scard(sid, data) -> int:
-        name = data.pop("name")
-        return storage.scard(name)
-
-    @sio.event(namespace=namespace)
-    def copy(sid, data):
-        src = data.pop("src")
-        dst = data.pop("dst")
-        return storage.copy(src, dst)
-
-    @sio.event(namespace=namespace)
-    def refresh(sid, data: RefreshDataTypeDict) -> None:
-        sio.emit("refresh", data, namespace=namespace, skip_sid=sid)
 
     return sio
