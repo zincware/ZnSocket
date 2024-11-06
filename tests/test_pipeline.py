@@ -197,5 +197,6 @@ def test_set_large_message(client, request, caplog):
     for _ in range(100):
         pipeline.set("foo", "bar")
 
-    with pytest.warns(UserWarning): # assert that the messae is too large and is being split
+    with pytest.warns(UserWarning):
+        # assert that the message is too large and is being split
         assert pipeline.execute() == [True] * 100
