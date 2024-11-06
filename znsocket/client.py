@@ -1,14 +1,13 @@
 import dataclasses
+import functools
 
 import socketio.exceptions
 import typing_extensions as tyex
+from redis import Redis
 
 from znsocket import exceptions
 from znsocket.abc import RefreshDataTypeDict
 from znsocket.utils import parse_url
-from redis import Redis
-
-import functools
 
 
 @dataclasses.dataclass(frozen=True)
@@ -81,7 +80,9 @@ class Client:
             elif result["error"]["type"] == "ResponseError":
                 raise exceptions.ResponseError(result["error"]["msg"])
             else:
-                raise exceptions.ZnSocketError(f"{result['error']['type']}: {result['error']['msg']} -- for command {command}")
+                raise exceptions.ZnSocketError(
+                    f"{result['error']['type']}: {result['error']['msg']} -- for command {command}"
+                )
             # raise exceptions.DataError(result["error"])
         if "type" in result and result["type"] == "set":
             return set(result["data"])
@@ -92,11 +93,14 @@ class Client:
         # Check if name corresponds to a Redis command
         if hasattr(Redis, name):
             return functools.partial(self._redis_command, name)
-        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '{name}'"
+        )
 
     @tyex.deprecated("hmset() is deprecated. Use hset() instead.")
     def hmset(self, name, mapping):
         return self.hset(name, mapping=mapping)
+
 
 @dataclasses.dataclass
 class Pipeline:
@@ -113,7 +117,9 @@ class Pipeline:
         # Check if the name corresponds to a Redis command
         if hasattr(Redis, name):
             return functools.partial(self._add_to_pipeline, name)
-        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '{name}'"
+        )
 
     def execute(self):
         """Executes the pipeline of commands as a batch on the server."""
@@ -136,5 +142,7 @@ class Pipeline:
             elif result["error"]["type"] == "ResponseError":
                 raise exceptions.ResponseError(result["error"]["msg"])
             else:
-                raise exceptions.ZnSocketError(f"{result['error']['type']}: {result['error']['msg']} -- for command {command}")
+                raise exceptions.ZnSocketError(
+                    f"{result['error']['type']}: {result['error']['msg']} -- for command {command}"
+                )
         return result["data"]

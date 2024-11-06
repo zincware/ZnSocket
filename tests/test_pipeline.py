@@ -12,6 +12,7 @@ def test_set(client, request):
     assert c.get("foo") == "bar"
     assert c.get("lorem") == "ipsum"
 
+
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_get(client, request):
     c = request.getfixturevalue(client)
@@ -23,6 +24,7 @@ def test_get(client, request):
     pipeline.get("lorem")
 
     assert pipeline.execute() == ["bar", "ipsum"]
+
 
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_delete(client, request):
@@ -38,6 +40,7 @@ def test_delete(client, request):
     assert c.get("foo") is None
     assert c.get("lorem") is None
 
+
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_hset(client, request):
     c = request.getfixturevalue(client)
@@ -48,6 +51,7 @@ def test_hset(client, request):
     assert pipeline.execute() == [True, True]
     assert c.hget("foo", "bar") == "baz"
     assert c.hget("lorem", "ipsum") == "dolor"
+
 
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_hset_mapping(client, request):
@@ -60,6 +64,7 @@ def test_hset_mapping(client, request):
     assert c.hget("foo", "bar") == "baz"
     assert c.hget("foo", "lorem") == "ipsum"
     assert c.hget("lorem", "ipsum") == "dolor"
+
 
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_hget(client, request):
@@ -85,13 +90,14 @@ def test_hkeys(client, request):
 
     assert pipeline.execute() == [["bar", "lorem"]]
 
+
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_exists(client, request):
     c = request.getfixturevalue(client)
     c.set("foo", "bar")
 
     pipeline = c.pipeline()
-    
+
     assert pipeline.exists("foo").exists("lorem").execute() == [1, 0]
 
 
@@ -143,6 +149,7 @@ def test_lindex(client, request):
 
     assert pipeline.execute() == ["lorem", "bar"]
 
+
 # fails
 # @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 # def test_smembers(client, request):
@@ -154,6 +161,7 @@ def test_lindex(client, request):
 #     pipeline.smembers("foo")
 
 #     assert pipeline.execute() == [{"bar", "lorem"}]
+
 
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_hgetall(client, request):

@@ -27,6 +27,7 @@ class ConnectionError(ZnSocketError, socketio.exceptions.ConnectionError):
 
 class DataError(ZnSocketError, redis.exceptions.DataError):
     """DataError."""
-    
+
+
 class UnknownEventError(ZnSocketError):
     """UnknownEventError."""

@@ -33,7 +33,7 @@ class Storage:
         if mapping:
             for pair in mapping.items():
                 pieces.extend(pair)
-        
+
         if name not in self.content:
             self.content[name] = {}
         for i in range(0, len(pieces), 2):
@@ -92,7 +92,7 @@ class Storage:
             self.content[name].insert(0, value)
         except KeyError:
             self.content[name] = [value]
-        
+
         return len(self.content[name])
 
     def lindex(self, name, index):
@@ -140,7 +140,7 @@ class Storage:
         try:
             self.content[name][index] = value
         except KeyError:
-            raise  ResponseError("no such key")
+            raise ResponseError("no such key")
         except IndexError:
             raise ResponseError("index out of range")
 
@@ -295,24 +295,31 @@ def attach_events(
         if hasattr(storage, event):
             try:
                 # Call the storage method with the data as keyword arguments
-                result = {"data" : getattr(storage, event)(*data[0], **data[1])}
+                result = {"data": getattr(storage, event)(*data[0], **data[1])}
                 if event == "smembers":
                     result["data"] = list(result["data"])
                     result["type"] = "set"
                 return result
             except TypeError as e:
-                return {"error": {"msg": f"Invalid arguments for {event}: {str(e)}", "type": "TypeError"}}
+                return {
+                    "error": {
+                        "msg": f"Invalid arguments for {event}: {str(e)}",
+                        "type": "TypeError",
+                    }
+                }
             except Exception as e:
                 return {"error": {"msg": str(e), "type": type(e).__name__}}
         else:
-            return {"error": {"msg": f"Unknown event: {event}", "type": "UnknownEventError"}}
+            return {
+                "error": {"msg": f"Unknown event: {event}", "type": "UnknownEventError"}
+            }
 
     @sio.event(namespace=namespace)
     def refresh(sid, data: RefreshDataTypeDict) -> None:
         sio.emit("refresh", data, namespace=namespace, skip_sid=sid)
 
     @sio.event(namespace=namespace)
-    def pipeline(sid, data): 
+    def pipeline(sid, data):
         commands = data.pop("pipeline")
         results = []
         for cmd in commands:
@@ -323,17 +330,27 @@ def attach_events(
             if hasattr(storage, event):
                 try:
                     # Call the storage method with the data as keyword arguments
-                    result = {"data" : getattr(storage, event)(*args, **kwargs)}
+                    result = {"data": getattr(storage, event)(*args, **kwargs)}
                     if event == "smembers":
                         result["data"] = list(result["data"])
                         result["type"] = "set"
                     results.append(result)
                 except TypeError as e:
-                    return {"error": {"msg": f"Invalid arguments for {event}: {str(e)}", "type": "TypeError"}}
+                    return {
+                        "error": {
+                            "msg": f"Invalid arguments for {event}: {str(e)}",
+                            "type": "TypeError",
+                        }
+                    }
                 except Exception as e:
                     return {"error": {"msg": str(e), "type": type(e).__name__}}
             else:
-                return {"error": {"msg": f"Unknown event: {event}", "type": "UnknownEventError"}}
+                return {
+                    "error": {
+                        "msg": f"Unknown event: {event}",
+                        "type": "UnknownEventError",
+                    }
+                }
         return {"data": [x["data"] for x in results]}
 
     return sio
