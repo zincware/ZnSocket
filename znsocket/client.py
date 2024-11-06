@@ -18,6 +18,9 @@ class Client:
     namespace: str = "/znsocket"
     refresh_callbacks: dict = dataclasses.field(default_factory=dict)
 
+    def pipeline(self):
+        return Pipeline(self)
+
     @classmethod
     def from_url(cls, url, namespace: str = "/znsocket", **kwargs) -> "Client":
         """Connect to a znsocket server using a URL.
@@ -201,3 +204,75 @@ class Client:
     @tyex.deprecated("hmset() is deprecated. Use hset() instead.")
     def hmset(self, name, mapping):
         return self.hset(name, mapping=mapping)
+
+@dataclasses.dataclass
+class Pipeline:
+    client: Client
+    pipeline: list = dataclasses.field(default_factory=list)
+
+    def set(self, name, value):
+        self.pipeline.append(("set", {"name": name, "value": value}))
+        return self
+    
+    def get(self, name):
+        self.pipeline.append(("get", {"name": name}))
+        return self
+    
+    def delete(self, name):
+        self.pipeline.append(("delete", {"name": name}))
+        return self
+    
+    def hset(self, name, key=None, value=None, mapping=None):
+        if key is not None and value is None:
+            raise exceptions.DataError(f"Invalid input of type {type(value)}")
+        if (key is None or value is None) and mapping is None:
+            raise exceptions.DataError("'hset' with no key value pairs")
+        if mapping is None:
+            mapping = {key: value}
+        if len(mapping) == 0:
+            raise exceptions.DataError("Mapping must not be empty")
+
+        self.pipeline.append(("hset", {"name": name, "mapping": mapping}))
+        return self
+    
+    def hget(self, name, key):
+        self.pipeline.append(("hget", {"name": name, "key": key}))
+        return self
+    
+    def hkeys(self, name):
+        self.pipeline.append(("hkeys", {"name": name}))
+        return self
+    
+    def exists(self, name):
+        self.pipeline.append(("exists", {"name": name}))
+        return self
+    
+    def llen(self, name):
+        self.pipeline.append(("llen", {"name": name}))
+        return self
+    
+    def rpush(self, name, value):
+        self.pipeline.append(("rpush", {"name": name, "value": value}))
+        return self
+    
+    def lpush(self, name, value):
+        self.pipeline.append(("lpush", {"name": name, "value": value}))
+        return self
+    
+    def lindex(self, name, index):
+        self.pipeline.append(("lindex", {"name": name, "index": index}))
+        return self
+    
+    def smembers(self, name):
+        self.pipeline.append(("smembers", {"name": name}))
+        return self
+    
+    def hgetall(self, name):
+        self.pipeline.append(("hgetall", {"name": name}))
+        return self
+
+    def execute(self):
+        # TODO: what about errors / sets / etc?
+        return self.client.sio.call(
+            "pipeline", {"pipeline": self.pipeline}, namespace=self.client.namespace
+        )

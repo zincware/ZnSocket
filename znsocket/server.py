@@ -18,6 +18,7 @@ class Storage:
                 self.content[name][key] = value
             except KeyError:
                 self.content[name] = {key: value}
+        return len(mapping)
 
     def hget(self, name, key):
         try:
@@ -69,6 +70,8 @@ class Storage:
             self.content[name].insert(0, value)
         except KeyError:
             self.content[name] = [value]
+        
+        return len(self.content[name])
 
     def lindex(self, name, index):
         try:
@@ -82,6 +85,7 @@ class Storage:
 
     def set(self, name, value):
         self.content[name] = value
+        return True
 
     def get(self, name, default=None):
         return self.content.get(name, default)
@@ -258,6 +262,17 @@ def attach_events(
 ) -> None:
     if storage is None:
         storage = Storage()
+
+    @sio.event(namespace=namespace)
+    def pipeline(sid, data):
+        commands = data.pop("pipeline")
+        results = []
+        for cmd in commands:
+            if cmd[0] == "hset":
+                results.append(storage.hset(cmd[1]["name"], mapping=cmd[1]["mapping"]))
+            else:
+                results.append(getattr(storage, cmd[0])(*cmd[1].values()))
+        return results
 
     @sio.event(namespace=namespace)
     def hset(sid, data):
