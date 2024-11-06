@@ -395,8 +395,8 @@ def test_list_refresh_delitem(client, request, znsclient):
     lst2.on_refresh(mock)
     lst.extend([1, 2, 3])
     znsclient.sio.sleep(0.01)
-    # assert mock called 3 times
-    assert mock.call_count == 3
+    # extend sends all at once
+    assert mock.call_count == 1
     mock.reset_mock()
 
     assert len(lst) == 3
@@ -423,8 +423,8 @@ def test_list_refresh_setitem(client, request, znsclient):
     lst2.on_refresh(mock)
     lst.extend([1, 2, 3])
     znsclient.sio.sleep(0.01)
-    # assert mock called 3 times
-    assert mock.call_count == 3
+    # extend sends all at once
+    assert mock.call_count == 1
     mock.reset_mock()
 
     assert len(lst) == 3
