@@ -149,7 +149,10 @@ class Pipeline:
             _handle_error(result)
 
             # Process and return results with list comprehension
-            return [set(res["data"]) if res.get("type") == "set" else res["data"] for res in result["data"]]
+            return [
+                set(res["data"]) if res.get("type") == "set" else res["data"]
+                for res in result["data"]
+            ]
 
         message = []
         results = []

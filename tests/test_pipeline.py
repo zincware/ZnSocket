@@ -175,6 +175,7 @@ def test_hgetall(client, request):
 
     assert pipeline.execute() == [{"bar": "baz", "lorem": "ipsum"}]
 
+
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_set_none(client, request):
     c = request.getfixturevalue(client)
@@ -189,7 +190,8 @@ def test_set_none(client, request):
     # while znsocket only stops operations AFTER the failed operation
     # assert c.get("foo") is None # REDIS
     # assert c.get("foo") == "bar" # ZNSOCKET
-    
+
+
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis"])
 def test_set_large_message(client, request, caplog):
     c = request.getfixturevalue(client)
