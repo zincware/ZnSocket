@@ -65,6 +65,8 @@ class Client:
     def _redis_command(self, command, *args, **kwargs):
         """Generic handler for Redis commands."""
         result = self.sio.call(command, [args, kwargs], namespace=self.namespace)
+        if result is None:
+            raise exceptions.ZnSocketError("No response from server")
         if "error" in result:
             if result["error"]["type"] == "DataError":
                 raise exceptions.DataError(result["error"]["msg"])
@@ -100,71 +102,39 @@ class Client:
 class Pipeline:
     client: Client
     pipeline: list = dataclasses.field(default_factory=list)
-    # TODO: max number of messages to be sent at once (check size?)
 
-    def set(self, name, value):
-        self.pipeline.append(("set", {"name": name, "value": value}))
+    def _add_to_pipeline(self, command, *args, **kwargs):
+        """Generic handler to add Redis commands to the pipeline."""
+        self.pipeline.append((command, [args, kwargs]))
         return self
-    
-    def get(self, name):
-        self.pipeline.append(("get", {"name": name}))
-        return self
-    
-    def delete(self, name):
-        self.pipeline.append(("delete", {"name": name}))
-        return self
-    
-    def hset(self, name, key=None, value=None, mapping=None):
-        if key is not None and value is None:
-            raise exceptions.DataError(f"Invalid input of type {type(value)}")
-        if (key is None or value is None) and mapping is None:
-            raise exceptions.DataError("'hset' with no key value pairs")
-        if mapping is None:
-            mapping = {key: value}
-        if len(mapping) == 0:
-            raise exceptions.DataError("Mapping must not be empty")
 
-        self.pipeline.append(("hset", {"name": name, "mapping": mapping}))
-        return self
-    
-    def hget(self, name, key):
-        self.pipeline.append(("hget", {"name": name, "key": key}))
-        return self
-    
-    def hkeys(self, name):
-        self.pipeline.append(("hkeys", {"name": name}))
-        return self
-    
-    def exists(self, name):
-        self.pipeline.append(("exists", {"name": name}))
-        return self
-    
-    def llen(self, name):
-        self.pipeline.append(("llen", {"name": name}))
-        return self
-    
-    def rpush(self, name, value):
-        self.pipeline.append(("rpush", {"name": name, "value": value}))
-        return self
-    
-    def lpush(self, name, value):
-        self.pipeline.append(("lpush", {"name": name, "value": value}))
-        return self
-    
-    def lindex(self, name, index):
-        self.pipeline.append(("lindex", {"name": name, "index": index}))
-        return self
-    
-    def smembers(self, name):
-        self.pipeline.append(("smembers", {"name": name}))
-        return self
-    
-    def hgetall(self, name):
-        self.pipeline.append(("hgetall", {"name": name}))
-        return self
+    def __getattr__(self, name):
+        """Intercepts method calls to dynamically add Redis commands to the pipeline."""
+        # Check if the name corresponds to a Redis command
+        if hasattr(Redis, name):
+            return functools.partial(self._add_to_pipeline, name)
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
 
     def execute(self):
-        # TODO: what about errors / sets / etc?
-        return self.client.sio.call(
+        """Executes the pipeline of commands as a batch on the server."""
+        result = self.client.sio.call(
             "pipeline", {"pipeline": self.pipeline}, namespace=self.client.namespace
         )
+        if result is None:
+            raise exceptions.ZnSocketError("No response from server")
+        if "error" in result:
+            if result["error"]["type"] == "DataError":
+                raise exceptions.DataError(result["error"]["msg"])
+            elif result["error"]["type"] == "TypeError":
+                raise TypeError(result["error"]["msg"])
+            elif result["error"]["type"] == "IndexError":
+                raise IndexError(result["error"]["msg"])
+            elif result["error"]["type"] == "KeyError":
+                raise KeyError(result["error"]["msg"])
+            elif result["error"]["type"] == "UnknownEventError":
+                raise exceptions.UnknownEventError(result["error"]["msg"])
+            elif result["error"]["type"] == "ResponseError":
+                raise exceptions.ResponseError(result["error"]["msg"])
+            else:
+                raise exceptions.ZnSocketError(f"{result['error']['type']}: {result['error']['msg']} -- for command {command}")
+        return result["data"]

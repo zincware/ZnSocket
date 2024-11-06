@@ -317,14 +317,23 @@ def attach_events(
         results = []
         for cmd in commands:
             event = cmd[0]
-            func_data = cmd[1]
+            args = cmd[1][0]
+            kwargs = cmd[1][1]
+
             if hasattr(storage, event):
                 try:
-                    results.append(getattr(storage, event)(**func_data))
+                    # Call the storage method with the data as keyword arguments
+                    result = {"data" : getattr(storage, event)(*args, **kwargs)}
+                    if event == "smembers":
+                        result["data"] = list(result["data"])
+                        result["type"] = "set"
+                    results.append(result)
+                except TypeError as e:
+                    return {"error": {"msg": f"Invalid arguments for {event}: {str(e)}", "type": "TypeError"}}
                 except Exception as e:
-                    results.append({"error": str(e)})
+                    return {"error": {"msg": str(e), "type": type(e).__name__}}
             else:
-                results.append({"error": f"Unknown command: {event}"})
-        return results
+                return {"error": {"msg": f"Unknown event: {event}", "type": "UnknownEventError"}}
+        return {"data": [x["data"] for x in results]}
 
     return sio
