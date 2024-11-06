@@ -277,7 +277,7 @@ def get_sio(
     async_mode: t.Optional[str] = None,
     **kwargs,
 ) -> socketio.Server:
-    # We set these as kwargs, because their default 
+    # We set these as kwargs, because their default
     # is not None, so if None we leave them out
     if max_http_buffer_size is not None:
         kwargs["max_http_buffer_size"] = max_http_buffer_size
