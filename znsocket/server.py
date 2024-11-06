@@ -273,8 +273,16 @@ class Server:
 
 
 def get_sio(
+    max_http_buffer_size: t.Optional[int] = None,
+    async_mode: t.Optional[str] = None,
     **kwargs,
 ) -> socketio.Server:
+    # We set these as kwargs, because their default 
+    # is not None, so if None we leave them out
+    if max_http_buffer_size is not None:
+        kwargs["max_http_buffer_size"] = max_http_buffer_size
+    if async_mode is not None:
+        kwargs["async_mode"] = async_mode
     sio = socketio.Server(**kwargs)
     attach_events(sio, namespace="/znsocket")
     return sio
