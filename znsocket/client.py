@@ -1,5 +1,8 @@
 import dataclasses
 import functools
+import json
+import typing as t
+import warnings
 
 import socketio.exceptions
 import typing_extensions as tyex
@@ -20,8 +23,8 @@ class Client:
     namespace: str = "/znsocket"
     refresh_callbacks: dict = dataclasses.field(default_factory=dict)
 
-    def pipeline(self):
-        return Pipeline(self)
+    def pipeline(self, *args, **kwargs) -> "Pipeline":
+        return Pipeline(self, *args, **kwargs)
 
     @classmethod
     def from_url(cls, url, namespace: str = "/znsocket", **kwargs) -> "Client":
@@ -105,6 +108,7 @@ class Client:
 @dataclasses.dataclass
 class Pipeline:
     client: Client
+    max_message_size: t.Optional[int] = 10 * 1024 * 1024
     pipeline: list = dataclasses.field(default_factory=list)
 
     def _add_to_pipeline(self, command, *args, **kwargs):
@@ -123,26 +127,52 @@ class Pipeline:
 
     def execute(self):
         """Executes the pipeline of commands as a batch on the server."""
-        result = self.client.sio.call(
-            "pipeline", {"pipeline": self.pipeline}, namespace=self.client.namespace
-        )
-        if result is None:
-            raise exceptions.ZnSocketError("No response from server")
-        if "error" in result:
-            if result["error"]["type"] == "DataError":
-                raise exceptions.DataError(result["error"]["msg"])
-            elif result["error"]["type"] == "TypeError":
-                raise TypeError(result["error"]["msg"])
-            elif result["error"]["type"] == "IndexError":
-                raise IndexError(result["error"]["msg"])
-            elif result["error"]["type"] == "KeyError":
-                raise KeyError(result["error"]["msg"])
-            elif result["error"]["type"] == "UnknownEventError":
-                raise exceptions.UnknownEventError(result["error"]["msg"])
-            elif result["error"]["type"] == "ResponseError":
-                raise exceptions.ResponseError(result["error"]["msg"])
-            else:
-                raise exceptions.ZnSocketError(
-                    f"{result['error']['type']}: {result['error']['msg']} -- for command {command}"
-                )
-        return result["data"]
+        # iterate over self.pipeline and keep adding until the size is greater than max_message_size
+        # then send the message, collect the results and continue
+
+        def _send_message(message) -> list:
+            result = self.client.sio.call(
+                "pipeline",
+                {"pipeline": message},
+                namespace=self.client.namespace,
+            )
+            if result is None:
+                raise exceptions.ZnSocketError("No response from server")
+            if "error" in result:
+                if result["error"]["type"] == "DataError":
+                    raise exceptions.DataError(result["error"]["msg"])
+                elif result["error"]["type"] == "TypeError":
+                    raise TypeError(result["error"]["msg"])
+                elif result["error"]["type"] == "IndexError":
+                    raise IndexError(result["error"]["msg"])
+                elif result["error"]["type"] == "KeyError":
+                    raise KeyError(result["error"]["msg"])
+                elif result["error"]["type"] == "UnknownEventError":
+                    raise exceptions.UnknownEventError(result["error"]["msg"])
+                elif result["error"]["type"] == "ResponseError":
+                    raise exceptions.ResponseError(result["error"]["msg"])
+                else:
+                    raise exceptions.ZnSocketError(
+                        f"{result['error']['type']}: {result['error']['msg']} -- for command {command}"
+                    )
+            return result["data"]
+
+        message = []
+        results = []
+        for idx, entry in enumerate(self.pipeline):
+            message.append(entry)
+            if self.max_message_size is not None:
+                msg_size = json.dumps(message).__sizeof__()
+                if msg_size > self.max_message_size:
+                    warnings.warn(
+                        f"Message size '{msg_size}' is greater than"
+                        f" '{self.max_message_size = }'. Sending message"
+                        f" at index {idx} and continuing."
+                    )
+                    results.extend(_send_message(message))
+                    message = []
+        if message:
+            results.extend(_send_message(message))
+
+        # TODO: test pipeline with smembers and test with errors
+        return results
