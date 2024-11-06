@@ -43,17 +43,17 @@ export class Client {
 
   lLen(key) {
     return new Promise((resolve, reject) => {
-      this._socket.emit("llen", { name: key }, (data) => {
+      this._socket.emit("llen", [[key], {}], (data) => {
         // Check if there is an error or invalid response and reject if necessary
-        resolve(data);
+        resolve(data["data"]);
       });
     });
   }
 
   lIndex(key, index) {
     return new Promise((resolve, reject) => {
-      this._socket.emit("lindex", { name: key, index: index }, (data) => {
-        resolve(data || null);
+      this._socket.emit("lindex", [[key, index],{}], (data) => {
+        resolve(data["data"] || null);
       });
     });
   }
@@ -62,7 +62,7 @@ export class Client {
     return new Promise((resolve, reject) => {
       this._socket.emit(
         "lset",
-        { name: key, index: index, value: value },
+        [[key, index, value], {}],
         (data) => {
           resolve("OK"); // TODO
         },
@@ -74,7 +74,7 @@ export class Client {
     return new Promise((resolve, reject) => {
       this._socket.emit(
         "lrem",
-        { name: key, count: count, value: value },
+        [[key, count, value], {}],
         (data) => {
           resolve("OK"); // TODO
         },
@@ -84,15 +84,21 @@ export class Client {
 
   lRange(key, start, end) {
     return new Promise((resolve, reject) => {
-      this._socket.emit("lrange", { name: key, start: start, end: end -1 }, (data) => {
-        resolve(data);
+      this._socket.emit(
+        "lrange",
+        [[key, start, end - 1], {}],
+        (data) => {
+        resolve(data["data"]);
       });
     });
   }
 
   rPush(key, value) {
     return new Promise((resolve, reject) => {
-      this._socket.emit("rpush", { name: key, value: value }, (data) => {
+      this._socket.emit(
+        "rpush",
+        [[key, value], {}],
+        (data) => {
         resolve("OK"); // TODO
       });
     });
@@ -100,7 +106,7 @@ export class Client {
 
   lPush(key, value) {
     return new Promise((resolve, reject) => {
-      this._socket.emit("lpush", { name: key, value: value }, (data) => {
+      this._socket.emit("lpush", [[key, value], {}], (data) => {
         resolve("OK"); // TODO
       });
     });
@@ -108,8 +114,8 @@ export class Client {
 
   hGet(key, field) {
     return new Promise((resolve, reject) => {
-      this._socket.emit("hget", { name: key, key: field }, (data) => {
-        resolve(data || null);
+      this._socket.emit("hget", [[key, field], {}], (data) => {
+        resolve(data["data"] || null);
       });
     });
   }
@@ -118,7 +124,7 @@ export class Client {
     return new Promise((resolve, reject) => {
       this._socket.emit(
         "hset",
-        { name: key, mapping: { [field]: value } },
+        [[], { name: key, mapping: { [field]: value } }],
         (data) => {
           resolve("OK"); // TODO
         },
@@ -128,7 +134,7 @@ export class Client {
 
   hMSet(key, mapping) {
     return new Promise((resolve, reject) => {
-      this._socket.emit("hset", { name: key, mapping: mapping }, (data) => {
+      this._socket.emit("hset", [[key], {mapping: mapping}], (data) => {
         resolve("OK"); // TODO
       });
     });
@@ -136,7 +142,7 @@ export class Client {
 
   hDel(key, field) {
     return new Promise((resolve, reject) => {
-      this._socket.emit("hdel", { name: key, key: field }, (data) => {
+      this._socket.emit("hdel", [[key, field], {}], (data) => {
         resolve("OK"); // TODO
       });
     });
@@ -144,7 +150,7 @@ export class Client {
 
   del(key) {
     return new Promise((resolve, reject) => {
-      this._socket.emit("delete", { name: key }, (data) => {
+      this._socket.emit("delete", [[key],{}], (data) => {
         resolve("OK"); // TODO
       });
     });
@@ -152,8 +158,8 @@ export class Client {
 
   hExists(key, field) {
     return new Promise((resolve, reject) => {
-      this._socket.emit("hexists", { name: key, key: field }, (data) => {
-        if (data === 1) {
+      this._socket.emit("hexists", [[key, field], {}], (data) => {
+        if (data["data"] === 1) {
           resolve(true);
         } else {
           resolve(false);
@@ -164,39 +170,39 @@ export class Client {
 
   hLen(key) {
     return new Promise((resolve, reject) => {
-      this._socket.emit("hlen", { name: key }, (data) => {
-        resolve(data);
+      this._socket.emit("hlen", [[key],{}], (data) => {
+        resolve(data["data"]);
       });
     });
   }
 
   hKeys(key) {
     return new Promise((resolve, reject) => {
-      this._socket.emit("hkeys", { name: key }, (data) => {
-        resolve(data);
+      this._socket.emit("hkeys", [[key],{}], (data) => {
+        resolve(data["data"]);
       });
     });
   }
 
   hVals(key) {
     return new Promise((resolve, reject) => {
-      this._socket.emit("hvals", { name: key }, (data) => {
-        resolve(data);
+      this._socket.emit("hvals", [[key], {}], (data) => {
+        resolve(data["data"]);
       });
     });
   }
 
   hGetAll(key) {
     return new Promise((resolve, reject) => {
-      this._socket.emit("hgetall", { name: key }, (data) => {
-        resolve(data);
+      this._socket.emit("hgetall", [[key], {}], (data) => {
+        resolve(data["data"]);
       });
     });
   }
 
   flushAll() {
     return new Promise((resolve, reject) => {
-      this._socket.emit("flushall", {}, (data) => {
+      this._socket.emit("flushall", [[], {}], (data) => {
         resolve("OK"); // TODO
       });
     });

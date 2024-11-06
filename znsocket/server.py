@@ -307,7 +307,10 @@ def attach_events(
         else:
             return {"error": {"msg": f"Unknown event: {event}", "type": "UnknownEventError"}}
 
-    # Pipeline event for handling batch commands
+    @sio.event(namespace=namespace)
+    def refresh(sid, data: RefreshDataTypeDict) -> None:
+        sio.emit("refresh", data, namespace=namespace, skip_sid=sid)
+
     @sio.event(namespace=namespace)
     def pipeline(sid, data): 
         commands = data.pop("pipeline")
