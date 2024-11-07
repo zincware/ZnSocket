@@ -206,8 +206,6 @@ def test_set_large_message(client, request, caplog):
 
     assert pipeline.execute() == [True] * 100
 
-    # Assert that the debug message was logged
-    # This captures log entries at the debug level for verification
     assert any(
         "splitting message at index" in record.message for record in caplog.records
     ), "Expected 'splitting message' debug log not found."
