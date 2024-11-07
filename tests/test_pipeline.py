@@ -195,7 +195,7 @@ def test_set_none(client, request):
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis"])
 def test_set_large_message(client, request, caplog):
     c = request.getfixturevalue(client)
-    pipeline = c.pipeline(max_message_size=3000)
+    pipeline = c.pipeline(max_commands_per_call=75)
     for _ in range(100):
         pipeline.set("foo", "bar")
 
