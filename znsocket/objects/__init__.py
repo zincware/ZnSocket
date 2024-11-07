@@ -284,7 +284,7 @@ class List(MutableSequence, ZnSocketObject):
         value = self.redis.lindex(self.key, index)
         if value is None:
             raise IndexError("pop index out of range")
-        
+
         pipeline = self.redis.pipeline(**self._pipeline_kwargs)
         pipeline.lset(self.key, index, "__DELETED__")
         pipeline.lrem(self.key, 0, "__DELETED__")
