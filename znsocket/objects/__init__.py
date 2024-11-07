@@ -276,6 +276,28 @@ class List(MutableSequence, ZnSocketObject):
             refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
             self.socket.sio.emit(f"refresh", refresh_data, namespace="/znsocket")
 
+    def pop(self, index: int = -1) -> t.Any:
+        """Pop an item from the list."""
+        if index < 0:
+            index = len(self) + index
+
+        value = self.redis.lindex(self.key, index)
+        if value is None:
+            raise IndexError("pop index out of range")
+        
+        pipeline = self.redis.pipeline(**self._pipeline_kwargs)
+        pipeline.lset(self.key, index, "__DELETED__")
+        pipeline.lrem(self.key, 0, "__DELETED__")
+        try:
+            pipeline.execute()
+        except redis.exceptions.ResponseError:
+            raise IndexError("pop index out of range")
+        if self.socket is not None:
+            refresh: RefreshTypeDict = {"indices": [index]}
+            refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
+            self.socket.sio.emit(f"refresh", refresh_data, namespace="/znsocket")
+        return _decode(self, value)
+
     def copy(self, key: str) -> "List":
         """Copy the list to a new key.
 
