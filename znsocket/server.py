@@ -40,8 +40,6 @@ class Storage:
             self.content[name][pieces[i]] = pieces[i + 1]
         return len(pieces) // 2
 
-        # return self.execute_command("HSET", name, *pieces)
-
     def hget(self, name, key):
         try:
             return self.content[name][key]
@@ -301,9 +299,8 @@ def attach_events(
         """Handle any event dynamically by mapping event name to storage method."""
         if hasattr(storage, event):
             try:
-                # Call the storage method with the data as keyword arguments
                 result = {"data": getattr(storage, event)(*data[0], **data[1])}
-                if event == "smembers":
+                if isinstance(result["data"], set):
                     result["data"] = list(result["data"])
                     result["type"] = "set"
                 return result
@@ -336,9 +333,8 @@ def attach_events(
 
             if hasattr(storage, event):
                 try:
-                    # Call the storage method with the data as keyword arguments
                     result = {"data": getattr(storage, event)(*args, **kwargs)}
-                    if event == "smembers":
+                    if isinstance(result["data"], set):
                         result["data"] = list(result["data"])
                         result["type"] = "set"
                     results.append(result)

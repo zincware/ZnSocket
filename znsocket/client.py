@@ -13,6 +13,14 @@ from znsocket.abc import RefreshDataTypeDict
 from znsocket.utils import parse_url
 
 
+def _handle_data(data: dict):
+    if "type" in data:
+        if data["type"] == "set":
+            return set(data["data"])
+        else:
+            raise TypeError(f"Can not convert type '{data['type']}'")
+    return data["data"]
+
 def _handle_error(result):
     """Handle errors in the server response."""
 
@@ -93,9 +101,7 @@ class Client:
             raise exceptions.ZnSocketError("No response from server")
         _handle_error(result)
 
-        if "type" in result and result["type"] == "set":
-            return set(result["data"])
-        return result["data"]
+        return _handle_data(result)
 
     def __getattr__(self, name):
         """Intercepts method calls to dynamically route Redis commands."""
@@ -130,29 +136,25 @@ class Pipeline:
         raise AttributeError(
             f"'{type(self).__name__}' object has no attribute '{name}'"
         )
+    
+    def _send_message(self, message) -> list:
+        """Send a message to the server and process the response."""
+        result = self.client.sio.call(
+            "pipeline",
+            {"pipeline": message},
+            namespace=self.client.namespace,
+        )
+
+        if result is None:
+            raise exceptions.ZnSocketError("No response from server")
+        _handle_error(result)
+
+        return [_handle_data(res) for res in result["data"]]
 
     def execute(self):
         """Executes the pipeline of commands as a batch on the server."""
         # iterate over self.pipeline and keep adding until the size is greater than max_message_size
         # then send the message, collect the results and continue
-
-        def _send_message(message) -> list:
-            """Send a message to the server and process the response."""
-            result = self.client.sio.call(
-                "pipeline",
-                {"pipeline": message},
-                namespace=self.client.namespace,
-            )
-
-            if result is None:
-                raise exceptions.ZnSocketError("No response from server")
-            _handle_error(result)
-
-            # Process and return results with list comprehension
-            return [
-                set(res["data"]) if res.get("type") == "set" else res["data"]
-                for res in result["data"]
-            ]
 
         message = []
         results = []
@@ -166,10 +168,9 @@ class Pipeline:
                         f" '{self.max_message_size = }'. Sending message"
                         f" at index {idx} and continuing."
                     )
-                    results.extend(_send_message(message))
+                    results.extend(self._send_message(message))
                     message = []
         if message:
-            results.extend(_send_message(message))
+            results.extend(self._send_message(message))
 
-        # TODO: test pipeline with smembers and test with errors
         return results
