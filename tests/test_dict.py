@@ -346,3 +346,18 @@ def test_dct_copy(client, request):
 
     with pytest.raises(ValueError):
         dct.copy(key="list:test:copy")
+
+
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
+def test_dct_pop(client, request):
+    c = request.getfixturevalue(client)
+    dct = znsocket.Dict(r=c, key="list:test")
+    assert isinstance(dct, ZnSocketObject)
+
+    dct.update({"a": "1", "b": "2"})
+
+    assert dct.pop("a") == "1"
+    assert dct == {"b": "2"}
+
+    with pytest.raises(KeyError):
+        dct.pop("a")
