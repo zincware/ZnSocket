@@ -93,9 +93,13 @@ class List(MutableSequence, ZnSocketObject):
         if isinstance(index, slice):
             index = list(range(*index.indices(len(self))))
 
-        items = []
+        pipeline = self.redis.pipeline()
         for i in index:
-            value = self.redis.lindex(self.key, i)
+            pipeline.lindex(self.key, i)
+        data = pipeline.execute()
+
+        items = []
+        for value in data:
             if value is None:
                 item = None
             else:
@@ -131,6 +135,7 @@ class List(MutableSequence, ZnSocketObject):
                 f"attempt to assign sequence of size {len(value)} to extended slice of size {len(index)}"
             )
 
+        pipeline = self.redis.pipeline()
         for i, v in zip(index, value):
             if i >= LENGTH or i < -LENGTH:
                 raise IndexError("list index out of range")
@@ -140,7 +145,8 @@ class List(MutableSequence, ZnSocketObject):
                 if value.key == self.key:
                     raise ValueError("Can not set circular reference to self")
                 v = f"znsocket.List:{v.key}"
-            self.redis.lset(self.key, i, _encode(self, v))
+            pipeline.lset(self.key, i, _encode(self, v))
+        pipeline.execute()
 
         if callback := self._callbacks["setitem"]:
             callback(index, value)
@@ -159,13 +165,14 @@ class List(MutableSequence, ZnSocketObject):
         if len(index) == 0:
             return  # nothing to delete
 
+        pipeline = self.redis.pipeline()
+        for i in index:
+            pipeline.lset(self.key, i, "__DELETED__")
+        pipeline.lrem(self.key, 0, "__DELETED__")
         try:
-            for i in index:
-                self.redis.lset(self.key, i, "__DELETED__")
+            pipeline.execute()
         except redis.exceptions.ResponseError:
             raise IndexError("list index out of range")
-
-        self.redis.lrem(self.key, 0, "__DELETED__")
 
         if self._callbacks["delitem"]:
             self._callbacks["delitem"](index)
