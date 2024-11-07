@@ -1,9 +1,9 @@
 import dataclasses
 import functools
 import json
+import logging
 import typing as t
 import warnings
-import logging
 
 import socketio.exceptions
 import typing_extensions as tyex
@@ -13,8 +13,8 @@ from znsocket import exceptions
 from znsocket.abc import RefreshDataTypeDict
 from znsocket.utils import parse_url
 
-
 log = logging.getLogger(__name__)
+
 
 def _handle_data(data: dict):
     if "type" in data:
