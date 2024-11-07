@@ -41,6 +41,7 @@ class List(MutableSequence, ZnSocketObject):
         callbacks: ListCallbackTypedDict | None = None,
         repr_type: ListRepr = "length",
         converter: list[t.Type[znjson.ConverterBase]] | None = None,
+        max_commands_per_call: int = 1_000_000
     ):
         """Synchronized list object.
 
@@ -65,6 +66,12 @@ class List(MutableSequence, ZnSocketObject):
         converter: list[znjson.ConverterBase]|None
             Optional list of znjson converters
             to use for encoding/decoding the data.
+        max_commands_per_call: int
+            Maximum number of commands to send in a 
+            single call when using pipelines.
+            Reduce for large list operations to avoid
+            hitting the message size limit.
+            Only applies when using `znsocket.Client`.
 
         """
         self.redis = r
@@ -73,6 +80,11 @@ class List(MutableSequence, ZnSocketObject):
         self.socket = socket if socket else (r if isinstance(r, Client) else None)
         self.converter = converter
         self._on_refresh = lambda x: None
+
+        if isinstance(r, Client):
+            self._pipeline_kwargs = {"max_commands_per_call": max_commands_per_call}
+        else:
+            self._pipeline_kwargs = {}
 
         self._callbacks = {
             "setitem": None,
@@ -93,7 +105,7 @@ class List(MutableSequence, ZnSocketObject):
         if isinstance(index, slice):
             index = list(range(*index.indices(len(self))))
 
-        pipeline = self.redis.pipeline()
+        pipeline = self.redis.pipeline(**self._pipeline_kwargs)
         for i in index:
             pipeline.lindex(self.key, i)
         data = pipeline.execute()
@@ -135,7 +147,7 @@ class List(MutableSequence, ZnSocketObject):
                 f"attempt to assign sequence of size {len(value)} to extended slice of size {len(index)}"
             )
 
-        pipeline = self.redis.pipeline()
+        pipeline = self.redis.pipeline(**self._pipeline_kwargs)
         for i, v in zip(index, value):
             if i >= LENGTH or i < -LENGTH:
                 raise IndexError("list index out of range")
@@ -165,7 +177,7 @@ class List(MutableSequence, ZnSocketObject):
         if len(index) == 0:
             return  # nothing to delete
 
-        pipeline = self.redis.pipeline()
+        pipeline = self.redis.pipeline(**self._pipeline_kwargs)
         for i in index:
             pipeline.lset(self.key, i, "__DELETED__")
         pipeline.lrem(self.key, 0, "__DELETED__")
@@ -249,7 +261,7 @@ class List(MutableSequence, ZnSocketObject):
         """Extend the list with an iterable using redis pipelines."""
         if self.socket is not None:
             refresh: RefreshTypeDict = {"start": len(self), "stop": None}
-        pipe = self.redis.pipeline()
+        pipe = self.redis.pipeline(**self._pipeline_kwargs)
         for value in values:
             if isinstance(value, Dict):
                 value = f"znsocket.Dict:{value.key}"
