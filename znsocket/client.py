@@ -21,6 +21,7 @@ def _handle_data(data: dict):
             raise TypeError(f"Can not convert type '{data['type']}'")
     return data["data"]
 
+
 def _handle_error(result):
     """Handle errors in the server response."""
 
@@ -136,7 +137,7 @@ class Pipeline:
         raise AttributeError(
             f"'{type(self).__name__}' object has no attribute '{name}'"
         )
-    
+
     def _send_message(self, message) -> list:
         """Send a message to the server and process the response."""
         result = self.client.sio.call(
