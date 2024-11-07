@@ -3,6 +3,7 @@ import functools
 import json
 import typing as t
 import warnings
+import logging
 
 import socketio.exceptions
 import typing_extensions as tyex
@@ -12,6 +13,8 @@ from znsocket import exceptions
 from znsocket.abc import RefreshDataTypeDict
 from znsocket.utils import parse_url
 
+
+log = logging.getLogger(__name__)
 
 def _handle_data(data: dict):
     if "type" in data:
@@ -173,8 +176,8 @@ class Pipeline:
         results = []
         for idx, entry in enumerate(self.pipeline):
             message.append(entry)
-            if len(message) >= self.max_commands_per_call:
-                warnings.warn(
+            if len(message) > self.max_commands_per_call:
+                log.debug(
                     f"splitting message at index {idx} due to max_message_chunk",
                 )
                 results.extend(self._send_message(message))
