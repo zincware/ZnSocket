@@ -293,7 +293,7 @@ class List(MutableSequence, ZnSocketObject):
         except redis.exceptions.ResponseError:
             raise IndexError("pop index out of range")
         if self.socket is not None:
-            refresh: RefreshTypeDict = {"indices": [index]}
+            refresh: RefreshTypeDict = {"start": index, "stop": None}
             refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
             self.socket.sio.emit(f"refresh", refresh_data, namespace="/znsocket")
         return _decode(self, value)
