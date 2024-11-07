@@ -504,3 +504,37 @@ def test_list_delete_empty(client, request):
 
     with pytest.raises(IndexError):
         del lst[0]
+
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
+def test_list_refresh_extend(client, request, znsclient):
+    r = request.getfixturevalue(client)
+    lst = znsocket.List(r=r, key="list:test", socket=znsclient)
+    lst2 = znsocket.List(
+        r=r, key="list:test", socket=znsocket.Client.from_url(znsclient.address)
+    )
+    mock = MagicMock()
+    lst2.on_refresh(mock)
+    assert len(lst) == 0
+    lst.extend([1, 2, 3])
+    znsclient.sio.sleep(0.01)
+    assert len(lst) == 3
+    mock.assert_called_once_with({"start": 0, "stop": None})
+
+    mock.reset_mock()
+    lst.extend([4, 5, 6])
+    znsclient.sio.sleep(0.01)
+    assert len(lst) == 6
+    mock.assert_called_once_with({"start": 3, "stop": None})
+
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
+def test_list_refresh_extend_self_trigger(client, request, znsclient):
+    r = request.getfixturevalue(client)
+    lst = znsocket.List(r=r, key="list:test", socket=znsclient)
+
+    mock = MagicMock()
+    lst.on_refresh(mock)
+    assert len(lst) == 0
+    lst.extend([1, 2, 3])
+    znsclient.sio.sleep(0.01)
+    assert len(lst) == 3
+    mock.assert_not_called()

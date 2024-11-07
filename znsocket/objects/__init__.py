@@ -240,6 +240,8 @@ class List(MutableSequence, ZnSocketObject):
 
     def extend(self, values: t.Iterable) -> None:
         """Extend the list with an iterable using redis pipelines."""
+        if self.socket is not None:
+            refresh: RefreshTypeDict = {"start": len(self), "stop": None}
         pipe = self.redis.pipeline()
         for value in values:
             if isinstance(value, Dict):
@@ -252,7 +254,6 @@ class List(MutableSequence, ZnSocketObject):
         pipe.execute()
 
         if self.socket is not None:
-            refresh: RefreshTypeDict = {"start": len(self), "stop": None}
             refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
             self.socket.sio.emit(f"refresh", refresh_data, namespace="/znsocket")
 
