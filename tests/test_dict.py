@@ -361,3 +361,5 @@ def test_dct_pop(client, request):
 
     with pytest.raises(KeyError):
         dct.pop("a")
+
+    assert dct.pop("a", "default") == "default"
