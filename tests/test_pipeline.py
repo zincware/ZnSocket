@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 import redis.exceptions
 
@@ -195,10 +197,16 @@ def test_set_none(client, request):
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis"])
 def test_set_large_message(client, request, caplog):
     c = request.getfixturevalue(client)
-    pipeline = c.pipeline(max_message_size=3000)
+
+    logger = logging.getLogger("znsocket")
+    logger.setLevel(logging.DEBUG)
+
+    pipeline = c.pipeline(max_commands_per_call=75)
     for _ in range(100):
         pipeline.set("foo", "bar")
 
-    with pytest.warns(UserWarning):
-        # assert that the message is too large and is being split
-        assert pipeline.execute() == [True] * 100
+    assert pipeline.execute() == [True] * 100
+
+    assert any(
+        "splitting message at index" in record.message for record in caplog.records
+    ), "Expected 'splitting message' debug log not found."

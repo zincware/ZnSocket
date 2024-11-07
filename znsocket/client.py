@@ -1,6 +1,7 @@
 import dataclasses
 import functools
 import json
+import logging
 import typing as t
 import warnings
 
@@ -11,6 +12,8 @@ from redis import Redis
 from znsocket import exceptions
 from znsocket.abc import RefreshDataTypeDict
 from znsocket.utils import parse_url
+
+log = logging.getLogger(__name__)
 
 
 def _handle_data(data: dict):
@@ -120,9 +123,21 @@ class Client:
 
 @dataclasses.dataclass
 class Pipeline:
+    """A pipeline of Redis commands to be executed as a batch on the server.
+
+    Arguments
+    ---------
+    client : Client
+        The client to send the pipeline to.
+    max_commands_per_call : int
+        The maximum number of commands to send in a single call to the server.
+        Decrease this number for large commands to avoid hitting the message size limit.
+        Increase it for small commands to reduce latency.
+    """
+
     client: Client
-    max_message_size: t.Optional[int] = 10 * 1024 * 1024
-    pipeline: list = dataclasses.field(default_factory=list)
+    max_commands_per_call: int = 1_000_000
+    pipeline: list = dataclasses.field(default_factory=list, init=False)
 
     def _add_to_pipeline(self, command, *args, **kwargs):
         """Generic handler to add Redis commands to the pipeline."""
@@ -161,16 +176,12 @@ class Pipeline:
         results = []
         for idx, entry in enumerate(self.pipeline):
             message.append(entry)
-            if self.max_message_size is not None:
-                msg_size = json.dumps(message).__sizeof__()
-                if msg_size > self.max_message_size:
-                    warnings.warn(
-                        f"Message size '{msg_size}' is greater than"
-                        f" '{self.max_message_size = }'. Sending message"
-                        f" at index {idx} and continuing."
-                    )
-                    results.extend(self._send_message(message))
-                    message = []
+            if len(message) > self.max_commands_per_call:
+                log.debug(
+                    f"splitting message at index {idx} due to max_message_chunk",
+                )
+                results.extend(self._send_message(message))
+                message = []
         if message:
             results.extend(self._send_message(message))
 
