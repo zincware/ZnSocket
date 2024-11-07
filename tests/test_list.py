@@ -403,7 +403,7 @@ def test_list_refresh_delitem(client, request, znsclient):
     lst.pop()
     znsclient.sio.sleep(0.01)
     assert len(lst) == 2
-    mock.assert_called_once_with({"start": -1, "stop": None})
+    mock.assert_called_once_with({"start": 2, "stop": None})
 
     # pop again
     del lst[0]
