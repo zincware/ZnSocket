@@ -3,15 +3,15 @@ import socketio.exceptions
 
 
 class ZnSocketError(Exception):
-    pass
+    def __init__(self, message: str):
+        self.message = message
+
+    def __str__(self):
+        return self.message
 
 
 class ResponseError(ZnSocketError, redis.exceptions.ResponseError):
-    def __init__(self, response: str):
-        self.response = response
-
-    def __str__(self):
-        return self.response
+    """ResponseError."""
 
 
 class ConnectionError(ZnSocketError, socketio.exceptions.ConnectionError):
@@ -26,8 +26,8 @@ class ConnectionError(ZnSocketError, socketio.exceptions.ConnectionError):
 
 
 class DataError(ZnSocketError, redis.exceptions.DataError):
-    def __init__(self, message: str):
-        self.message = message
+    """DataError."""
 
-    def __str__(self):
-        return self.message
+
+class UnknownEventError(ZnSocketError):
+    """UnknownEventError."""

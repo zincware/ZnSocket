@@ -1,11 +1,47 @@
 import dataclasses
+import functools
+import json
+import typing as t
+import warnings
 
 import socketio.exceptions
 import typing_extensions as tyex
+from redis import Redis
 
 from znsocket import exceptions
 from znsocket.abc import RefreshDataTypeDict
 from znsocket.utils import parse_url
+
+
+def _handle_data(data: dict):
+    if "type" in data:
+        if data["type"] == "set":
+            return set(data["data"])
+        else:
+            raise TypeError(f"Can not convert type '{data['type']}'")
+    return data["data"]
+
+
+def _handle_error(result):
+    """Handle errors in the server response."""
+
+    if "error" not in result:
+        return
+
+    error_map = {
+        "DataError": exceptions.DataError,
+        "TypeError": TypeError,
+        "IndexError": IndexError,
+        "KeyError": KeyError,
+        "UnknownEventError": exceptions.UnknownEventError,
+        "ResponseError": exceptions.ResponseError,
+    }
+
+    error_type = result["error"].get("type")
+    error_msg = result["error"].get("msg", "Unknown error")
+
+    # Raise the mapped exception if it exists, else raise a generic ZnSocketError
+    raise error_map.get(error_type, exceptions.ZnSocketError)(error_msg)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -17,6 +53,9 @@ class Client:
     )
     namespace: str = "/znsocket"
     refresh_callbacks: dict = dataclasses.field(default_factory=dict)
+
+    def pipeline(self, *args, **kwargs) -> "Pipeline":
+        return Pipeline(self, *args, **kwargs)
 
     @classmethod
     def from_url(cls, url, namespace: str = "/znsocket", **kwargs) -> "Client":
@@ -56,148 +95,83 @@ class Client:
         if not self.decode_responses:
             raise NotImplementedError("decode_responses=False is not supported yet")
 
-    def delete(self, name):
-        return self.sio.call("delete", {"name": name}, namespace=self.namespace)
+    def _redis_command(self, command, *args, **kwargs):
+        """Generic handler for Redis commands."""
+        result = self.sio.call(command, [args, kwargs], namespace=self.namespace)
+        if result is None:
+            raise exceptions.ZnSocketError("No response from server")
+        _handle_error(result)
 
-    def hget(self, name, key):
-        return self.sio.call(
-            "hget", {"name": name, "key": key}, namespace=self.namespace
+        return _handle_data(result)
+
+    def __getattr__(self, name):
+        """Intercepts method calls to dynamically route Redis commands."""
+        # Check if name corresponds to a Redis command
+        if hasattr(Redis, name):
+            return functools.partial(self._redis_command, name)
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '{name}'"
         )
-
-    def hset(self, name, key=None, value=None, mapping=None):
-        if key is not None and value is None:
-            raise exceptions.DataError(f"Invalid input of type {type(value)}")
-        if (key is None or value is None) and mapping is None:
-            raise exceptions.DataError("'hset' with no key value pairs")
-        if mapping is None:
-            mapping = {key: value}
-        if len(mapping) == 0:
-            raise exceptions.DataError("Mapping must not be empty")
-        return self.sio.call(
-            "hset", {"name": name, "mapping": mapping}, namespace=self.namespace
-        )
-
-    def hmget(self, name, keys):
-        return self.sio.call(
-            "hmget", {"name": name, "keys": keys}, namespace=self.namespace
-        )
-
-    def hkeys(self, name):
-        return self.sio.call("hkeys", {"name": name}, namespace=self.namespace)
-
-    def exists(self, name):
-        return self.sio.call("exists", {"name": name}, namespace=self.namespace)
-
-    def llen(self, name):
-        return self.sio.call("llen", {"name": name}, namespace=self.namespace)
-
-    def rpush(self, name, value):
-        return self.sio.call(
-            "rpush", {"name": name, "value": value}, namespace=self.namespace
-        )
-
-    def lpush(self, name, value):
-        return self.sio.call(
-            "lpush", {"name": name, "value": value}, namespace=self.namespace
-        )
-
-    def lindex(self, name, index):
-        if name is None or index is None:
-            raise exceptions.DataError("Invalid input")
-        return self.sio.call(
-            "lindex", {"name": name, "index": index}, namespace=self.namespace
-        )
-
-    def set(self, name, value):
-        return self.sio.call(
-            "set", {"name": name, "value": value}, namespace=self.namespace
-        )
-
-    def get(self, name):
-        return self.sio.call("get", {"name": name}, namespace=self.namespace)
-
-    def hgetall(self, name):
-        return self.sio.call("hgetall", {"name": name}, namespace=self.namespace)
-
-    def smembers(self, name):
-        response = self.sio.call("smembers", {"name": name}, namespace=self.namespace)
-        # check if response should raise an exception
-        if isinstance(response, dict) and "error" in response:
-            raise exceptions.ResponseError(response["error"])
-        return set(response)
-
-    def lrange(self, name, start, end):
-        return self.sio.call(
-            "lrange",
-            {"name": name, "start": start, "end": end},
-            namespace=self.namespace,
-        )
-
-    def lset(self, name, index, value):
-        response = self.sio.call(
-            "lset",
-            {"name": name, "index": index, "value": value},
-            namespace=self.namespace,
-        )
-        if isinstance(response, bool):
-            return response
-        if response is not None:
-            raise exceptions.ResponseError(str(response))
-
-    def lrem(self, name: str, count: int, value: str):
-        if name is None or count is None or value is None:
-            raise exceptions.DataError("Invalid input")
-        return self.sio.call(
-            "lrem",
-            {"name": name, "count": count, "value": value},
-            namespace=self.namespace,
-        )
-
-    def sadd(self, name, value):
-        return self.sio.call(
-            "sadd", {"name": name, "value": value}, namespace=self.namespace
-        )
-
-    def srem(self, name, value):
-        return self.sio.call(
-            "srem", {"name": name, "value": value}, namespace=self.namespace
-        )
-
-    def linsert(self, name, where, pivot, value):
-        return self.sio.call(
-            "linsert",
-            {"name": name, "where": where, "pivot": pivot, "value": value},
-            namespace=self.namespace,
-        )
-
-    def flushall(self):
-        return self.sio.call("flushall", {}, namespace=self.namespace)
-
-    def hexists(self, name, key):
-        return self.sio.call(
-            "hexists", {"name": name, "key": key}, namespace=self.namespace
-        )
-
-    def hdel(self, name, key):
-        return self.sio.call(
-            "hdel", {"name": name, "key": key}, namespace=self.namespace
-        )
-
-    def hlen(self, name):
-        return self.sio.call("hlen", {"name": name}, namespace=self.namespace)
-
-    def hvals(self, name):
-        return self.sio.call("hvals", {"name": name}, namespace=self.namespace)
-
-    def lpop(self, name):
-        return self.sio.call("lpop", {"name": name}, namespace=self.namespace)
-
-    def scard(self, name):
-        return self.sio.call("scard", {"name": name}, namespace=self.namespace)
-
-    def copy(self, src, dst):
-        return self.sio.call("copy", {"src": src, "dst": dst}, namespace=self.namespace)
 
     @tyex.deprecated("hmset() is deprecated. Use hset() instead.")
     def hmset(self, name, mapping):
         return self.hset(name, mapping=mapping)
+
+
+@dataclasses.dataclass
+class Pipeline:
+    client: Client
+    max_message_size: t.Optional[int] = 10 * 1024 * 1024
+    pipeline: list = dataclasses.field(default_factory=list)
+
+    def _add_to_pipeline(self, command, *args, **kwargs):
+        """Generic handler to add Redis commands to the pipeline."""
+        self.pipeline.append((command, [args, kwargs]))
+        return self
+
+    def __getattr__(self, name):
+        """Intercepts method calls to dynamically add Redis commands to the pipeline."""
+        # Check if the name corresponds to a Redis command
+        if hasattr(Redis, name):
+            return functools.partial(self._add_to_pipeline, name)
+        raise AttributeError(
+            f"'{type(self).__name__}' object has no attribute '{name}'"
+        )
+
+    def _send_message(self, message) -> list:
+        """Send a message to the server and process the response."""
+        result = self.client.sio.call(
+            "pipeline",
+            {"pipeline": message},
+            namespace=self.client.namespace,
+        )
+
+        if result is None:
+            raise exceptions.ZnSocketError("No response from server")
+        _handle_error(result)
+
+        return [_handle_data(res) for res in result["data"]]
+
+    def execute(self):
+        """Executes the pipeline of commands as a batch on the server."""
+        # iterate over self.pipeline and keep adding until the size is greater than max_message_size
+        # then send the message, collect the results and continue
+
+        message = []
+        results = []
+        for idx, entry in enumerate(self.pipeline):
+            message.append(entry)
+            if self.max_message_size is not None:
+                msg_size = json.dumps(message).__sizeof__()
+                if msg_size > self.max_message_size:
+                    warnings.warn(
+                        f"Message size '{msg_size}' is greater than"
+                        f" '{self.max_message_size = }'. Sending message"
+                        f" at index {idx} and continuing."
+                    )
+                    results.extend(self._send_message(message))
+                    message = []
+        if message:
+            results.extend(self._send_message(message))
+
+        return results

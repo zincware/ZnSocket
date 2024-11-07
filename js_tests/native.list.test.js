@@ -239,6 +239,8 @@ test("native_list_slice", async () => {
   await lst.push("item1");
   await lst.push("item2");
   await lst.push("item3");
+  // expect the full list
+  expect(await lst.slice(0, 3)).toEqual(["item1", "item2", "item3"]);
 
   // Slice the list
   let sliced = await lst.slice(0, 2);

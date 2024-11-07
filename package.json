@@ -1,6 +1,6 @@
 {
   "name": "znsocket",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "JS interface for the python znsocket package",
   "main": "js/index.js",
   "types": "js/index.d.ts",

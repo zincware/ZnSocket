@@ -238,6 +238,25 @@ class List(MutableSequence, ZnSocketObject):
             refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
             self.socket.sio.emit(f"refresh", refresh_data, namespace="/znsocket")
 
+    def extend(self, values: t.Iterable) -> None:
+        """Extend the list with an iterable using redis pipelines."""
+        if self.socket is not None:
+            refresh: RefreshTypeDict = {"start": len(self), "stop": None}
+        pipe = self.redis.pipeline()
+        for value in values:
+            if isinstance(value, Dict):
+                value = f"znsocket.Dict:{value.key}"
+            if isinstance(value, List):
+                if value.key == self.key:
+                    raise ValueError("Can not set circular reference to self")
+                value = f"znsocket.List:{value.key}"
+            pipe.rpush(self.key, _encode(self, value))
+        pipe.execute()
+
+        if self.socket is not None:
+            refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
+            self.socket.sio.emit(f"refresh", refresh_data, namespace="/znsocket")
+
     def copy(self, key: str) -> "List":
         """Copy the list to a new key.
 
