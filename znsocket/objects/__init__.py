@@ -41,7 +41,7 @@ class List(MutableSequence, ZnSocketObject):
         callbacks: ListCallbackTypedDict | None = None,
         repr_type: ListRepr = "length",
         converter: list[t.Type[znjson.ConverterBase]] | None = None,
-        max_commands_per_call: int = 1_000_000
+        max_commands_per_call: int = 1_000_000,
     ):
         """Synchronized list object.
 
@@ -67,7 +67,7 @@ class List(MutableSequence, ZnSocketObject):
             Optional list of znjson converters
             to use for encoding/decoding the data.
         max_commands_per_call: int
-            Maximum number of commands to send in a 
+            Maximum number of commands to send in a
             single call when using pipelines.
             Reduce for large list operations to avoid
             hitting the message size limit.
