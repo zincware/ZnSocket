@@ -121,7 +121,7 @@ class Client:
 @dataclasses.dataclass
 class Pipeline:
     """A pipeline of Redis commands to be executed as a batch on the server.
-    
+
     Arguments
     ---------
     client : Client
@@ -131,6 +131,7 @@ class Pipeline:
         Decrease this number for large commands to avoid hitting the message size limit.
         Increase it for small commands to reduce latency.
     """
+
     client: Client
     max_commands_per_call: int = 1_000_000
     pipeline: list = dataclasses.field(default_factory=list, init=False)
