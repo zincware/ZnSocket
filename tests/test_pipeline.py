@@ -1,6 +1,7 @@
+import logging
+
 import pytest
 import redis.exceptions
-import logging
 
 
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
