@@ -505,6 +505,7 @@ def test_list_delete_empty(client, request):
     with pytest.raises(IndexError):
         del lst[0]
 
+
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_list_refresh_extend(client, request, znsclient):
     r = request.getfixturevalue(client)
@@ -525,6 +526,7 @@ def test_list_refresh_extend(client, request, znsclient):
     znsclient.sio.sleep(0.01)
     assert len(lst) == 6
     mock.assert_called_once_with({"start": 3, "stop": None})
+
 
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_list_refresh_extend_self_trigger(client, request, znsclient):
