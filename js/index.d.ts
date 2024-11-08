@@ -88,7 +88,8 @@ export class Dict {
   clear(): Promise<any>;
   keys(): Promise<string[]>;
   values(): Promise<any[]>;
-  entries(): Promise<[string, any][]>; // Renamed from items to entries
+  entries(): Promise<[string, any][]>;
+  toObject(): Promise<Record<string, any>>;
 
   onRefresh(callback: (data: { keys?: string[]; indices?: number[] }) => void): void;
   offRefresh(): void;

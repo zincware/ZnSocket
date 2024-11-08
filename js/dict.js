@@ -113,14 +113,52 @@ export class Dict {
 
   async values() {
     const values = await this._client.hVals(this._key);
-    return values.map((x) => JSON.parse(x)); // Parse the values
+    return values.map((x) => {
+      const value = JSON.parse(x);
+      if (typeof value === "string") {
+        if (value.startsWith("znsocket.List:")) {
+          const refKey = value.split(/:(.+)/)[1];
+          return new ZnSocketList({ client: this._client,socket: this._socket , key: refKey});
+        } else if (value.startsWith("znsocket.Dict:")) {
+          const refKey = value.split(/:(.+)/)[1];
+          return new Dict({ client: this._client, socket: this._socket , key: refKey});
+        }
+      }
+      return value;
+    });
   }
 
-  async entries() { // Renamed from items to entries
+  async entries() {
     const entries = await this._client.hGetAll(this._key);
-    return Object.entries(entries).map(
-      ([key, value]) => [key, JSON.parse(value)]
-    );
+    return Object.entries(entries).map(([key, value]) => {
+      const parsedValue = JSON.parse(value);
+  
+      if (typeof parsedValue === "string") {
+        if (parsedValue.startsWith("znsocket.List:")) {
+          const refKey = parsedValue.split(/:(.+)/)[1];
+          return [key, new ZnSocketList({ client: this._client, socket: this._socket, key: refKey })];
+        } else if (parsedValue.startsWith("znsocket.Dict:")) {
+          const refKey = parsedValue.split(/:(.+)/)[1];
+          return [key, new Dict({ client: this._client, socket: this._socket, key: refKey })];
+        }
+      }
+  
+      return [key, parsedValue];
+    });
+  }
+
+  async toObject() {
+    const entries = await this.entries();
+    // go through all and if one of them is a Dict or List, call toObject on it
+    const obj = {};
+    for (const [key, value] of entries) {
+      if (value instanceof Dict || value instanceof ZnSocketList) {
+        obj[key] = await value.toObject();
+      } else {
+        obj[key] = value;
+      }
+    }
+    return obj;
   }
 
   onRefresh(callback) {
