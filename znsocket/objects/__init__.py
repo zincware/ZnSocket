@@ -81,6 +81,9 @@ class List(MutableSequence, ZnSocketObject):
         self.converter = converter
         self._on_refresh = lambda x: None
 
+        self.nested_refresh = False
+        self.refresh_callback = None
+
         if isinstance(r, Client):
             self._pipeline_kwargs = {"max_commands_per_call": max_commands_per_call}
         else:
@@ -309,11 +312,37 @@ class List(MutableSequence, ZnSocketObject):
 
         return List(r=self.redis, key=key, socket=self.socket)
 
-    def on_refresh(self, callback: t.Callable[[RefreshDataTypeDict], None]) -> None:
+    def on_refresh(self, callback: t.Callable[[RefreshDataTypeDict], None], nested: bool = False) -> None:
         if self.socket is None:
             raise ValueError("No socket connection available")
+        self.nested_refresh = nested
+        self.socket.attachments.append(self)
+        self.refresh_callback = callback
 
-        self.socket.refresh_callbacks[self.key] = callback
+
+    def refresh(self, target: str, data: RefreshTypeDict) -> None:
+        if self.refresh_callback is None:
+            return
+
+        updated_keys = []
+
+        # If target does not match this object's key, look in nested dictionaries and lists.
+        if target != self.key:
+            if not self.nested_refresh:
+                return
+
+            for idx, value in enumerate(self):
+                if isinstance(value, Dict) and value.key == target:
+                    updated_keys.append(idx)
+                elif isinstance(value, List) and value.key == target:
+                    updated_keys.append(idx)
+
+            if updated_keys:
+                self.refresh_callback({"indices": updated_keys})
+
+        # If the target matches this object's key, call the callback with the provided data.
+        else:
+            self.refresh_callback(data)
 
 
 class Dict(MutableMapping, ZnSocketObject):
@@ -360,6 +389,8 @@ class Dict(MutableMapping, ZnSocketObject):
             "setitem": None,
             "delitem": None,
         }
+        self.refresh_callback = None
+        self.nested_refresh = False
         if callbacks:
             self._callbacks.update(callbacks)
 
@@ -473,11 +504,37 @@ class Dict(MutableMapping, ZnSocketObject):
 
         return Dict(r=self.redis, key=key, socket=self.socket)
 
-    def on_refresh(self, callback: t.Callable[[RefreshDataTypeDict], None]) -> None:
+    def on_refresh(self, callback: t.Callable[[RefreshDataTypeDict], None], nested: bool = False) -> None:
         if self.socket is None:
             raise ValueError("No socket connection available")
+        self.nested_refresh = nested
+        self.socket.attachments.append(self)
+        self.refresh_callback = callback
 
-        self.socket.refresh_callbacks[self.key] = callback
+
+    def refresh(self, target: str, data: RefreshTypeDict) -> None:
+        if self.refresh_callback is None:
+            return
+
+        updated_keys = []
+
+        # If target does not match this object's key, look in nested dictionaries and lists.
+        if target != self.key:
+            if not self.nested_refresh:
+                return
+
+            for key, value in self.items():
+                if isinstance(value, Dict) and value.key == target:
+                    updated_keys.append(key)
+                elif isinstance(value, List) and value.key == target:
+                    updated_keys.append(key)
+
+            if updated_keys:
+                self.refresh_callback({"keys": updated_keys})
+
+        # If the target matches this object's key, call the callback with the provided data.
+        else:
+            self.refresh_callback(data)
 
     def update(self, *args, **kwargs):
         """Update the dict with another dict or iterable."""

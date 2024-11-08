@@ -55,7 +55,7 @@ class Client:
         default_factory=socketio.Client, repr=False, init=False
     )
     namespace: str = "/znsocket"
-    refresh_callbacks: dict = dataclasses.field(default_factory=dict)
+    attachments: list = dataclasses.field(default_factory=list)
 
     def pipeline(self, *args, **kwargs) -> "Pipeline":
         return Pipeline(self, *args, **kwargs)
@@ -77,11 +77,11 @@ class Client:
         )
 
     def __post_init__(self):
+
         @self.sio.on("refresh", namespace=self.namespace)
-        def refresh(data: RefreshDataTypeDict):
-            for key in self.refresh_callbacks:
-                if data["target"] == key:
-                    self.refresh_callbacks[key](data["data"])
+        def _(data: RefreshDataTypeDict):
+            for obj in self.attachments:
+                obj.refresh(target=data["target"], data=data["data"])
 
         _url, _path = parse_url(self.address)
         try:

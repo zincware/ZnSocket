@@ -540,3 +540,74 @@ def test_list_refresh_extend_self_trigger(client, request, znsclient):
     znsclient.sio.sleep(0.01)
     assert len(lst) == 3
     mock.assert_not_called()
+
+
+
+
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
+def test_list_nested_refresh(client, request, znsclient):
+    r = request.getfixturevalue(client)
+    lst = znsocket.List(r=r, key="lst:test", socket=znsclient)
+    dctA = znsocket.Dict(r=r, key="dct:test:A", socket=znsclient)
+    dctB = znsocket.Dict(r=r, key="dct:test:B", socket=znsclient)
+
+    lst2 = znsocket.List(
+        r=r, key="lst:test", socket=znsocket.Client.from_url(znsclient.address)
+    )
+    mock = MagicMock()
+    lst2.on_refresh(mock, nested=True)
+
+    lst.extend([dctA, dctB])
+
+    znsclient.sio.sleep(0.5)
+
+    assert mock.call_count == 1
+
+    mock.reset_mock()
+
+    dctA["key"] = "value"
+
+    znsclient.sio.sleep(0.2)
+
+    assert mock.call_count == 1
+    assert mock.call_args[0][0] == {"indices": [0]}
+
+    mock.reset_mock()
+
+    dctB["lorem"] = "ipsum"
+
+    znsclient.sio.sleep(0.2)
+
+    assert mock.call_count == 1
+    assert mock.call_args[0][0] =={"indices": [1]}
+
+    mock.reset_mock()
+
+    assert lst[0]["key"] == "value"
+    assert lst[1]["lorem"] == "ipsum"
+
+    # now for good measure add a list 
+
+    lst3 = znsocket.List(r=r, key="lst:test:3", socket=znsclient)
+    lst.append(lst3)
+
+    znsclient.sio.sleep(0.2)
+    mock.reset_mock()
+
+    lst3.append("value")
+
+    znsclient.sio.sleep(0.2)
+
+    assert mock.call_count == 1
+    assert mock.call_args[0][0] == {"indices": [2]}
+
+    mock.reset_mock()
+
+    lst2.nested_refresh = False
+
+    dctA["key"] = "value2"
+    dctB["lorem"] = "ipsum2"
+
+    znsclient.sio.sleep(0.2)
+
+    assert mock.call_count == 0
