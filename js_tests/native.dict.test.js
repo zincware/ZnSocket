@@ -235,6 +235,13 @@ test("native_dict_in_dict", async () => {
   expect(dictValue._key).toBe(dct1._key);
   const helloValue2 = await dictValue.get("Hello");
   expect(helloValue2).toBe("World");
+
+  const dct2Values = await dct2.values();
+  expect(await dct2Values[0]["Hello"]).toEqual("World");
+
+  const dct2Entries = await dct2.entries();
+  expect(await dct2Entries[0][1]["Hello"]).toEqual("World");
+  expect(await dct2Entries[0][0]).toEqual("dict");
 });
 
 test("native_dict_with_list", async () => {
