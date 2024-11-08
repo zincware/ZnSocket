@@ -22,8 +22,8 @@ class ZnSocketObject:
 
 def _encode(self, data: t.Any) -> str:
     if self.converter is not None:
-        return json.dumps(data, cls=znjson.ZnEncoder.from_converters(self.converter))
-    return json.dumps(data)
+        return json.dumps(data, cls=znjson.ZnEncoder.from_converters(self.converter), allow_nan=False)
+    return json.dumps(data, allow_nan=False)
 
 
 def _decode(self, data: str) -> t.Any:
