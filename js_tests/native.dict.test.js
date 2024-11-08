@@ -235,6 +235,13 @@ test("native_dict_in_dict", async () => {
   expect(dictValue._key).toBe(dct1._key);
   const helloValue2 = await dictValue.get("Hello");
   expect(helloValue2).toBe("World");
+
+  const dct2Values = await dct2.values();
+  expect(await dct2Values[0]["Hello"]).toEqual("World");
+
+  const dct2Entries = await dct2.entries();
+  expect(await dct2Entries[0][1]["Hello"]).toEqual("World");
+  expect(await dct2Entries[0][0]).toEqual("dict");
 });
 
 test("native_dict_with_list", async () => {
@@ -250,4 +257,18 @@ test("native_dict_with_list", async () => {
   expect(listInstance._key).toBe(lst._key);
   expect(await listInstance.get(0)).toBe("A");
   expect(await listInstance.get(1)).toBe("B");
+});
+
+
+test("native_dict_to_object", async () => {
+  let dct1 = new Dict({ client: client, key: "dict:test:1" });
+  let dct2 = new Dict({ client: client, key: "dict:test:2" });
+
+  await dct1.set("Hello", "World");
+  await dct2.set("dict", dct1);
+
+  // convert to object
+  const obj = await dct2.toObject();
+  expect(obj).toEqual({ dict: { Hello: "World" } });
+
 });
