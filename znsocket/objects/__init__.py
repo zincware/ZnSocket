@@ -479,7 +479,6 @@ class Dict(MutableMapping, ZnSocketObject):
 
         self.socket.refresh_callbacks[self.key] = callback
 
-    
     def update(self, *args, **kwargs):
         """Update the dict with another dict or iterable."""
         if len(args) > 1:
@@ -497,7 +496,7 @@ class Dict(MutableMapping, ZnSocketObject):
         else:
             other = kwargs
 
-        pipeline  = self.redis.pipeline()
+        pipeline = self.redis.pipeline()
         for key, value in other.items():
             if isinstance(value, Dict):
                 if value.key == self.key:
