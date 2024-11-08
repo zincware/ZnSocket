@@ -67,6 +67,9 @@ def test_dct_update(client, request):
     dct.update({"b": "3", "c": "4"})
     assert dct == {"a": "1", "b": "3", "c": "4"}
 
+    dct.update(d="5")
+    assert dct == {"a": "1", "b": "3", "c": "4", "d": "5"}
+
 
 @pytest.mark.parametrize(
     "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]

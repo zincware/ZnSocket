@@ -479,6 +479,34 @@ class Dict(MutableMapping, ZnSocketObject):
 
         self.socket.refresh_callbacks[self.key] = callback
 
+    def update(self, *args, **kwargs):
+        """Update the dict with another dict or iterable."""
+        if len(args) > 1:
+            raise TypeError("update expected at most 1 argument, got %d" % len(args))
+        if args:
+            other = args[0]
+            if isinstance(other, Dict):
+                other = dict(other)
+            elif isinstance(other, MutableMapping):
+                pass
+            else:
+                raise TypeError(
+                    "update expected at most 1 argument, got %d" % len(args)
+                )
+        else:
+            other = kwargs
+
+        pipeline = self.redis.pipeline()
+        for key, value in other.items():
+            if isinstance(value, Dict):
+                if value.key == self.key:
+                    raise ValueError("Can not set circular reference to self")
+                value = f"znsocket.Dict:{value.key}"
+            if isinstance(value, List):
+                value = f"znsocket.List:{value.key}"
+            pipeline.hset(self.key, key, _encode(self, value))
+        pipeline.execute()
+
     def __or__(self, value: "dict|Dict") -> dict:
         if isinstance(value, Dict):
             value = dict(value)
