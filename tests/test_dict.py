@@ -366,3 +366,31 @@ def test_dct_pop(client, request):
         dct.pop("a")
 
     assert dct.pop("a", "default") == "default"
+
+
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+)
+def test_dct_merge(client, request):
+    c = request.getfixturevalue(client)
+    if c is not None:
+        dct = znsocket.Dict(r=c, key="list:test")
+    else:
+        dct = {}
+
+    dct.update({"a": "1", "b": "2"})
+
+    new_dct = dct | {"b": "3", "c": "4"}
+
+    assert new_dct == {"a": "1", "b": "3", "c": "4"}
+    assert isinstance(new_dct, dict)
+
+    assert dct == {"a": "1", "b": "2"}
+
+    if c is not None:
+        dct2 = znsocket.Dict(r=c, key="list:test2")
+
+        dct2.update({"b": "3", "c": "4"})
+        new_dct = dct | dct2
+        assert new_dct == {"a": "1", "b": "3", "c": "4"}
+        assert isinstance(new_dct, dict)

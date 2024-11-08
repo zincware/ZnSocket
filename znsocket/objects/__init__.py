@@ -479,6 +479,7 @@ class Dict(MutableMapping, ZnSocketObject):
 
         self.socket.refresh_callbacks[self.key] = callback
 
+
     def update(self, *args, **kwargs):
         """Update the dict with another dict or iterable."""
         if len(args) > 1:
@@ -506,3 +507,10 @@ class Dict(MutableMapping, ZnSocketObject):
                 value = f"znsocket.List:{value.key}"
             pipeline.hset(self.key, key, _encode(self, value))
         pipeline.execute()
+
+        
+    def __or__(self, value: "dict|Dict") -> dict:
+        if isinstance(value, Dict):
+            value = dict(value)
+        return dict(self) | value
+
