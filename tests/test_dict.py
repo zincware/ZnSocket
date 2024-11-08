@@ -394,3 +394,73 @@ def test_dct_merge(client, request):
         new_dct = dct | dct2
         assert new_dct == {"a": "1", "b": "3", "c": "4"}
         assert isinstance(new_dct, dict)
+
+
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
+def test_dict_nested_refresh(client, request, znsclient):
+    r = request.getfixturevalue(client)
+    dct = znsocket.Dict(r=r, key="dct:test", socket=znsclient)
+    dctA = znsocket.Dict(r=r, key="dct:test:A", socket=znsclient)
+    dctB = znsocket.Dict(r=r, key="dct:test:B", socket=znsclient)
+
+    dct2 = znsocket.Dict(
+        r=r, key="dct:test", socket=znsocket.Client.from_url(znsclient.address)
+    )
+    mock = MagicMock()
+    dct2.on_refresh(mock, nested=True)
+
+    dct["A"] = dctA
+    dct["B"] = dctB
+
+    znsclient.sio.sleep(0.2)
+
+    assert mock.call_count == 2
+
+    mock.reset_mock()
+
+    dctA["key"] = "value"
+
+    znsclient.sio.sleep(0.2)
+
+    assert mock.call_count == 1
+    assert mock.call_args[0][0] == {"keys": ["A"]}
+
+    mock.reset_mock()
+
+    dctB["lorem"] = "ipsum"
+
+    znsclient.sio.sleep(0.2)
+
+    assert mock.call_count == 1
+    assert mock.call_args[0][0] == {"keys": ["B"]}
+
+    mock.reset_mock()
+
+    assert dct["A"]["key"] == "value"
+    assert dct["B"]["lorem"] == "ipsum"
+
+    # now for good measure add a List and refresh that
+
+    lst = znsocket.List(r=r, key="lst:test", socket=znsclient)
+    lst.append("item")
+    dct["L"] = lst
+
+    znsclient.sio.sleep(0.2)
+
+    mock.reset_mock()
+
+    lst.append("item2")
+
+    znsclient.sio.sleep(0.2)
+    assert mock.call_count == 1
+    assert mock.call_args[0][0] == {"keys": ["L"]}
+
+    mock.reset_mock()
+    dct2.nested_refresh = False
+
+    dctA["key"] = "value2"
+    dctB["lorem"] = "ipsum2"
+
+    znsclient.sio.sleep(0.5)
+
+    assert mock.call_count == 0
