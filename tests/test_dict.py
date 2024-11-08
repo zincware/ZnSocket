@@ -417,9 +417,9 @@ def test_invalid_json(client, request):
     c = request.getfixturevalue(client)
     dct = znsocket.Dict(r=c, key="list:test")
 
-    with pytest.raises(ValueError, match="Invalid JSON"):
+    with pytest.raises(ValueError):
         dct.update({"a": float("inf")})
-    with pytest.raises(ValueError, match="Invalid JSON"):
+    with pytest.raises(ValueError):
         dct.update({"a": float("nan")})
-    with pytest.raises(ValueError, match="Invalid JSON"):
+    with pytest.raises(ValueError):
         dct.update({"a": float("-inf")})

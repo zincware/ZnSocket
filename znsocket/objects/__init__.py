@@ -509,6 +509,11 @@ class Dict(MutableMapping, ZnSocketObject):
             pipeline.hset(self.key, key, _encode(self, value))
         pipeline.execute()
 
+        if self.socket is not None:
+            refresh: RefreshTypeDict = {"keys": list(other.keys())}
+            refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
+            self.socket.sio.emit(f"refresh", refresh_data, namespace="/znsocket")
+
     def __or__(self, value: "dict|Dict") -> dict:
         if isinstance(value, Dict):
             value = dict(value)
