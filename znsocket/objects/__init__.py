@@ -461,3 +461,8 @@ class Dict(MutableMapping, ZnSocketObject):
             raise ValueError("No socket connection available")
 
         self.socket.refresh_callbacks[self.key] = callback
+
+    def __or__(self, value: "dict|Dict") -> dict:
+        if isinstance(value, Dict):
+            value = dict(value)
+        return dict(self) | value
