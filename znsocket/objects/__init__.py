@@ -343,7 +343,7 @@ class Dict(MutableMapping, ZnSocketObject):
         callbacks: dict[str, Callable]
             optional function callbacks for methods
             which modify the database.
-        repr_type: str
+        repr_type: DictRepr
             Control the `repr` appearance of the object.
             Reduce for better performance.
 
@@ -374,7 +374,7 @@ class Dict(MutableMapping, ZnSocketObject):
                 value = List(r=self.redis, key=key)
             elif value.startswith("znsocket.Dict:"):
                 key = value.split(":", 1)[1]
-                value = Dict(r=self.redis, key=key)
+                value = Dict(r=self.redis, key=key, repr_type=self.repr_type)
         return value
 
     def __setitem__(self, key: str, value: t.Any) -> None:
@@ -415,13 +415,30 @@ class Dict(MutableMapping, ZnSocketObject):
     def values(self) -> list[t.Any]:
         response = []
         for v in self.redis.hvals(self.key):
-            response.append(_decode(self, v))
+            value = _decode(self, v)
+            if isinstance(value, str):
+                if value.startswith("znsocket.List:"):
+                    key = value.split(":", 1)[1]
+                    value = List(r=self.redis, key=key)
+                elif value.startswith("znsocket.Dict:"):
+                    key = value.split(":", 1)[1]
+                    value = Dict(r=self.redis, key=key, repr_type=self.repr_type)
+            response.append(value)
         return response
 
     def items(self) -> list[t.Tuple[str, t.Any]]:
         response = []
         for k, v in self.redis.hgetall(self.key).items():
-            response.append((k, _decode(self, v)))
+            value = _decode(self, v)
+            if isinstance(value, str):
+                if value.startswith("znsocket.List:"):
+                    key = value.split(":", 1)[1]
+                    value = List(r=self.redis, key=key)
+                elif value.startswith("znsocket.Dict:"):
+                    key = value.split(":", 1)[1]
+                    value = Dict(r=self.redis, key=key, repr_type=self.repr_type)
+
+            response.append((k, value))
         return response
 
     def __contains__(self, key: str) -> bool:
