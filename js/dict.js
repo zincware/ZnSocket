@@ -132,7 +132,7 @@ export class Dict {
     const entries = await this._client.hGetAll(this._key);
     return Object.entries(entries).map(([key, value]) => {
       const parsedValue = JSON.parse(value);
-  
+
       if (typeof parsedValue === "string") {
         if (parsedValue.startsWith("znsocket.List:")) {
           const refKey = parsedValue.split(/:(.+)/)[1];
@@ -142,7 +142,7 @@ export class Dict {
           return [key, new Dict({ client: this._client, socket: this._socket, key: refKey })];
         }
       }
-  
+
       return [key, parsedValue];
     });
   }
