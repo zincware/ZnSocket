@@ -374,12 +374,11 @@ def test_dct_merge(client, request):
         dct = znsocket.Dict(r=c, key="list:test")
     else:
         dct = {}
-    
 
     dct.update({"a": "1", "b": "2"})
-    
+
     new_dct = dct | {"b": "3", "c": "4"}
-    
+
     assert new_dct == {"a": "1", "b": "3", "c": "4"}
     assert isinstance(new_dct, dict)
 
@@ -392,4 +391,3 @@ def test_dct_merge(client, request):
         new_dct = dct | dct2
         assert new_dct == {"a": "1", "b": "3", "c": "4"}
         assert isinstance(new_dct, dict)
-
