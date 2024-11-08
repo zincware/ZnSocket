@@ -38,6 +38,9 @@ def test_list_extend(client, request):
     lst.extend([5, 6.28, "7"])
     assert lst == [1, 2, 3, 4, 5, 6.28, "7"]
 
+    lst.append(None)
+    assert lst[-1] is None
+
 
 @pytest.mark.parametrize(
     "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
@@ -540,3 +543,28 @@ def test_list_refresh_extend_self_trigger(client, request, znsclient):
     znsclient.sio.sleep(0.01)
     assert len(lst) == 3
     mock.assert_not_called()
+
+
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
+def test_invalid_json(client, request):
+    c = request.getfixturevalue(client)
+    dct = znsocket.List(r=c, key="list:test")
+
+    with pytest.raises(ValueError):
+        dct.append(float("inf"))
+    with pytest.raises(ValueError):
+        dct.append(float("nan"))
+    with pytest.raises(ValueError):
+        dct.append(float("-inf"))
+
+    dct.convert_nan = True
+
+    dct.append(float("inf"))
+    dct.append(float("nan"))
+    dct.append(float("-inf"))
+
+    assert len(dct) == 3
+
+    assert dct[0] is None
+    assert dct[1] is None
+    assert dct[2] is None

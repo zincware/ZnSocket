@@ -394,3 +394,40 @@ def test_dct_merge(client, request):
         new_dct = dct | dct2
         assert new_dct == {"a": "1", "b": "3", "c": "4"}
         assert isinstance(new_dct, dict)
+
+
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
+def test_dict_refresh_update(client, request, znsclient):
+    r = request.getfixturevalue(client)
+    dct = znsocket.Dict(r=r, key="dct:test", socket=znsclient)
+    dct2 = znsocket.Dict(
+        r=r, key="dct:test", socket=znsocket.Client.from_url(znsclient.address)
+    )
+    mock = MagicMock()
+    dct2.on_refresh(mock)
+
+    dct.update({"a": 1, "b": [1, 2, 3]})
+    assert dct == {"a": 1, "b": [1, 2, 3]}
+    znsclient.sio.sleep(0.2)
+    mock.assert_called_with({"keys": ["a", "b"]})
+
+
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
+def test_invalid_json(client, request):
+    c = request.getfixturevalue(client)
+    dct = znsocket.Dict(r=c, key="list:test")
+
+    with pytest.raises(ValueError):
+        dct.update({"a": float("inf")})
+    with pytest.raises(ValueError):
+        dct.update({"a": float("nan")})
+    with pytest.raises(ValueError):
+        dct.update({"a": float("-inf")})
+
+    dct.convert_nan = True
+
+    dct.update({"inf": float("inf"), "nan": float("nan"), "-inf": float("-inf")})
+
+    assert dct["inf"] is None
+    assert dct["nan"] is None
+    assert dct["-inf"] is None

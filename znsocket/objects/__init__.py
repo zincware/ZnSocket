@@ -22,8 +22,37 @@ class ZnSocketObject:
 
 def _encode(self, data: t.Any) -> str:
     if self.converter is not None:
-        return json.dumps(data, cls=znjson.ZnEncoder.from_converters(self.converter))
-    return json.dumps(data)
+        try:
+            return json.dumps(
+                data,
+                cls=znjson.ZnEncoder.from_converters(self.converter),
+                allow_nan=False,
+            )
+        except ValueError:
+            if self.convert_nan:
+                value = json.dumps(
+                    data,
+                    cls=znjson.ZnEncoder.from_converters(self.converter),
+                    allow_nan=True,
+                )
+                return (
+                    value.replace("NaN", "null")
+                    .replace("-Infinity", "null")
+                    .replace("Infinity", "null")
+                )
+            raise
+
+    try:
+        return json.dumps(data, allow_nan=False)
+    except ValueError:
+        if self.convert_nan:
+            value = json.dumps(data, allow_nan=True)
+            return (
+                value.replace("NaN", "null")
+                .replace("-Infinity", "null")
+                .replace("Infinity", "null")
+            )
+        raise
 
 
 def _decode(self, data: str) -> t.Any:
@@ -42,6 +71,7 @@ class List(MutableSequence, ZnSocketObject):
         repr_type: ListRepr = "length",
         converter: list[t.Type[znjson.ConverterBase]] | None = None,
         max_commands_per_call: int = 1_000_000,
+        convert_nan: bool = False,
     ):
         """Synchronized list object.
 
@@ -72,6 +102,9 @@ class List(MutableSequence, ZnSocketObject):
             Reduce for large list operations to avoid
             hitting the message size limit.
             Only applies when using `znsocket.Client`.
+        convert_nan: bool
+            Convert NaN and Infinity to None. Both are no native
+            JSON values and can not be encoded/decoded.
 
         """
         self.redis = r
@@ -80,6 +113,7 @@ class List(MutableSequence, ZnSocketObject):
         self.socket = socket if socket else (r if isinstance(r, Client) else None)
         self.converter = converter
         self._on_refresh = lambda x: None
+        self.convert_nan = convert_nan
 
         if isinstance(r, Client):
             self._pipeline_kwargs = {"max_commands_per_call": max_commands_per_call}
@@ -113,11 +147,9 @@ class List(MutableSequence, ZnSocketObject):
         items = []
         for value in data:
             if value is None:
-                item = None
-            else:
-                item = _decode(self, value)
-            if item is None:
                 raise IndexError("list index out of range")
+
+            item = _decode(self, value)
             if isinstance(item, str):
                 if item.startswith("znsocket.List:"):
                     key = item.split(":", 1)[1]
@@ -325,6 +357,7 @@ class Dict(MutableMapping, ZnSocketObject):
         callbacks: DictCallbackTypedDict | None = None,
         repr_type: DictRepr = "keys",
         converter: list[t.Type[znjson.ConverterBase]] | None = None,
+        convert_nan: bool = False,
     ):
         """Synchronized dict object.
 
@@ -346,16 +379,19 @@ class Dict(MutableMapping, ZnSocketObject):
         repr_type: "keys"|"minimal"|"full"
             Control the `repr` appearance of the object.
             Reduce for better performance.
-
         converter: list[znjson.ConverterBase]|None
             Optional list of znjson converters
             to use for encoding/decoding the data.
+        convert_nan: bool
+            Convert NaN and Infinity to None. Both are no native
+            JSON values and can not be encoded/decoded.
         """
         self.redis = r
         self.socket = socket if socket else (r if isinstance(r, Client) else None)
         self.converter = converter
         self.key = key
         self.repr_type = repr_type
+        self.convert_nan = convert_nan
         self._callbacks = {
             "setitem": None,
             "delitem": None,
@@ -506,6 +542,11 @@ class Dict(MutableMapping, ZnSocketObject):
                 value = f"znsocket.List:{value.key}"
             pipeline.hset(self.key, key, _encode(self, value))
         pipeline.execute()
+
+        if self.socket is not None:
+            refresh: RefreshTypeDict = {"keys": list(other.keys())}
+            refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
+            self.socket.sio.emit(f"refresh", refresh_data, namespace="/znsocket")
 
     def __or__(self, value: "dict|Dict") -> dict:
         if isinstance(value, Dict):
