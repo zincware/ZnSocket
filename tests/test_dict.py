@@ -423,3 +423,11 @@ def test_invalid_json(client, request):
         dct.update({"a": float("nan")})
     with pytest.raises(ValueError):
         dct.update({"a": float("-inf")})
+
+    dct.convert_nan = True
+
+    dct.update({"inf": float("inf"), "nan": float("nan"), "-inf": float("-inf")})
+
+    assert dct["inf"] is None
+    assert dct["nan"] is None
+    assert dct["-inf"] is None
