@@ -343,7 +343,7 @@ class Dict(MutableMapping, ZnSocketObject):
         callbacks: dict[str, Callable]
             optional function callbacks for methods
             which modify the database.
-        repr_type: DictRepr
+        repr_type: "keys"|"minimal"|"full"
             Control the `repr` appearance of the object.
             Reduce for better performance.
 
