@@ -24,22 +24,34 @@ def _encode(self, data: t.Any) -> str:
     if self.converter is not None:
         try:
             return json.dumps(
-                data, cls=znjson.ZnEncoder.from_converters(self.converter), allow_nan=False
+                data,
+                cls=znjson.ZnEncoder.from_converters(self.converter),
+                allow_nan=False,
             )
         except ValueError:
             if self.convert_nan:
                 value = json.dumps(
-                    data, cls=znjson.ZnEncoder.from_converters(self.converter), allow_nan=True
+                    data,
+                    cls=znjson.ZnEncoder.from_converters(self.converter),
+                    allow_nan=True,
                 )
-                return value.replace("NaN", "null").replace("-Infinity", "null").replace("Infinity", "null")
+                return (
+                    value.replace("NaN", "null")
+                    .replace("-Infinity", "null")
+                    .replace("Infinity", "null")
+                )
             raise
-    
+
     try:
         return json.dumps(data, allow_nan=False)
     except ValueError:
         if self.convert_nan:
             value = json.dumps(data, allow_nan=True)
-            return value.replace("NaN", "null").replace("-Infinity", "null").replace("Infinity", "null")
+            return (
+                value.replace("NaN", "null")
+                .replace("-Infinity", "null")
+                .replace("Infinity", "null")
+            )
         raise
 
 
@@ -136,8 +148,8 @@ class List(MutableSequence, ZnSocketObject):
         for value in data:
             if value is None:
                 raise IndexError("list index out of range")
-            
-            item = _decode(self, value)                
+
+            item = _decode(self, value)
             if isinstance(item, str):
                 if item.startswith("znsocket.List:"):
                     key = item.split(":", 1)[1]
