@@ -1,10 +1,10 @@
 import dataclasses
+import datetime
 import functools
 import json
 import logging
 import typing as t
 import warnings
-import datetime
 
 import socketio.exceptions
 import typing_extensions as tyex
@@ -51,7 +51,7 @@ def _handle_error(result):
 @dataclasses.dataclass
 class Client:
     """Client to interact with a znsocket server.
-    
+
     Attributes
     ----------
     address : str
@@ -67,6 +67,7 @@ class Client:
     delay_between_calls : datetime.timedelta
         The time to wait between calls. Default is None.
     """
+
     address: str
     decode_responses: bool = True
     sio: socketio.Client = dataclasses.field(
@@ -75,7 +76,7 @@ class Client:
     namespace: str = "/znsocket"
     refresh_callbacks: dict = dataclasses.field(default_factory=dict)
     retry: int = 3
-    delay_between_calls: datetime.timedelta|None = None
+    delay_between_calls: datetime.timedelta | None = None
 
     _last_call: datetime.datetime = dataclasses.field(
         default_factory=datetime.datetime.now, init=False
@@ -121,7 +122,6 @@ class Client:
 
         if not self.decode_responses:
             raise NotImplementedError("decode_responses=False is not supported yet")
-        
 
     def call(self, event: str, data: t.Any) -> t.Any:
         """Call an event on the server."""
@@ -138,9 +138,7 @@ class Client:
             except socketio.exceptions.TimeoutError:
                 if idx == 0:
                     raise
-                log.warning(
-                    f"Connection error. Retrying... {idx} attempts left"
-                )
+                log.warning(f"Connection error. Retrying... {idx} attempts left")
                 self.sio.sleep(1)
 
     def _redis_command(self, command, *args, **kwargs):
