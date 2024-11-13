@@ -4,6 +4,7 @@ import json
 import logging
 import typing as t
 import warnings
+import datetime
 
 import socketio.exceptions
 import typing_extensions as tyex
@@ -47,8 +48,25 @@ def _handle_error(result):
     raise error_map.get(error_type, exceptions.ZnSocketError)(error_msg)
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class Client:
+    """Client to interact with a znsocket server.
+    
+    Attributes
+    ----------
+    address : str
+        The address of the znsocket server.
+    decode_responses : bool
+        Whether to decode responses from the server. Default is True.
+    namespace : str
+        The namespace to connect to. Default is "/znsocket".
+    refresh_callbacks : dict
+        A dictionary of callbacks to call when a refresh event is received.
+    retry : int
+        The number of times to retry a failed call. Default is 3.
+    delay_between_calls : datetime.timedelta
+        The time to wait between calls. Default is None.
+    """
     address: str
     decode_responses: bool = True
     sio: socketio.Client = dataclasses.field(
@@ -56,6 +74,12 @@ class Client:
     )
     namespace: str = "/znsocket"
     refresh_callbacks: dict = dataclasses.field(default_factory=dict)
+    retry: int = 3
+    delay_between_calls: datetime.timedelta|None = None
+
+    _last_call: datetime.datetime = dataclasses.field(
+        default_factory=datetime.datetime.now, init=False
+    )
 
     def pipeline(self, *args, **kwargs) -> "Pipeline":
         return Pipeline(self, *args, **kwargs)
@@ -97,10 +121,32 @@ class Client:
 
         if not self.decode_responses:
             raise NotImplementedError("decode_responses=False is not supported yet")
+        
+
+    def call(self, event: str, data: t.Any) -> t.Any:
+        """Call an event on the server."""
+        if self.delay_between_calls:
+            time_since_last_call = datetime.datetime.now() - self._last_call
+            delay_needed = self.delay_between_calls - time_since_last_call
+            if delay_needed > datetime.timedelta(0):
+                self.sio.sleep(delay_needed.total_seconds())
+            self._last_call = datetime.datetime.now()
+
+        for idx in reversed(range(self.retry + 1)):
+            try:
+                return self.sio.call(event, data, namespace=self.namespace)
+            except socketio.exceptions.TimeoutError:
+                if idx == 0:
+                    raise
+                log.warning(
+                    f"Connection error. Retrying... {idx} attempts left"
+                )
+                self.sio.sleep(1)
 
     def _redis_command(self, command, *args, **kwargs):
         """Generic handler for Redis commands."""
-        result = self.sio.call(command, [args, kwargs], namespace=self.namespace)
+        result = self.call(command, [args, kwargs])
+
         if result is None:
             raise exceptions.ZnSocketError("No response from server")
         _handle_error(result)
@@ -155,10 +201,9 @@ class Pipeline:
 
     def _send_message(self, message) -> list:
         """Send a message to the server and process the response."""
-        result = self.client.sio.call(
+        result = self.client.call(
             "pipeline",
             {"pipeline": message},
-            namespace=self.client.namespace,
         )
 
         if result is None:
