@@ -159,6 +159,9 @@ test("native_dict_length", async () => {
   expect(await dct.length()).toBe(2);
   await dct.set("7", "A7");
   expect(await dct.length()).toBe(3);
+
+  const dct2 = new Dict({ client: client, key: "dict:test2" });
+  expect(await dct2.length()).toBe(0);
 });
 
 

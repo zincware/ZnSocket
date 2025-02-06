@@ -123,7 +123,7 @@ class Client:
         if not self.decode_responses:
             raise NotImplementedError("decode_responses=False is not supported yet")
 
-    def call(self, event: str, data: t.Any) -> t.Any:
+    def call(self, event: str, *args, **kwargs) -> t.Any:
         """Call an event on the server."""
         if self.delay_between_calls:
             time_since_last_call = datetime.datetime.now() - self._last_call
@@ -134,7 +134,7 @@ class Client:
 
         for idx in reversed(range(self.retry + 1)):
             try:
-                return self.sio.call(event, data, namespace=self.namespace)
+                return self.sio.call(event, [args, kwargs], namespace=self.namespace)
             except socketio.exceptions.TimeoutError:
                 if idx == 0:
                     raise
@@ -143,7 +143,7 @@ class Client:
 
     def _redis_command(self, command, *args, **kwargs):
         """Generic handler for Redis commands."""
-        result = self.call(command, [args, kwargs])
+        result = self.call(command, *args, **kwargs)
 
         if result is None:
             raise exceptions.ZnSocketError("No response from server")
@@ -201,7 +201,7 @@ class Pipeline:
         """Send a message to the server and process the response."""
         result = self.client.call(
             "pipeline",
-            {"pipeline": message},
+            message=message,
         )
 
         if result is None:
@@ -225,7 +225,7 @@ class Pipeline:
                 )
                 results.extend(self._send_message(message))
                 message = []
-        if message:
+        if len(message) > 0:
             results.extend(self._send_message(message))
 
         return results

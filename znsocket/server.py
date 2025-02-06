@@ -297,9 +297,10 @@ def attach_events(
     @sio.on("*", namespace=namespace)
     def handle_all_events(event, sid, data):
         """Handle any event dynamically by mapping event name to storage method."""
+        args, kwargs = data
         if hasattr(storage, event):
             try:
-                result = {"data": getattr(storage, event)(*data[0], **data[1])}
+                result = {"data": getattr(storage, event)(*args, **kwargs)}
                 if isinstance(result["data"], set):
                     result["data"] = list(result["data"])
                     result["type"] = "set"
@@ -324,9 +325,10 @@ def attach_events(
 
     @sio.event(namespace=namespace)
     def pipeline(sid, data):
-        commands = data.pop("pipeline")
+        args, kwargs = data
+        message = kwargs.pop("message")
         results = []
-        for cmd in commands:
+        for cmd in message:
             event = cmd[0]
             args = cmd[1][0]
             kwargs = cmd[1][1]

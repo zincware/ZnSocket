@@ -88,6 +88,9 @@ test("native_list_length", async () => {
   expect(await lst.length()).toBe(1);
   await lst.push(5);
   expect(await lst.length()).toBe(2);
+
+  const lst2 = new List({ client: client, key: "list:test2" });
+  expect(await lst2.length()).toBe(0);
 });
 
 test("native_list_push_socket_callback_self", async () => {
