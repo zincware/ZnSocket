@@ -288,7 +288,7 @@ def get_sio(
     return sio
 
 
-def attach_events(
+def attach_events(  # noqa: C901
     sio: socketio.Server, namespace: str = "/znsocket", storage=None
 ) -> None:
     if storage is None:

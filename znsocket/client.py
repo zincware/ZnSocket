@@ -1,10 +1,8 @@
 import dataclasses
 import datetime
 import functools
-import json
 import logging
 import typing as t
-import warnings
 
 import socketio.exceptions
 import typing_extensions as tyex

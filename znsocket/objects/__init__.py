@@ -160,7 +160,7 @@ class List(MutableSequence, ZnSocketObject):
             items.append(item)
         return items[0] if single_item else items
 
-    def __setitem__(self, index: int | list | slice, value: t.Any) -> None:
+    def __setitem__(self, index: int | list | slice, value: t.Any) -> None:  # noqa C901
         single_item = isinstance(index, int)
         if single_item:
             index = [index]
@@ -197,7 +197,7 @@ class List(MutableSequence, ZnSocketObject):
         if self.socket is not None:
             refresh: RefreshTypeDict = {"indices": index}
             refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
-            self.socket.sio.emit(f"refresh", refresh_data, namespace="/znsocket")
+            self.socket.sio.emit("refresh", refresh_data, namespace="/znsocket")
 
     def __delitem__(self, index: int | list | slice) -> None:
         single_item = isinstance(index, int)
@@ -224,7 +224,7 @@ class List(MutableSequence, ZnSocketObject):
         if self.socket is not None:
             refresh: RefreshTypeDict = {"start": min(index), "stop": None}
             refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
-            self.socket.sio.emit(f"refresh", refresh_data, namespace="/znsocket")
+            self.socket.sio.emit("refresh", refresh_data, namespace="/znsocket")
 
     def insert(self, index: int, value: t.Any) -> None:
         if isinstance(value, Dict):
@@ -248,7 +248,7 @@ class List(MutableSequence, ZnSocketObject):
         if self.socket is not None:
             refresh: RefreshTypeDict = {"start": index, "stop": None}
             refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
-            self.socket.sio.emit(f"refresh", refresh_data, namespace="/znsocket")
+            self.socket.sio.emit("refresh", refresh_data, namespace="/znsocket")
 
     def __eq__(self, value: object) -> bool:
         if isinstance(value, List):
@@ -287,7 +287,7 @@ class List(MutableSequence, ZnSocketObject):
         if self.socket is not None:
             refresh: RefreshTypeDict = {"indices": [len(self) - 1]}
             refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
-            self.socket.sio.emit(f"refresh", refresh_data, namespace="/znsocket")
+            self.socket.sio.emit("refresh", refresh_data, namespace="/znsocket")
 
     def extend(self, values: t.Iterable) -> None:
         """Extend the list with an iterable using redis pipelines."""
@@ -306,7 +306,7 @@ class List(MutableSequence, ZnSocketObject):
 
         if self.socket is not None:
             refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
-            self.socket.sio.emit(f"refresh", refresh_data, namespace="/znsocket")
+            self.socket.sio.emit("refresh", refresh_data, namespace="/znsocket")
 
     def pop(self, index: int = -1) -> t.Any:
         """Pop an item from the list."""
@@ -327,7 +327,7 @@ class List(MutableSequence, ZnSocketObject):
         if self.socket is not None:
             refresh: RefreshTypeDict = {"start": index, "stop": None}
             refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
-            self.socket.sio.emit(f"refresh", refresh_data, namespace="/znsocket")
+            self.socket.sio.emit("refresh", refresh_data, namespace="/znsocket")
         return _decode(self, value)
 
     def copy(self, key: str) -> "List":
@@ -426,7 +426,7 @@ class Dict(MutableMapping, ZnSocketObject):
         if self.socket is not None:
             refresh: RefreshTypeDict = {"keys": [key]}
             refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
-            self.socket.sio.emit(f"refresh", refresh_data, namespace="/znsocket")
+            self.socket.sio.emit("refresh", refresh_data, namespace="/znsocket")
 
     def __delitem__(self, key: str) -> None:
         if not self.redis.hexists(self.key, key):
@@ -437,7 +437,7 @@ class Dict(MutableMapping, ZnSocketObject):
         if self.socket is not None:
             refresh: RefreshTypeDict = {"keys": [key]}
             refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
-            self.socket.sio.emit(f"refresh", refresh_data, namespace="/znsocket")
+            self.socket.sio.emit("refresh", refresh_data, namespace="/znsocket")
 
     def __iter__(self):
         return iter(self.keys())
@@ -486,7 +486,7 @@ class Dict(MutableMapping, ZnSocketObject):
         elif self.repr_type == "minimal":
             return "Dict(<unknown>)"
         elif self.repr_type == "full":
-            data = {a: b for a, b in self.items()}
+            data = dict(self.items())
             return f"Dict({data})"
         else:
             raise ValueError(f"Invalid repr_type: {self.repr_type}")
@@ -546,7 +546,7 @@ class Dict(MutableMapping, ZnSocketObject):
         if self.socket is not None:
             refresh: RefreshTypeDict = {"keys": list(other.keys())}
             refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
-            self.socket.sio.emit(f"refresh", refresh_data, namespace="/znsocket")
+            self.socket.sio.emit("refresh", refresh_data, namespace="/znsocket")
 
     def __or__(self, value: "dict|Dict") -> dict:
         if isinstance(value, Dict):
