@@ -1,8 +1,6 @@
 import pytest
 import redis.exceptions
 
-import znsocket.exceptions
-
 
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_set(client, request):

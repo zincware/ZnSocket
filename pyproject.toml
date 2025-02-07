@@ -1,37 +1,37 @@
-[tool.poetry]
+[project]
 name = "znsocket"
 version = "0.2.8"
 description = "Python implementation of a Redis-compatible API using websockets."
-authors = ["Fabian Zills <fzills@icp.uni-stuttgart.de>"]
+authors = [
+    { name = "Fabian Zills", email = "fzills@icp.uni-stuttgart.de" },
+]
 license = "Apache-2.0"
 readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "eventlet>=0.39.0",
+    "python-socketio[client]>=5.12.1",
+    "redis>=5.2.1",
+    "typer>=0.13",
+    "znjson>=0.2.6",
+]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-python-socketio = {extras = ["client"], version = "^5.11"}
-eventlet = "^0"
-typer = "^0"
-znjson = "^0.2.3"
-redis = "^5"
+[dependency-groups]
+dev = [
+    "coverage>=7.6.10",
+    "numpy>=2.2.2",
+    "pytest>=8.3.4",
+]
 
-[tool.poetry.group.dev.dependencies]
-ruff = "^0.4"
-pytest = "^8.2"
-coverage = "^7.5.1"
-numpy = "^1"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-
-[tool.poetry.scripts]
+[project.scripts]
 znsocket = "znsocket.cli:app"
 
-[tool.poetry.urls]
-repository = "https://github.com/zincware/ZnSocket"
+[project.urls]
+Repository = "https://github.com/zincware/ZnSocket"
+Releases = "https://github.com/zincware/ZnSocket/releases"
 
 [tool.ruff.lint]
-select = ["I"]
+select = ["I", "F", "W", "C"]
 
 [tool.coverage.run]
 # omit the tests themselves
