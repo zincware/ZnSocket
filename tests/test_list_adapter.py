@@ -57,6 +57,7 @@ def test_list_adapter_index_iter(client, request):
     for value in lst:
         assert value in [1, 2, 3, 4]
 
+
 @pytest.mark.parametrize(
     "client",
     ["znsclient"],  # "znsclient_w_redis", "redisclient", "empty" TODO
