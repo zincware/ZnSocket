@@ -296,6 +296,7 @@ def attach_events(  # noqa: C901
         storage = Storage()
 
     adapter = {}
+    rooms = set()
 
     @sio.on("*", namespace=namespace)
     def handle_all_events(event, sid, data):
@@ -326,6 +327,7 @@ def attach_events(  # noqa: C901
     def check_adapter(sid, data: tuple[list, dict]) -> bool:
         """Check if the adapter is available."""
         key = data[1]["key"]
+        rooms.add(key)
         return key in adapter
 
     @sio.event(namespace=namespace)
@@ -333,7 +335,7 @@ def attach_events(  # noqa: C901
         """Register the adapter."""
         # TODO: if the client disconnects, remove the adapter
         key = data[1]["key"]
-        if storage.exists(key):
+        if key in rooms:
             return {
                 "error": {
                     "msg": f"Key {key} already exists in storage",

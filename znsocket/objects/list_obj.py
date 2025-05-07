@@ -12,7 +12,8 @@ from znsocket.abc import (
     ZnSocketObject,
 )
 from znsocket.client import Client
-from znsocket.utils import decode, encode
+from znsocket.utils import decode, encode, handle_error
+from znsocket.exceptions import FrozenStorageError
 
 
 class List(MutableSequence, ZnSocketObject):
@@ -138,6 +139,8 @@ class List(MutableSequence, ZnSocketObject):
 
     def __setitem__(self, index: int | list | slice, value: t.Any) -> None:  # noqa C901
         from znsocket.objects.dict_obj import Dict
+        if self._adapter_available:
+            raise FrozenStorageError(key=self.key)
 
         single_item = isinstance(index, int)
         if single_item:
@@ -178,6 +181,8 @@ class List(MutableSequence, ZnSocketObject):
             self.socket.sio.emit("refresh", refresh_data, namespace="/znsocket")
 
     def __delitem__(self, index: int | list | slice) -> None:
+        if self._adapter_available:
+            raise FrozenStorageError(key=self.key)
         single_item = isinstance(index, int)
         if single_item:
             index = [index]
@@ -206,6 +211,8 @@ class List(MutableSequence, ZnSocketObject):
 
     def insert(self, index: int, value: t.Any) -> None:
         from znsocket.objects.dict_obj import Dict
+        if self._adapter_available:
+            raise FrozenStorageError(key=self.key)
 
         if isinstance(value, Dict):
             value = f"znsocket.Dict:{value.key}"
@@ -256,6 +263,8 @@ class List(MutableSequence, ZnSocketObject):
         Override default method for better performance
         """
         from znsocket.objects.dict_obj import Dict
+        if self._adapter_available:
+            raise FrozenStorageError(key=self.key)
 
         if callback := self._callbacks["append"]:
             callback(value)
@@ -274,6 +283,8 @@ class List(MutableSequence, ZnSocketObject):
     def extend(self, values: t.Iterable) -> None:
         """Extend the list with an iterable using redis pipelines."""
         from znsocket.objects.dict_obj import Dict
+        if self._adapter_available:
+            raise FrozenStorageError(key=self.key)
 
         if self.socket is not None:
             refresh: RefreshTypeDict = {"start": len(self), "stop": None}
@@ -294,6 +305,8 @@ class List(MutableSequence, ZnSocketObject):
 
     def pop(self, index: int = -1) -> t.Any:
         """Pop an item from the list."""
+        if self._adapter_available:
+            raise FrozenStorageError(key=self.key)
         if index < 0:
             index = len(self) + index
 
@@ -320,7 +333,15 @@ class List(MutableSequence, ZnSocketObject):
         This will not trigger any callbacks as
         the data is not modified.
         """
-        if not self.redis.copy(self.key, key):
+        if self._adapter_available:
+            success = self.socket.call(
+                "adapter:get",
+                method="copy",
+                key=self.key,
+                target=key,
+            )
+            handle_error(success)
+        elif not self.redis.copy(self.key, key):
             raise ValueError("Could not copy list")
 
         return List(r=self.redis, key=key, socket=self.socket)

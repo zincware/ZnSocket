@@ -31,3 +31,12 @@ class DataError(ZnSocketError, redis.exceptions.DataError):
 
 class UnknownEventError(ZnSocketError):
     """UnknownEventError."""
+
+class FrozenStorageError(ZnSocketError):
+    """Storage is frozen and cannot be modified."""
+    def __init__(self, key: str):
+        self.key = key
+        self.message = f"'{key}' is frozen and cannot be modified. Create a copy of the object to modify it."
+
+    def __str__(self) -> str:
+        return self.message
