@@ -12,8 +12,8 @@ from znsocket.abc import (
     ZnSocketObject,
 )
 from znsocket.client import Client
-from znsocket.utils import decode, encode, handle_error
 from znsocket.exceptions import FrozenStorageError
+from znsocket.utils import decode, encode, handle_error
 
 
 class List(MutableSequence, ZnSocketObject):
@@ -139,6 +139,7 @@ class List(MutableSequence, ZnSocketObject):
 
     def __setitem__(self, index: int | list | slice, value: t.Any) -> None:  # noqa C901
         from znsocket.objects.dict_obj import Dict
+
         if self._adapter_available:
             raise FrozenStorageError(key=self.key)
 
@@ -211,6 +212,7 @@ class List(MutableSequence, ZnSocketObject):
 
     def insert(self, index: int, value: t.Any) -> None:
         from znsocket.objects.dict_obj import Dict
+
         if self._adapter_available:
             raise FrozenStorageError(key=self.key)
 
@@ -263,6 +265,7 @@ class List(MutableSequence, ZnSocketObject):
         Override default method for better performance
         """
         from znsocket.objects.dict_obj import Dict
+
         if self._adapter_available:
             raise FrozenStorageError(key=self.key)
 
@@ -283,6 +286,7 @@ class List(MutableSequence, ZnSocketObject):
     def extend(self, values: t.Iterable) -> None:
         """Extend the list with an iterable using redis pipelines."""
         from znsocket.objects.dict_obj import Dict
+
         if self._adapter_available:
             raise FrozenStorageError(key=self.key)
 

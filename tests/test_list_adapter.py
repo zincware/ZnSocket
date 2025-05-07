@@ -39,7 +39,9 @@ def test_register_adapter_after_list_exists(client, request):
     with pytest.raises(KeyError):
         _ = znsocket.ListAdapter(socket=c, key=key, object=[1, 2, 3, 4])
 
+
 # TODO: what if the room is modified?
+
 
 @pytest.mark.parametrize(
     "client",

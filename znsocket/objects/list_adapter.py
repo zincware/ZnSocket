@@ -48,10 +48,14 @@ class ListAdapter:
             new_list = List(r=self.r, key=target, socket=self.socket)
             if new_list._adapter_available:
                 return json.dumps(
-                    {"error": {"msg": "Adapter already registered to this key. Please select a different one.", "type": "KeyError"}}
+                    {
+                        "error": {
+                            "msg": "Adapter already registered to this key. Please select a different one.",
+                            "type": "KeyError",
+                        }
+                    }
                 )
             new_list.extend(self.object)
             return True
         else:
             raise NotImplementedError(f"Method {method} not implemented")
-
