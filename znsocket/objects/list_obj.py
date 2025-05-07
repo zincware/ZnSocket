@@ -82,9 +82,18 @@ class List(MutableSequence, ZnSocketObject):
         }
         if callbacks:
             self._callbacks.update(callbacks)
+        
+        self._adapter_available = False
+        if self.socket is not None:
+            # check from the server if the adapter is available
+            self._adapter_available = self.socket.call("check_adapter", key=self.key)
 
     def __len__(self) -> int:
-        return int(self.redis.llen(self.key))
+        result = int(self.redis.llen(self.key))
+        if result == 0 and self._adapter_available:
+            result = int(self.socket.call("adapter:get", key=self.key, method="__len__"))
+
+        return result
 
     def __getitem__(self, index: int | list | slice) -> t.Any | list[t.Any]:
         from znsocket.objects.dict_obj import Dict
@@ -101,8 +110,17 @@ class List(MutableSequence, ZnSocketObject):
         data = pipeline.execute()
 
         items = []
-        for value in data:
+        for idx, value in zip(index, data):
             if value is None:
+                if self._adapter_available:
+                    value = self.socket.call(
+                        "adapter:get",
+                        key=self.key,
+                        method="__getitem__",
+                        index=idx,
+                    )
+                    # TODO: with single_item something is wrong here
+            if value is None: # check if the value is still None
                 raise IndexError("list index out of range")
 
             item = decode(self, value)

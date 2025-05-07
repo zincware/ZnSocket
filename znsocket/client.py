@@ -10,7 +10,7 @@ from redis import Redis
 
 from znsocket import exceptions
 from znsocket.abc import RefreshDataTypeDict
-from znsocket.utils import parse_url
+from znsocket.utils import parse_url, handle_error
 
 log = logging.getLogger(__name__)
 
@@ -24,29 +24,7 @@ def _handle_data(data: dict):
     return data["data"]
 
 
-def handle_error(result):
-    """Handle errors in the server response."""
 
-    if not isinstance(result, dict):
-        return
-
-    if "error" not in result:
-        return
-
-    error_map = {
-        "DataError": exceptions.DataError,
-        "TypeError": TypeError,
-        "IndexError": IndexError,
-        "KeyError": KeyError,
-        "UnknownEventError": exceptions.UnknownEventError,
-        "ResponseError": exceptions.ResponseError,
-    }
-
-    error_type = result["error"].get("type")
-    error_msg = result["error"].get("msg", "Unknown error")
-
-    # Raise the mapped exception if it exists, else raise a generic ZnSocketError
-    raise error_map.get(error_type, exceptions.ZnSocketError)(error_msg)
 
 
 @dataclasses.dataclass
