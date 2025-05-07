@@ -69,7 +69,6 @@ class Dict(MutableMapping, ZnSocketObject):
             # check from the server if the adapter is available
             self._adapter_available = self.socket.call("check_adapter", key=self.key)
 
-
     def __getitem__(self, key: str) -> t.Any:
         from znsocket.objects.list_obj import List
 

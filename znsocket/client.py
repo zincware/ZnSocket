@@ -10,7 +10,7 @@ from redis import Redis
 
 from znsocket import exceptions
 from znsocket.abc import RefreshDataTypeDict
-from znsocket.utils import parse_url, handle_error
+from znsocket.utils import handle_error, parse_url
 
 log = logging.getLogger(__name__)
 
@@ -22,9 +22,6 @@ def _handle_data(data: dict):
         else:
             raise TypeError(f"Can not convert type '{data['type']}'")
     return data["data"]
-
-
-
 
 
 @dataclasses.dataclass
@@ -54,7 +51,7 @@ class Client:
     )
     namespace: str = "/znsocket"
     refresh_callbacks: dict = dataclasses.field(default_factory=dict)
-    adapter_callback: t.Callable|None = None
+    adapter_callback: t.Callable | None = None
     delay_between_calls: datetime.timedelta | None = None
     retry: int = 1
 

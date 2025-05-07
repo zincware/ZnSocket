@@ -3,6 +3,7 @@ import typing as t
 from urllib.parse import urlparse
 
 import znjson
+
 from znsocket import exceptions
 
 

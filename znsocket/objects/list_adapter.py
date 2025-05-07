@@ -1,8 +1,9 @@
+import json
+from collections.abc import Sequence
 from dataclasses import dataclass
+
 from znsocket.client import Client
 from znsocket.utils import handle_error
-from collections.abc import Sequence
-import json
 
 
 @dataclass
@@ -11,6 +12,7 @@ class ListAdapter:
 
     Data will be send via sockets through the server to the client.
     """
+
     key: str
     socket: Client
     object: Sequence
@@ -20,7 +22,6 @@ class ListAdapter:
         handle_error(result)
 
         self.socket.adapter_callback = self.map_callback
-
 
     def map_callback(self, data):
         """Map a callback to the object."""
@@ -37,4 +38,3 @@ class ListAdapter:
             except Exception as e:
                 value = {"error": {"msg": str(e), "type": type(e).__name__}}
             return json.dumps(value)
-

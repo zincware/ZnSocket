@@ -82,7 +82,7 @@ class List(MutableSequence, ZnSocketObject):
         }
         if callbacks:
             self._callbacks.update(callbacks)
-        
+
         self._adapter_available = False
         if self.socket is not None:
             # check from the server if the adapter is available
@@ -91,7 +91,9 @@ class List(MutableSequence, ZnSocketObject):
     def __len__(self) -> int:
         result = int(self.redis.llen(self.key))
         if result == 0 and self._adapter_available:
-            result = int(self.socket.call("adapter:get", key=self.key, method="__len__"))
+            result = int(
+                self.socket.call("adapter:get", key=self.key, method="__len__")
+            )
 
         return result
 
@@ -120,7 +122,7 @@ class List(MutableSequence, ZnSocketObject):
                         index=idx,
                     )
                     # TODO: with single_item something is wrong here
-            if value is None: # check if the value is still None
+            if value is None:  # check if the value is still None
                 raise IndexError("list index out of range")
 
             item = decode(self, value)

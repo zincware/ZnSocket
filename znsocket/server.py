@@ -294,7 +294,7 @@ def attach_events(  # noqa: C901
 ) -> None:
     if storage is None:
         storage = Storage()
-    
+
     adapter = {}
 
     @sio.on("*", namespace=namespace)
@@ -327,7 +327,7 @@ def attach_events(  # noqa: C901
         """Check if the adapter is available."""
         key = data[1]["key"]
         return key in adapter
-    
+
     @sio.event(namespace=namespace)
     def register_adapter(sid, data: tuple[list, dict]):
         """Register the adapter."""
@@ -342,7 +342,7 @@ def attach_events(  # noqa: C901
             }
         adapter[key] = sid
         return True
-    
+
     @sio.on("adapter:get", namespace=namespace)
     def adapter_get(sid, data: tuple[list, dict]):
         """Get the adapter."""
@@ -362,7 +362,6 @@ def attach_events(  # noqa: C901
             namespace=namespace,
             timeout=5,
         )
-
 
     @sio.event(namespace=namespace)
     def refresh(sid, data: RefreshDataTypeDict) -> None:
