@@ -14,6 +14,7 @@ from znsocket.abc import (
 from znsocket.client import Client
 from znsocket.utils import decode, encode
 
+
 class List(MutableSequence, ZnSocketObject):
     def __init__(
         self,

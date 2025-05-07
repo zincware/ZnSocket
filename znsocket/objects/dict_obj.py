@@ -1,7 +1,6 @@
 import typing as t
 from collections.abc import MutableMapping
 
-import redis.exceptions
 import znjson
 
 from znsocket.abc import (
@@ -13,6 +12,7 @@ from znsocket.abc import (
 )
 from znsocket.client import Client
 from znsocket.utils import decode, encode
+
 
 class Dict(MutableMapping, ZnSocketObject):
     def __init__(
