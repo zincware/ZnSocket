@@ -603,7 +603,7 @@ wheels = [
 [[package]]
 name = "znsocket"
 version = "0.2.8"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "eventlet" },
     { name = "python-socketio", extra = ["client"] },

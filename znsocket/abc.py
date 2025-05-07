@@ -6,6 +6,10 @@ except ImportError:
     from typing_extensions import NotRequired
 
 
+class ZnSocketObject:
+    """Base class for all znsocket objects."""
+
+
 class RefreshTypeDict(t.TypedDict):
     start: NotRequired[int | None]
     stop: NotRequired[int | None]

@@ -6,7 +6,7 @@ import pytest
 import znjson
 
 import znsocket
-from znsocket.objects import ZnSocketObject
+from znsocket.abc import ZnSocketObject
 
 
 @pytest.mark.parametrize(
