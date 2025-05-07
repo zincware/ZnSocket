@@ -24,8 +24,11 @@ def _handle_data(data: dict):
     return data["data"]
 
 
-def _handle_error(result):
+def handle_error(result):
     """Handle errors in the server response."""
+
+    if not isinstance(result, dict):
+        return
 
     if "error" not in result:
         return
@@ -73,8 +76,9 @@ class Client:
     )
     namespace: str = "/znsocket"
     refresh_callbacks: dict = dataclasses.field(default_factory=dict)
-    retry: int = 3
+    adapter_callback: t.Callable|None = None
     delay_between_calls: datetime.timedelta | None = None
+    retry: int = 1
 
     _last_call: datetime.datetime = dataclasses.field(
         default_factory=datetime.datetime.now, init=False
@@ -105,6 +109,12 @@ class Client:
             for key in self.refresh_callbacks:
                 if data["target"] == key:
                     self.refresh_callbacks[key](data["data"])
+
+        @self.sio.on("adapter:get", namespace=self.namespace)
+        def adapter(data: RefreshDataTypeDict):
+            if self.adapter_callback is None:
+                raise exceptions.ZnSocketError("No adapter callback set")
+            return self.adapter_callback(data)
 
         _url, _path = parse_url(self.address)
         try:
@@ -145,7 +155,7 @@ class Client:
 
         if result is None:
             raise exceptions.ZnSocketError("No response from server")
-        _handle_error(result)
+        handle_error(result)
 
         return _handle_data(result)
 
@@ -204,7 +214,7 @@ class Pipeline:
 
         if result is None:
             raise exceptions.ZnSocketError("No response from server")
-        _handle_error(result)
+        handle_error(result)
 
         return [_handle_data(res) for res in result["data"]]
 
