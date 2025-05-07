@@ -9,6 +9,8 @@ import znsocket
 import znsocket.client
 from znsocket.abc import ZnSocketObject
 
+SLEEP_TIME = 0.1
+
 
 @pytest.fixture
 def empty() -> None:
@@ -354,13 +356,13 @@ def test_list_refresh_append(client, request, znsclient):
     lst2.on_refresh(mock)
     assert len(lst) == 0
     lst.append(1)
-    znsclient.sio.sleep(0.01)
+    znsclient.sio.sleep(SLEEP_TIME)
     assert len(lst) == 1
     mock.assert_called_once_with({"indices": [0]})
 
     # append again
     lst.append(2)
-    znsclient.sio.sleep(0.01)
+    znsclient.sio.sleep(SLEEP_TIME)
     assert len(lst) == 2
     mock.assert_called_with({"indices": [1]})
 
@@ -376,13 +378,13 @@ def test_list_refresh_insert(client, request, znsclient):
     lst2.on_refresh(mock)
     assert len(lst) == 0
     lst.insert(0, 1)
-    znsclient.sio.sleep(0.01)
+    znsclient.sio.sleep(SLEEP_TIME)
     assert len(lst) == 1
     mock.assert_called_once_with({"start": 0, "stop": None})
 
     # insert again
     lst.insert(1, 2)
-    znsclient.sio.sleep(0.01)
+    znsclient.sio.sleep(SLEEP_TIME)
     assert len(lst) == 2
     mock.assert_called_with({"start": 1, "stop": None})
 
@@ -397,20 +399,20 @@ def test_list_refresh_delitem(client, request, znsclient):
     mock = MagicMock()
     lst2.on_refresh(mock)
     lst.extend([1, 2, 3])
-    znsclient.sio.sleep(0.01)
+    znsclient.sio.sleep(SLEEP_TIME)
     # extend sends all at once
     assert mock.call_count == 1
     mock.reset_mock()
 
     assert len(lst) == 3
     lst.pop()
-    znsclient.sio.sleep(0.01)
+    znsclient.sio.sleep(SLEEP_TIME)
     assert len(lst) == 2
     mock.assert_called_once_with({"start": 2, "stop": None})
 
     # pop again
     del lst[0]
-    znsclient.sio.sleep(0.01)
+    znsclient.sio.sleep(SLEEP_TIME)
     assert len(lst) == 1
     mock.assert_called_with({"start": 0, "stop": None})
 
@@ -425,20 +427,20 @@ def test_list_refresh_setitem(client, request, znsclient):
     mock = MagicMock()
     lst2.on_refresh(mock)
     lst.extend([1, 2, 3])
-    znsclient.sio.sleep(0.01)
+    znsclient.sio.sleep(SLEEP_TIME)
     # extend sends all at once
     assert mock.call_count == 1
     mock.reset_mock()
 
     assert len(lst) == 3
     lst[0] = 4
-    znsclient.sio.sleep(0.01)
+    znsclient.sio.sleep(SLEEP_TIME)
     assert len(lst) == 3
     mock.assert_called_once_with({"indices": [0]})
 
     # set again
     lst[1] = 5
-    znsclient.sio.sleep(0.01)
+    znsclient.sio.sleep(SLEEP_TIME)
     assert len(lst) == 3
     mock.assert_called_with({"indices": [1]})
 
@@ -450,19 +452,19 @@ def test_list_refresh_setitem_self_trigger(client, request, znsclient):
     mock = MagicMock()
     lst.on_refresh(mock)
     lst.extend([1, 2, 3])
-    znsclient.sio.sleep(0.01)
+    znsclient.sio.sleep(SLEEP_TIME)
     mock.assert_not_called()
 
     assert len(lst) == 3
     lst[0] = 4
-    znsclient.sio.sleep(0.01)
+    znsclient.sio.sleep(SLEEP_TIME)
     assert len(lst) == 3
     # assert mock was not called
     mock.assert_not_called()
 
     # set again
     lst[1] = 5
-    znsclient.sio.sleep(0.01)
+    znsclient.sio.sleep(SLEEP_TIME)
     assert len(lst) == 3
     mock.assert_not_called()
 
@@ -520,13 +522,13 @@ def test_list_refresh_extend(client, request, znsclient):
     lst2.on_refresh(mock)
     assert len(lst) == 0
     lst.extend([1, 2, 3])
-    znsclient.sio.sleep(0.01)
+    znsclient.sio.sleep(SLEEP_TIME)
     assert len(lst) == 3
     mock.assert_called_once_with({"start": 0, "stop": None})
 
     mock.reset_mock()
     lst.extend([4, 5, 6])
-    znsclient.sio.sleep(0.01)
+    znsclient.sio.sleep(SLEEP_TIME)
     assert len(lst) == 6
     mock.assert_called_once_with({"start": 3, "stop": None})
 
@@ -540,7 +542,7 @@ def test_list_refresh_extend_self_trigger(client, request, znsclient):
     lst.on_refresh(mock)
     assert len(lst) == 0
     lst.extend([1, 2, 3])
-    znsclient.sio.sleep(0.01)
+    znsclient.sio.sleep(SLEEP_TIME)
     assert len(lst) == 3
     mock.assert_not_called()
 
