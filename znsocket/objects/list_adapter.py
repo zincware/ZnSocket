@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from znsocket.client import Client
-from znsocket.utils import handle_error, encode
+from znsocket.utils import encode, handle_error
 
 
 @dataclass

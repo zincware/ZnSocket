@@ -1,10 +1,10 @@
+import numpy as np
+import numpy.testing as npt
 import pytest
+import znjson
 
 import znsocket
 from znsocket.exceptions import FrozenStorageError
-import znjson
-import numpy as np
-import numpy.testing as npt
 
 
 @pytest.fixture
@@ -95,7 +95,12 @@ def test_list_adapter_w_converter(client, request):
     """Test copying a list adapter"""
     c = request.getfixturevalue(client)
     key = "list:test"
-    adapter = znsocket.ListAdapter(socket=c, key=key, object=np.arange(9).reshape(3, 3), converter=[znjson.converter.NumpyConverter])
+    adapter = znsocket.ListAdapter(
+        socket=c,
+        key=key,
+        object=np.arange(9).reshape(3, 3),
+        converter=[znjson.converter.NumpyConverter],
+    )
     lst = znsocket.List(r=c, key=key, converter=[znjson.converter.NumpyConverter])
 
     assert len(lst) == 3
