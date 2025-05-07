@@ -7,7 +7,7 @@ import znjson
 
 import znsocket
 import znsocket.client
-from znsocket.objects import ZnSocketObject
+from znsocket.abc import ZnSocketObject
 
 
 @pytest.fixture
