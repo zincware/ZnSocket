@@ -1,6 +1,7 @@
+import json
 import typing as t
 from urllib.parse import urlparse
-import json
+
 import znjson
 
 

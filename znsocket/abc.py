@@ -5,6 +5,7 @@ try:
 except ImportError:
     from typing_extensions import NotRequired
 
+
 class ZnSocketObject:
     """Base class for all znsocket objects."""
 

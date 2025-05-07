@@ -1,4 +1,3 @@
-import json
 import typing as t
 from collections.abc import MutableMapping, MutableSequence
 
@@ -12,12 +11,10 @@ from znsocket.abc import (
     ListRepr,
     RefreshDataTypeDict,
     RefreshTypeDict,
+    ZnSocketObject,
 )
 from znsocket.client import Client
-
-
-from znsocket.abc import ZnSocketObject
-from znsocket.utils import encode, decode
+from znsocket.utils import decode, encode
 
 
 class List(MutableSequence, ZnSocketObject):
