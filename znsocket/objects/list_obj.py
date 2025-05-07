@@ -347,7 +347,8 @@ class List(MutableSequence, ZnSocketObject):
         elif not self.redis.copy(self.key, key):
             raise ValueError("Could not copy list")
 
-        return List(r=self.redis, key=key, socket=self.socket)
+        return List(r=self.redis, key=key, socket=self.socket, converter=self.converter, 
+                    convert_nan=self.convert_nan)
 
     def on_refresh(self, callback: t.Callable[[RefreshDataTypeDict], None]) -> None:
         if self.socket is None:

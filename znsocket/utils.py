@@ -76,7 +76,8 @@ def encode(self, data: t.Any) -> str:
 
 def decode(self, data: str) -> t.Any:
     if self.converter is not None:
-        return json.loads(data, cls=znjson.ZnDecoder.from_converters(self.converter))
-    data = json.loads(data)
+        data = json.loads(data, cls=znjson.ZnDecoder.from_converters(self.converter))
+    else:
+        data = json.loads(data)
     handle_error(data)
     return data

@@ -56,7 +56,7 @@ class ListAdapter:
             from znsocket import List
 
             target = kwargs["target"]
-            new_list = List(r=self.r, key=target, socket=self.socket)
+            new_list = List(r=self.r, key=target, socket=self.socket, converter=self.converter, convert_nan=self.convert_nan)
             if new_list._adapter_available:
                 return json.dumps(
                     {

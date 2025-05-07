@@ -48,6 +48,19 @@ def test_list_adapter_index_error(client, request):
     "client",
     ["znsclient"],  # "znsclient_w_redis", "redisclient", "empty" TODO
 )
+def test_list_adapter_index_iter(client, request):
+    c = request.getfixturevalue(client)
+    key = "list:test"
+    _ = znsocket.ListAdapter(socket=c, key=key, object=[1, 2, 3, 4])
+    lst = znsocket.List(r=c, key=key)
+    assert list(lst) == [1, 2, 3, 4]
+    for value in lst:
+        assert value in [1, 2, 3, 4]
+
+@pytest.mark.parametrize(
+    "client",
+    ["znsclient"],  # "znsclient_w_redis", "redisclient", "empty" TODO
+)
 def test_register_adapter_after_list_exists(client, request):
     c = request.getfixturevalue(client)
     key = "list:test"
@@ -121,3 +134,47 @@ def test_list_adapter_w_converter(client, request):
     for idx, row in enumerate(adapter.object):
         npt.assert_array_equal(lst[idx], row)
         assert isinstance(lst[idx], np.ndarray)
+
+
+@pytest.mark.parametrize(
+    "client",
+    ["znsclient"],  # "znsclient_w_redis", "redisclient", "empty" TODO
+)
+def test_list_adapter_w_converter_iter(client, request):
+    """Test copying a list adapter"""
+    c = request.getfixturevalue(client)
+    key = "list:test"
+    adapter = znsocket.ListAdapter(
+        socket=c,
+        key=key,
+        object=np.arange(9).reshape(3, 3),
+        converter=[znjson.converter.NumpyConverter],
+    )
+    lst = znsocket.List(r=c, key=key, converter=[znjson.converter.NumpyConverter])
+
+    assert len(lst) == 3
+
+    data = np.array(lst)
+    npt.assert_array_equal(data, adapter.object)
+
+
+@pytest.mark.parametrize(
+    "client",
+    ["znsclient"],  # "znsclient_w_redis", "redisclient", "empty" TODO
+)
+def test_list_adapter_w_converter_copy(client, request):
+    """Test copying a list adapter"""
+    c = request.getfixturevalue(client)
+    key = "list:test"
+    adapter = znsocket.ListAdapter(
+        socket=c,
+        key=key,
+        object=np.arange(9).reshape(3, 3),
+        converter=[znjson.converter.NumpyConverter],
+    )
+    lst = znsocket.List(r=c, key=key, converter=[znjson.converter.NumpyConverter])
+
+    new_lst = lst.copy("list:test_copy")
+    assert len(new_lst) == 3
+    new_lst_array = np.array(new_lst)
+    npt.assert_array_equal(new_lst_array, adapter.object)
