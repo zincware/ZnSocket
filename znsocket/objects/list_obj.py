@@ -98,7 +98,7 @@ class List(MutableSequence, ZnSocketObject):
 
         return result
 
-    def __getitem__(self, index: int | list | slice) -> t.Any | list[t.Any]:
+    def __getitem__(self, index: int | list | slice) -> t.Any | list[t.Any]:  # noqa C901
         from znsocket.objects.dict_obj import Dict
 
         single_item = isinstance(index, int)
@@ -122,7 +122,6 @@ class List(MutableSequence, ZnSocketObject):
                         method="__getitem__",
                         index=idx,
                     )
-                    # TODO: with single_item something is wrong here
             if value is None:  # check if the value is still None
                 raise IndexError("list index out of range")
 

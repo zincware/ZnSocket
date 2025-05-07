@@ -39,7 +39,7 @@ class ListAdapter:
 
     def map_callback(self, data):
         """Map a callback to the object."""
-        args = data[0]
+        # args = data[0]
         kwargs = data[1]
 
         method = kwargs["method"]

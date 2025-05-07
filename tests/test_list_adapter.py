@@ -35,6 +35,19 @@ def test_list_adapter_len(client, request):
     "client",
     ["znsclient"],  # "znsclient_w_redis", "redisclient", "empty" TODO
 )
+def test_list_adapter_index_error(client, request):
+    c = request.getfixturevalue(client)
+    key = "list:test"
+    _ = znsocket.ListAdapter(socket=c, key=key, object=[1, 2, 3, 4])
+    lst = znsocket.List(r=c, key=key)
+    with pytest.raises(IndexError):
+        _ = lst[4]
+
+
+@pytest.mark.parametrize(
+    "client",
+    ["znsclient"],  # "znsclient_w_redis", "redisclient", "empty" TODO
+)
 def test_register_adapter_after_list_exists(client, request):
     c = request.getfixturevalue(client)
     key = "list:test"
