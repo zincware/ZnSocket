@@ -2,6 +2,9 @@ import pytest
 
 import znsocket
 from znsocket.exceptions import FrozenStorageError
+import znjson
+import numpy as np
+import numpy.testing as npt
 
 
 @pytest.fixture
@@ -82,3 +85,21 @@ def test_list_adapter_copy(client, request):
     lst_copy = lst.copy("list:test_copy")
 
     assert list(lst) == list(lst_copy)
+
+
+@pytest.mark.parametrize(
+    "client",
+    ["znsclient"],  # "znsclient_w_redis", "redisclient", "empty" TODO
+)
+def test_list_adapter_w_converter(client, request):
+    """Test copying a list adapter"""
+    c = request.getfixturevalue(client)
+    key = "list:test"
+    adapter = znsocket.ListAdapter(socket=c, key=key, object=np.arange(9).reshape(3, 3), converter=[znjson.converter.NumpyConverter])
+    lst = znsocket.List(r=c, key=key, converter=[znjson.converter.NumpyConverter])
+
+    assert len(lst) == 3
+
+    for idx, row in enumerate(adapter.object):
+        npt.assert_array_equal(lst[idx], row)
+        assert isinstance(lst[idx], np.ndarray)

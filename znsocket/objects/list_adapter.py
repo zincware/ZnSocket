@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from znsocket.client import Client
-from znsocket.utils import handle_error
+from znsocket.utils import handle_error, encode
 
 
 @dataclass
@@ -11,11 +11,22 @@ class ListAdapter:
     """Connect any object to a znsocket server to be used instead of loading data from the database.
 
     Data will be send via sockets through the server to the client.
+
+    Parameters
+    ----------
+    converter: list[znjson.ConverterBase]|None
+            Optional list of znjson converters
+            to use for encoding/decoding the data.
+    convert_nan: bool
+        Convert NaN and Infinity to None. Both are no native
+        JSON values and can not be encoded/decoded.
     """
 
     key: str
     socket: Client
     object: Sequence
+    converter: list[type] | None = None
+    convert_nan: bool = False
     r: Client | None = None
 
     def __post_init__(self):
@@ -40,7 +51,7 @@ class ListAdapter:
                 value = self.object[index]
             except Exception as e:
                 value = {"error": {"msg": str(e), "type": type(e).__name__}}
-            return json.dumps(value)
+            return encode(self, value)
         elif method == "copy":
             from znsocket import List
 
