@@ -27,6 +27,8 @@ class List(MutableSequence, ZnSocketObject):
         converter: list[t.Type[znjson.ConverterBase]] | None = None,
         max_commands_per_call: int = 1_000_000,
         convert_nan: bool = False,
+        fallback: str | None = None,
+        fallback_policy: t.Literal["copy", "frozen"] | None = None
     ):
         """Synchronized list object.
 
@@ -69,6 +71,8 @@ class List(MutableSequence, ZnSocketObject):
         self.converter = converter
         self._on_refresh = lambda x: None
         self.convert_nan = convert_nan
+        self.fallback = fallback
+        self.fallback_policy = fallback_policy
 
         if isinstance(r, Client):
             self._pipeline_kwargs = {"max_commands_per_call": max_commands_per_call}
@@ -95,6 +99,14 @@ class List(MutableSequence, ZnSocketObject):
             result = int(
                 self.socket.call("adapter:get", key=self.key, method="__len__")
             )
+        if result == 0 and self.fallback is not None:
+            fallback_lst = type(self)(
+                r=self.redis,
+                key=self.fallback,
+                socket=self.socket,
+                convert_nan=self.convert_nan,
+            )
+            result = len(fallback_lst)
 
         return result
 
@@ -122,6 +134,17 @@ class List(MutableSequence, ZnSocketObject):
                         method="__getitem__",
                         index=idx,
                     )
+                if value is None and self.fallback is not None:
+                    # TODO: create a function that returns the fallback list
+                    fallback_lst = type(self)(
+                        r=self.redis,
+                        key=self.fallback,
+                        socket=self.socket,
+                        convert_nan=self.convert_nan,
+                        converter=self.converter,
+                    )
+                    return fallback_lst[index][0] if single_item else fallback_lst[index]
+
             if value is None:  # check if the value is still None
                 raise IndexError("list index out of range")
 

@@ -179,3 +179,35 @@ def test_list_adapter_w_converter_copy(client, request):
     assert len(new_lst) == 3
     new_lst_array = np.array(new_lst)
     npt.assert_array_equal(new_lst_array, adapter.object)
+
+
+@pytest.mark.parametrize(
+    "client",
+    ["znsclient", "znsclient_w_redis"],  # , "redisclient", "empty" TODO
+)
+def test_list_adapter_fallback(client, request):
+    """Test copying a list adapter"""
+    c = request.getfixturevalue(client)
+    fallback_key = "list:default"
+    key = "list:test"
+    znsocket.ListAdapter(
+        socket=c,
+        key=fallback_key,
+        object=np.arange(9).reshape(3, 3),
+        converter=[znjson.converter.NumpyConverter],
+    )
+
+    lst = znsocket.List(r=c, key=key, converter=[znjson.converter.NumpyConverter], fallback=fallback_key, fallback_policy="copy")
+
+    assert len(lst) == 3
+    data = np.array(lst)
+    npt.assert_array_equal(data, np.arange(9).reshape(3, 3))
+
+    # # should make a copy
+    # # TODO: test frozen and test none, e.g. modify the original which here should also raise frozen error
+    # lst.append(np.array([9, 10, 11]))
+
+    # assert len(lst) == 4
+    # data = np.array(lst)
+    # npt.assert_array_equal(data, np.arange(12).reshape(4, 3))
+
