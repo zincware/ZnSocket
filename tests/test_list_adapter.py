@@ -197,13 +197,25 @@ def test_list_adapter_fallback(client, request):
         converter=[znjson.converter.NumpyConverter],
     )
 
-    lst = znsocket.List(r=c, key=key, converter=[znjson.converter.NumpyConverter], fallback=fallback_key, fallback_policy="copy")
+    lst = znsocket.List(
+        r=c,
+        key=key,
+        converter=[znjson.converter.NumpyConverter],
+        fallback=fallback_key,
+        fallback_policy="copy",
+    )
 
     assert len(lst) == 3
     data = np.array(lst)
     npt.assert_array_equal(data, np.arange(9).reshape(3, 3))
 
-    lst2 = znsocket.List(r=c, key="some-key", converter=[znjson.converter.NumpyConverter], fallback="does-not-exist", fallback_policy="reference")
+    lst2 = znsocket.List(
+        r=c,
+        key="some-key",
+        converter=[znjson.converter.NumpyConverter],
+        fallback="does-not-exist",
+        fallback_policy="reference",
+    )
     assert len(lst2) == 0
 
     lst2.extend([1, 2, 3])
@@ -220,5 +232,3 @@ def test_list_adapter_fallback(client, request):
 
     # TODO: test pop, insert, setitem, delete, etc.
     # TODO: test with and without adapter
-
-

@@ -41,7 +41,7 @@ class List(MutableSequence, ZnSocketObject):
         max_commands_per_call: int = 1_000_000,
         convert_nan: bool = False,
         fallback: str | None = None,
-        fallback_policy: t.Literal["copy", "frozen"] | None = None
+        fallback_policy: t.Literal["copy", "frozen"] | None = None,
     ):
         """Synchronized list object.
 
@@ -156,7 +156,9 @@ class List(MutableSequence, ZnSocketObject):
                         convert_nan=self.convert_nan,
                         converter=self.converter,
                     )
-                    return fallback_lst[index][0] if single_item else fallback_lst[index]
+                    return (
+                        fallback_lst[index][0] if single_item else fallback_lst[index]
+                    )
 
             if value is None:  # check if the value is still None
                 raise IndexError("list index out of range")
@@ -304,7 +306,11 @@ class List(MutableSequence, ZnSocketObject):
         if self._adapter_available:
             raise FrozenStorageError(key=self.key)
         # check if the list has a fallback option and the fallback policy is set to copy and it would go to the fallback list
-        if self.fallback is not None and self.fallback_policy == "copy" and _used_fallback(self):
+        if (
+            self.fallback is not None
+            and self.fallback_policy == "copy"
+            and _used_fallback(self)
+        ):
             fallback_lst = type(self)(
                 r=self.redis,
                 key=self.fallback,
