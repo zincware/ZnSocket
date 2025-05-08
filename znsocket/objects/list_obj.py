@@ -16,6 +16,19 @@ from znsocket.exceptions import FrozenStorageError
 from znsocket.utils import decode, encode, handle_error
 
 
+# TODO: cache for self.key
+def _used_fallback(self: "List") -> bool:
+    result = int(self.redis.llen(self.key))
+    # I don't know
+    # if result == 0 and self._adapter_available:
+    #     result = int(
+    #         self.socket.call("adapter:get", key=self.key, method="__len__")
+    #     )
+    if result == 0 and self.fallback is not None:
+        return True
+    return False
+
+
 class List(MutableSequence, ZnSocketObject):
     def __init__(
         self,
@@ -290,6 +303,16 @@ class List(MutableSequence, ZnSocketObject):
 
         if self._adapter_available:
             raise FrozenStorageError(key=self.key)
+        # check if the list has a fallback option and the fallback policy is set to copy and it would go to the fallback list
+        if self.fallback is not None and self.fallback_policy == "copy" and _used_fallback(self):
+            fallback_lst = type(self)(
+                r=self.redis,
+                key=self.fallback,
+                socket=self.socket,
+                convert_nan=self.convert_nan,
+                converter=self.converter,
+            )
+            fallback_lst.copy(self.key)
 
         if callback := self._callbacks["append"]:
             callback(value)

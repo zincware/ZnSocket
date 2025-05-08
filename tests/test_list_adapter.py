@@ -203,11 +203,22 @@ def test_list_adapter_fallback(client, request):
     data = np.array(lst)
     npt.assert_array_equal(data, np.arange(9).reshape(3, 3))
 
-    # # should make a copy
-    # # TODO: test frozen and test none, e.g. modify the original which here should also raise frozen error
-    # lst.append(np.array([9, 10, 11]))
+    lst2 = znsocket.List(r=c, key="some-key", converter=[znjson.converter.NumpyConverter], fallback="does-not-exist", fallback_policy="reference")
+    assert len(lst2) == 0
 
-    # assert len(lst) == 4
-    # data = np.array(lst)
-    # npt.assert_array_equal(data, np.arange(12).reshape(4, 3))
+    lst2.extend([1, 2, 3])
+    assert len(lst2) == 3
+    assert list(lst2) == [1, 2, 3]
+
+    # should make a copy
+    # TODO: test frozen and test none, e.g. modify the original which here should also raise frozen error
+    lst.append(np.array([9, 10, 11]))
+
+    assert len(lst) == 4
+    data = np.array(lst)
+    npt.assert_array_equal(data, np.arange(12).reshape(4, 3))
+
+    # TODO: test pop, insert, setitem, delete, etc.
+    # TODO: test with and without adapter
+
 
