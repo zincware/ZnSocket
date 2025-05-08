@@ -10,7 +10,7 @@ from redis import Redis
 
 from znsocket import exceptions
 from znsocket.abc import RefreshDataTypeDict
-from znsocket.utils import parse_url
+from znsocket.utils import handle_error, parse_url
 
 log = logging.getLogger(__name__)
 
@@ -22,28 +22,6 @@ def _handle_data(data: dict):
         else:
             raise TypeError(f"Can not convert type '{data['type']}'")
     return data["data"]
-
-
-def _handle_error(result):
-    """Handle errors in the server response."""
-
-    if "error" not in result:
-        return
-
-    error_map = {
-        "DataError": exceptions.DataError,
-        "TypeError": TypeError,
-        "IndexError": IndexError,
-        "KeyError": KeyError,
-        "UnknownEventError": exceptions.UnknownEventError,
-        "ResponseError": exceptions.ResponseError,
-    }
-
-    error_type = result["error"].get("type")
-    error_msg = result["error"].get("msg", "Unknown error")
-
-    # Raise the mapped exception if it exists, else raise a generic ZnSocketError
-    raise error_map.get(error_type, exceptions.ZnSocketError)(error_msg)
 
 
 @dataclasses.dataclass
@@ -73,8 +51,9 @@ class Client:
     )
     namespace: str = "/znsocket"
     refresh_callbacks: dict = dataclasses.field(default_factory=dict)
-    retry: int = 3
+    adapter_callback: t.Callable | None = None
     delay_between_calls: datetime.timedelta | None = None
+    retry: int = 1
 
     _last_call: datetime.datetime = dataclasses.field(
         default_factory=datetime.datetime.now, init=False
@@ -105,6 +84,12 @@ class Client:
             for key in self.refresh_callbacks:
                 if data["target"] == key:
                     self.refresh_callbacks[key](data["data"])
+
+        @self.sio.on("adapter:get", namespace=self.namespace)
+        def adapter(data: RefreshDataTypeDict):
+            if self.adapter_callback is None:
+                raise exceptions.ZnSocketError("No adapter callback set")
+            return self.adapter_callback(data)
 
         _url, _path = parse_url(self.address)
         try:
@@ -145,7 +130,7 @@ class Client:
 
         if result is None:
             raise exceptions.ZnSocketError("No response from server")
-        _handle_error(result)
+        handle_error(result)
 
         return _handle_data(result)
 
@@ -204,7 +189,7 @@ class Pipeline:
 
         if result is None:
             raise exceptions.ZnSocketError("No response from server")
-        _handle_error(result)
+        handle_error(result)
 
         return [_handle_data(res) for res in result["data"]]
 

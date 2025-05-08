@@ -269,6 +269,7 @@ class Server:
             engineio_logger=self.logger,
         )
         server_app = socketio.WSGIApp(sio)
+        # TODO: for adapter support the server should know the redis!
         eventlet.wsgi.server(eventlet.listen(("0.0.0.0", self.port)), server_app)
 
 
@@ -294,6 +295,9 @@ def attach_events(  # noqa: C901
     if storage is None:
         storage = Storage()
 
+    adapter = {}
+    rooms = set()
+
     @sio.on("*", namespace=namespace)
     def handle_all_events(event, sid, data):
         """Handle any event dynamically by mapping event name to storage method."""
@@ -318,6 +322,48 @@ def attach_events(  # noqa: C901
             return {
                 "error": {"msg": f"Unknown event: {event}", "type": "UnknownEventError"}
             }
+
+    @sio.event(namespace=namespace)
+    def check_adapter(sid, data: tuple[list, dict]) -> bool:
+        """Check if the adapter is available."""
+        key = data[1]["key"]
+        rooms.add(key)
+        return key in adapter
+
+    @sio.event(namespace=namespace)
+    def register_adapter(sid, data: tuple[list, dict]):
+        """Register the adapter."""
+        # TODO: if the client disconnects, remove the adapter
+        key = data[1]["key"]
+        if key in rooms:
+            return {
+                "error": {
+                    "msg": f"Key {key} already exists in storage",
+                    "type": "KeyError",
+                }
+            }
+        adapter[key] = sid
+        return True
+
+    @sio.on("adapter:get", namespace=namespace)
+    def adapter_get(sid, data: tuple[list, dict]):
+        """Get the adapter."""
+        key = data[1]["key"]
+        if key not in adapter:
+            return {
+                "error": {
+                    "msg": f"Key {key} does not exist in storage",
+                    "type": "KeyError",
+                }
+            }
+        # call the adapter and return the result
+        return sio.call(
+            data=data,
+            event="adapter:get",
+            to=adapter[key],
+            namespace=namespace,
+            timeout=5,
+        )
 
     @sio.event(namespace=namespace)
     def refresh(sid, data: RefreshDataTypeDict) -> None:

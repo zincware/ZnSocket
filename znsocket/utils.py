@@ -4,6 +4,33 @@ from urllib.parse import urlparse
 
 import znjson
 
+from znsocket import exceptions
+
+
+def handle_error(result):
+    """Handle errors in the server response."""
+
+    if not isinstance(result, dict):
+        return
+
+    if "error" not in result:
+        return
+
+    error_map = {
+        "DataError": exceptions.DataError,
+        "TypeError": TypeError,
+        "IndexError": IndexError,
+        "KeyError": KeyError,
+        "UnknownEventError": exceptions.UnknownEventError,
+        "ResponseError": exceptions.ResponseError,
+    }
+
+    error_type = result["error"].get("type")
+    error_msg = result["error"].get("msg", "Unknown error")
+
+    # Raise the mapped exception if it exists, else raise a generic ZnSocketError
+    raise error_map.get(error_type, exceptions.ZnSocketError)(error_msg)
+
 
 def parse_url(input_url) -> t.Tuple[str, t.Optional[str]]:
     parsed = urlparse(input_url)
@@ -49,5 +76,8 @@ def encode(self, data: t.Any) -> str:
 
 def decode(self, data: str) -> t.Any:
     if self.converter is not None:
-        return json.loads(data, cls=znjson.ZnDecoder.from_converters(self.converter))
-    return json.loads(data)
+        data = json.loads(data, cls=znjson.ZnDecoder.from_converters(self.converter))
+    else:
+        data = json.loads(data)
+    handle_error(data)
+    return data

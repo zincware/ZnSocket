@@ -64,6 +64,10 @@ class Dict(MutableMapping, ZnSocketObject):
         }
         if callbacks:
             self._callbacks.update(callbacks)
+        self._adapter_available = False
+        if self.socket is not None:
+            # check from the server if the adapter is available
+            self._adapter_available = self.socket.call("check_adapter", key=self.key)
 
     def __getitem__(self, key: str) -> t.Any:
         from znsocket.objects.list_obj import List

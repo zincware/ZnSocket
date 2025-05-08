@@ -21,6 +21,9 @@ dev = [
     "coverage>=7.6.10",
     "numpy>=2.2.2",
     "pytest>=8.3.4",
+    "rdkit2ase>=0.1.4",
+    "zndraw>=0.5.10",
+    "znh5md>=0.4.4",
 ]
 
 [project.scripts]
