@@ -15,7 +15,7 @@ def empty() -> None:
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient"],  # "znsclient_w_redis", "redisclient", "empty" TODO
+    ["znsclient", "znsclient_w_redis"],  # , "empty" TODO
 )
 def test_list_adapter_len(client, request):
     c = request.getfixturevalue(client)
@@ -33,7 +33,7 @@ def test_list_adapter_len(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient"],  # "znsclient_w_redis", "redisclient", "empty" TODO
+    ["znsclient", "znsclient_w_redis"],  # , "redisclient", "empty" TODO
 )
 def test_list_adapter_index_error(client, request):
     c = request.getfixturevalue(client)
@@ -46,7 +46,7 @@ def test_list_adapter_index_error(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient"],  # "znsclient_w_redis", "redisclient", "empty" TODO
+    ["znsclient", "znsclient_w_redis"],  # , "redisclient", "empty" TODO
 )
 def test_list_adapter_index_iter(client, request):
     c = request.getfixturevalue(client)
@@ -60,7 +60,7 @@ def test_list_adapter_index_iter(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient"],  # "znsclient_w_redis", "redisclient", "empty" TODO
+    ["znsclient", "znsclient_w_redis"],  # , "redisclient", "empty" TODO
 )
 def test_register_adapter_after_list_exists(client, request):
     c = request.getfixturevalue(client)
@@ -75,7 +75,7 @@ def test_register_adapter_after_list_exists(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient"],  # "znsclient_w_redis", "redisclient", "empty" TODO
+    ["znsclient", "znsclient_w_redis"],  # , "redisclient", "empty" TODO
 )
 def test_list_adapter_modify(client, request):
     c = request.getfixturevalue(client)
@@ -101,7 +101,7 @@ def test_list_adapter_modify(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient"],  # "znsclient_w_redis", "redisclient", "empty" TODO
+    ["znsclient", "znsclient_w_redis"],  # , "redisclient", "empty" TODO
 )
 def test_list_adapter_copy(client, request):
     """Test copying a list adapter"""
@@ -116,7 +116,7 @@ def test_list_adapter_copy(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient"],  # "znsclient_w_redis", "redisclient", "empty" TODO
+    ["znsclient", "znsclient_w_redis"],  # , "redisclient", "empty" TODO
 )
 def test_list_adapter_w_converter(client, request):
     """Test copying a list adapter"""
@@ -139,7 +139,7 @@ def test_list_adapter_w_converter(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient"],  # "znsclient_w_redis", "redisclient", "empty" TODO
+    ["znsclient", "znsclient_w_redis"],  # , "redisclient", "empty" TODO
 )
 def test_list_adapter_w_converter_iter(client, request):
     """Test copying a list adapter"""
@@ -161,7 +161,7 @@ def test_list_adapter_w_converter_iter(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient"],  # "znsclient_w_redis", "redisclient", "empty" TODO
+    ["znsclient", "znsclient_w_redis"],  # , "redisclient", "empty" TODO
 )
 def test_list_adapter_w_converter_copy(client, request):
     """Test copying a list adapter"""
