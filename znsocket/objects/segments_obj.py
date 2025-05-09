@@ -2,11 +2,12 @@ import json
 import typing as t
 from collections.abc import MutableSequence
 
+import redis
+
 from znsocket.abc import (
     ZnSocketObject,
 )
 from znsocket.client import Client
-import redis
 
 if t.TYPE_CHECKING:
     from znsocket import List
