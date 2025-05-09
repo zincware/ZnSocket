@@ -63,7 +63,7 @@ class Segments(ZnSocketObject, MutableSequence):
 
         if not isinstance(origin, List):
             raise TypeError("origin must be a List")
-        
+
         r = origin.redis
         return cls(r, origin, key)
 
