@@ -30,6 +30,8 @@ class ListAdapter:
     r: Client | None = None
 
     def __post_init__(self):
+        self.key = f"znsocket.List:{self.key}"
+
         result = self.socket.call("register_adapter", key=self.key)
         handle_error(result)
 

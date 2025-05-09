@@ -6,7 +6,7 @@ export class Dict {
   constructor({ client, socket, key, callbacks }) {
     this._client = client;
     this._socket = socket || (client instanceof ZnSocketClient ? client : null);
-    this._key = key;
+    this._key = `znsocket.Dict:${key}`;
     this._callbacks = callbacks;
     this._refreshCallback = undefined;
 
@@ -48,9 +48,9 @@ export class Dict {
     }
 
     if (value instanceof ZnSocketList) {
-      value = `znsocket.List:${value._key}`;
+      value = value._key;
     } else if (value instanceof Dict) {
-      value = `znsocket.Dict:${value._key}`;
+      value = value._key;
     }
 
     return this._client.hSet(this._key, key, JSON.stringify(value));
@@ -70,9 +70,9 @@ export class Dict {
     // iterate over the entries and check if the value is a List or Dict
     Object.entries(dict).forEach(([key, value]) => {
       if (value instanceof ZnSocketList) {
-        dict[key] = `znsocket.List:${value._key}`;
+        dict[key] = value._key;
       } else if (value instanceof Dict) {
-        dict[key] = `znsocket.Dict:${value._key}`;
+        dict[key] = value._key;
       }
     }
     );

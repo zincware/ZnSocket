@@ -63,7 +63,7 @@ class List(MutableSequence, ZnSocketObject):
 
         """
         self.redis = r
-        self.key = key
+        self._key = key
         self.repr_type = repr_type
         self.socket = socket if socket else (r if isinstance(r, Client) else None)
         self.converter = converter
@@ -88,6 +88,11 @@ class List(MutableSequence, ZnSocketObject):
         if self.socket is not None:
             # check from the server if the adapter is available
             self._adapter_available = self.socket.call("check_adapter", key=self.key)
+
+    @property
+    def key(self) -> str:
+        """The key of the list in the server."""
+        return f"znsocket.List:{self._key}"
 
     def __len__(self) -> int:
         result = int(self.redis.llen(self.key))
@@ -165,11 +170,11 @@ class List(MutableSequence, ZnSocketObject):
             if i >= LENGTH or i < -LENGTH:
                 raise IndexError("list index out of range")
             if isinstance(v, Dict):
-                v = f"znsocket.Dict:{v.key}"
+                v = v.key
             if isinstance(v, List):
                 if value.key == self.key:
                     raise ValueError("Can not set circular reference to self")
-                v = f"znsocket.List:{v.key}"
+                v = v.key
             pipeline.lset(self.key, i, encode(self, v))
         pipeline.execute()
 
@@ -216,11 +221,11 @@ class List(MutableSequence, ZnSocketObject):
             raise FrozenStorageError(key=self.key)
 
         if isinstance(value, Dict):
-            value = f"znsocket.Dict:{value.key}"
+            value = value.key
         if isinstance(value, List):
             if value.key == self.key:
                 raise ValueError("Can not set circular reference to self")
-            value = f"znsocket.List:{value.key}"
+            value = value.key
 
         if index >= len(self):
             self.redis.rpush(self.key, encode(self, value))
@@ -271,11 +276,11 @@ class List(MutableSequence, ZnSocketObject):
         if callback := self._callbacks["append"]:
             callback(value)
         if isinstance(value, Dict):
-            value = f"znsocket.Dict:{value.key}"
+            value = value.key
         if isinstance(value, List):
             if value.key == self.key:
                 raise ValueError("Can not set circular reference to self")
-            value = f"znsocket.List:{value.key}"
+            value = value.key
         self.redis.rpush(self.key, encode(self, value))
         if self.socket is not None:
             refresh: RefreshTypeDict = {"indices": [len(self) - 1]}
@@ -294,11 +299,11 @@ class List(MutableSequence, ZnSocketObject):
         pipe = self.redis.pipeline(**self._pipeline_kwargs)
         for value in values:
             if isinstance(value, Dict):
-                value = f"znsocket.Dict:{value.key}"
+                value = value.key
             if isinstance(value, List):
                 if value.key == self.key:
                     raise ValueError("Can not set circular reference to self")
-                value = f"znsocket.List:{value.key}"
+                value = value.key
             pipe.rpush(self.key, encode(self, value))
         pipe.execute()
 
@@ -344,7 +349,7 @@ class List(MutableSequence, ZnSocketObject):
                 target=key,
             )
             handle_error(success)
-        elif not self.redis.copy(self.key, key):
+        elif not self.redis.copy(self.key, f"znsocket.List:{key}"):
             raise ValueError("Could not copy list")
 
         return List(
