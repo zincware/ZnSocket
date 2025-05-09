@@ -8,7 +8,7 @@ import znsocket
 SLEEP_TIME = 0.1
 
 
-@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis"]) #  "redisclient"
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis"])  #  "redisclient"
 def test_segments_numpy(client, request):
     c = request.getfixturevalue(client)
     c = request.getfixturevalue(client)
