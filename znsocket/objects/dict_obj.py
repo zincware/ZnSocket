@@ -55,7 +55,7 @@ class Dict(MutableMapping, ZnSocketObject):
         self.redis = r
         self.socket = socket if socket else (r if isinstance(r, Client) else None)
         self.converter = converter
-        self.key = key
+        self._key = key
         self.repr_type = repr_type
         self.convert_nan = convert_nan
         self._callbacks = {
@@ -68,6 +68,11 @@ class Dict(MutableMapping, ZnSocketObject):
         if self.socket is not None:
             # check from the server if the adapter is available
             self._adapter_available = self.socket.call("check_adapter", key=self.key)
+
+    @property
+    def key(self) -> str:
+        """The key in the server to store the data from this dict."""
+        return f"znsocket.Dict:{self._key}"
 
     def __getitem__(self, key: str) -> t.Any:
         from znsocket.objects.list_obj import List
@@ -89,11 +94,11 @@ class Dict(MutableMapping, ZnSocketObject):
         from znsocket.objects.list_obj import List
 
         if isinstance(value, List):
-            value = f"znsocket.List:{value.key}"
+            value = value.key
         if isinstance(value, Dict):
             if value.key == self.key:
                 raise ValueError("Can not set circular reference to self")
-            value = f"znsocket.Dict:{value.key}"
+            value = value.key
         self.redis.hset(self.key, key, encode(self, value))
         if callback := self._callbacks["setitem"]:
             callback(key, value)
@@ -182,7 +187,7 @@ class Dict(MutableMapping, ZnSocketObject):
         This will not trigger any callbacks as
         the data is not modified.
         """
-        if not self.redis.copy(self.key, key):
+        if not self.redis.copy(self.key, f"znsocket.Dict:{key}"):
             raise ValueError("Could not copy dict")
 
         return Dict(r=self.redis, key=key, socket=self.socket)
@@ -217,9 +222,9 @@ class Dict(MutableMapping, ZnSocketObject):
             if isinstance(value, Dict):
                 if value.key == self.key:
                     raise ValueError("Can not set circular reference to self")
-                value = f"znsocket.Dict:{value.key}"
+                value = value.key
             if isinstance(value, List):
-                value = f"znsocket.List:{value.key}"
+                value = value.key
             pipeline.hset(self.key, key, encode(self, value))
         pipeline.execute()
 
