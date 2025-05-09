@@ -2,7 +2,6 @@ import json
 import typing as t
 from collections.abc import MutableSequence
 
-import redis.exceptions
 
 from znsocket.abc import (
     ZnSocketObject,
@@ -30,11 +29,14 @@ class Segments(ZnSocketObject, MutableSequence):
         self.redis: redis.Redis = r
         self._origin = origin
         self._key = key
+        self.converter = origin.converter
+        self.convert_nan = origin.convert_nan
 
         # create a new segments list
         self.redis.lpush(self.key, json.dumps((0, len(origin), origin.key)))
 
-        self._list = List(r=self.redis, key=key)
+        self._list = List(r=self.redis, key=key, converter=self.converter, 
+                          convert_nan=self.convert_nan)
 
     @property
     def key(self) -> str:
@@ -86,7 +88,8 @@ class Segments(ZnSocketObject, MutableSequence):
             segment = json.loads(segment)
             start, end, target = segment
             # TODO: converter and stuff
-            lst = List(r=self.redis, key=target.split(":", 1)[1])
+            lst = List(r=self.redis, key=target.split(":", 1)[1], converter=self.converter, 
+                       convert_nan=self.convert_nan)
             # append to items in range
             for i in index:
                 if size <= i < end - start + size:
