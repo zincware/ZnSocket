@@ -1,20 +1,12 @@
-from unittest.mock import MagicMock
-
-import numpy as np
-import numpy.testing as npt
 import pytest
-import znjson
 
 import znsocket
 import znsocket.client
-from znsocket.abc import ZnSocketObject
 
 SLEEP_TIME = 0.1
 
 
-@pytest.mark.parametrize(
-    "client", ["znsclient", "znsclient_w_redis", "redisclient"]
-)
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_segments_getitem(client, request):
     c = request.getfixturevalue(client)
     lst = znsocket.List(r=c, key="list:test")
@@ -27,9 +19,8 @@ def test_segments_getitem(client, request):
     with pytest.raises(IndexError):
         _ = segments[10]
 
-@pytest.mark.parametrize(
-    "client", ["znsclient", "znsclient_w_redis", "redisclient"]
-)
+
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_segments_setitem(client, request):
     c = request.getfixturevalue(client)
     lst = znsocket.List(r=c, key="list:test")
@@ -40,7 +31,7 @@ def test_segments_setitem(client, request):
 
     segments[2] = "x"
     assert list(segments) == [0, 1, "x", 3, 4]
-    raw =  segments.get_raw()
+    raw = segments.get_raw()
     assert raw[0] == [0, 2, "znsocket.List:list:test"]
     assert raw[1] == [0, 1, "znsocket.List:segments:test"]
     assert raw[2] == [3, 5, "znsocket.List:list:test"]
@@ -48,7 +39,7 @@ def test_segments_setitem(client, request):
 
     segments[0] = "y"
     assert list(segments) == ["y", 1, "x", 3, 4]
-    raw =  segments.get_raw()
+    raw = segments.get_raw()
     assert raw[0] == [1, 2, "znsocket.List:segments:test"]
     assert raw[1] == [1, 2, "znsocket.List:list:test"]
     assert raw[2] == [0, 1, "znsocket.List:segments:test"]
@@ -57,7 +48,7 @@ def test_segments_setitem(client, request):
 
     segments[4] = "z"
     assert list(segments) == ["y", 1, "x", 3, "z"]
-    raw =  segments.get_raw()
+    raw = segments.get_raw()
     assert raw[0] == [1, 2, "znsocket.List:segments:test"]
     assert raw[1] == [1, 2, "znsocket.List:list:test"]
     assert raw[2] == [0, 1, "znsocket.List:segments:test"]
@@ -67,8 +58,12 @@ def test_segments_setitem(client, request):
 
     segments[0] = "a"
     assert list(segments) == ["a", 1, "x", 3, "z"]
-    raw =  segments.get_raw()
-    assert raw[0] == [1, 2, "znsocket.List:segments:test"] # did not change, becuase we modified "segments:test"
+    raw = segments.get_raw()
+    assert raw[0] == [
+        1,
+        2,
+        "znsocket.List:segments:test",
+    ]  # did not change, becuase we modified "segments:test"
     assert raw[1] == [1, 2, "znsocket.List:list:test"]
     assert raw[2] == [0, 1, "znsocket.List:segments:test"]
     assert raw[3] == [3, 4, "znsocket.List:list:test"]
@@ -77,10 +72,14 @@ def test_segments_setitem(client, request):
 
     segments[1] = "b"
     assert list(segments) == ["a", "b", "x", 3, "z"]
-    raw =  segments.get_raw()
+    raw = segments.get_raw()
     # TODO: combine segments again (1-3) / have a sanitze method.
-    assert raw[0] == [1, 2, "znsocket.List:segments:test"] # did not change, becuase we modified "segments:test"
-    assert raw[1] == [4, 5, 'znsocket.List:segments:test']
+    assert raw[0] == [
+        1,
+        2,
+        "znsocket.List:segments:test",
+    ]  # did not change, becuase we modified "segments:test"
+    assert raw[1] == [4, 5, "znsocket.List:segments:test"]
     assert raw[2] == [0, 1, "znsocket.List:segments:test"]
     assert raw[3] == [3, 4, "znsocket.List:list:test"]
     assert raw[4] == [2, 3, "znsocket.List:segments:test"]
@@ -93,10 +92,7 @@ def test_segments_setitem(client, request):
         segments[10] = "x"
 
 
-
-@pytest.mark.parametrize(
-    "client", ["znsclient", "znsclient_w_redis", "redisclient"]
-)
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_segments_delitem(client, request):
     c = request.getfixturevalue(client)
     lst = znsocket.List(r=c, key="list:test")
@@ -108,7 +104,7 @@ def test_segments_delitem(client, request):
     del segments[2]
     assert list(segments) == [0, 1, 3, 4]
     assert len(segments) == 4
-    raw =  segments.get_raw()
+    raw = segments.get_raw()
     assert raw[0] == [0, 2, "znsocket.List:list:test"]
     assert raw[1] == [3, 5, "znsocket.List:list:test"]
     assert len(raw) == 2
@@ -116,7 +112,7 @@ def test_segments_delitem(client, request):
     del segments[0]
     assert list(segments) == [1, 3, 4]
     assert len(segments) == 3
-    raw =  segments.get_raw()
+    raw = segments.get_raw()
     assert raw[0] == [1, 2, "znsocket.List:list:test"]
     assert raw[1] == [3, 5, "znsocket.List:list:test"]
     assert len(raw) == 2
@@ -124,7 +120,7 @@ def test_segments_delitem(client, request):
     del segments[-1]
     assert list(segments) == [1, 3]
     assert len(segments) == 2
-    raw =  segments.get_raw()
+    raw = segments.get_raw()
     assert raw[0] == [1, 2, "znsocket.List:list:test"]
     assert raw[1] == [3, 4, "znsocket.List:list:test"]
     assert len(raw) == 2
@@ -133,9 +129,7 @@ def test_segments_delitem(client, request):
         del segments[10]
 
 
-@pytest.mark.parametrize(
-    "client", ["znsclient", "znsclient_w_redis", "redisclient"]
-)
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_segments_insert(client, request):
     c = request.getfixturevalue(client)
     lst = znsocket.List(r=c, key="list:test")
@@ -146,7 +140,7 @@ def test_segments_insert(client, request):
 
     segments.insert(2, "x")
     assert list(segments) == [0, 1, "x", 2, 3, 4]
-    raw =  segments.get_raw()
+    raw = segments.get_raw()
     assert raw[0] == [0, 2, "znsocket.List:list:test"]
     assert raw[1] == [0, 1, "znsocket.List:segments:test"]
     assert raw[2] == [2, 5, "znsocket.List:list:test"]
@@ -158,9 +152,7 @@ def test_segments_insert(client, request):
     assert list(segments) == ["y", 0, 1, "x", 2, 3, "z", 4]
 
 
-@pytest.mark.parametrize(
-    "client", ["znsclient", "znsclient_w_redis", "redisclient"]
-)
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_segments_extend_append(client, request):
     c = request.getfixturevalue(client)
     lst = znsocket.List(r=c, key="list:test")

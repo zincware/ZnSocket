@@ -1,20 +1,13 @@
+import json
 import typing as t
 from collections.abc import MutableSequence
 
 import redis.exceptions
-import znjson
-import json
 
 from znsocket.abc import (
-    ListCallbackTypedDict,
-    ListRepr,
-    RefreshDataTypeDict,
-    RefreshTypeDict,
     ZnSocketObject,
 )
 from znsocket.client import Client
-from znsocket.exceptions import FrozenStorageError
-from znsocket.utils import decode, encode, handle_error
 
 if t.TYPE_CHECKING:
     from znsocket import List
@@ -33,6 +26,7 @@ class Segments(ZnSocketObject, MutableSequence):
 
     def __init__(self, r: Client | t.Any, origin: "List", key: str) -> None:
         from znsocket import List
+
         self.redis: redis.Redis = r
         self._origin = origin
         self._key = key
@@ -114,7 +108,6 @@ class Segments(ZnSocketObject, MutableSequence):
         # [1, 2, 3, 4] -> |insert, x, 2| [1, 2, X, 3, 4]
         # (0, 3, target) -> (0, 2, target), (0, 1, new), (3, 4, target)
 
-
         # update the segments
         segments = self.redis.lrange(self.key, 0, -1)
         size = 0
@@ -122,16 +115,13 @@ class Segments(ZnSocketObject, MutableSequence):
             segment = json.loads(segment)
             start, end, target = segment
 
-
             if size <= index < end - start + size:
                 pos_in_segment = index - size + start
                 if target == self._list.key:
                     self._list[pos_in_segment] = value
                 else:
                     # we are in the segment
-                    self.redis.lset(
-                        self.key, idx, "__SETITEM_IDENTIFIER__"
-                    )
+                    self.redis.lset(self.key, idx, "__SETITEM_IDENTIFIER__")
                     if start < pos_in_segment:
                         self.redis.linsert(
                             self.key,
@@ -143,7 +133,9 @@ class Segments(ZnSocketObject, MutableSequence):
                         self.key,
                         "BEFORE",
                         "__SETITEM_IDENTIFIER__",
-                        json.dumps((len(self._list) - 1, len(self._list), self._list.key)),
+                        json.dumps(
+                            (len(self._list) - 1, len(self._list), self._list.key)
+                        ),
                     )
                     if pos_in_segment + 1 < end:
                         self.redis.linsert(
@@ -152,9 +144,7 @@ class Segments(ZnSocketObject, MutableSequence):
                             "__SETITEM_IDENTIFIER__",
                             json.dumps((pos_in_segment + 1, end, target)),
                         )
-                    self.redis.lrem(
-                        self.key, 0, "__SETITEM_IDENTIFIER__"
-                    )
+                    self.redis.lrem(self.key, 0, "__SETITEM_IDENTIFIER__")
                 return
 
             size += end - start
@@ -171,12 +161,9 @@ class Segments(ZnSocketObject, MutableSequence):
             segment = json.loads(segment)
             start, end, target = segment
 
-
             if size <= index < end - start + size:
                 pos_in_segment = index - size + start
-                self.redis.lset(
-                    self.key, idx, "__DELITEM_IDENTIFIER__"
-                )
+                self.redis.lset(self.key, idx, "__DELITEM_IDENTIFIER__")
                 if start < pos_in_segment:
                     self.redis.linsert(
                         self.key,
@@ -191,15 +178,13 @@ class Segments(ZnSocketObject, MutableSequence):
                         "__DELITEM_IDENTIFIER__",
                         json.dumps((pos_in_segment + 1, end, target)),
                     )
-                self.redis.lrem(
-                    self.key, 0, "__DELITEM_IDENTIFIER__"
-                )
+                self.redis.lrem(self.key, 0, "__DELITEM_IDENTIFIER__")
                 return
 
             size += end - start
-        
+
         raise IndexError("list index out of range")
-    
+
     def insert(self, index: int, value: t.Any) -> None:
         """Insert an item in the segments list."""
         if index < 0:
@@ -215,9 +200,7 @@ class Segments(ZnSocketObject, MutableSequence):
 
             if size <= index < end - start + size:
                 pos_in_segment = index - size + start
-                self.redis.lset(
-                    self.key, idx, "__INSERT_IDENTIFIER__"
-                )
+                self.redis.lset(self.key, idx, "__INSERT_IDENTIFIER__")
                 if start < pos_in_segment:
                     self.redis.linsert(
                         self.key,
@@ -238,9 +221,7 @@ class Segments(ZnSocketObject, MutableSequence):
                         "__INSERT_IDENTIFIER__",
                         json.dumps((pos_in_segment, end, target)),
                     )
-                self.redis.lrem(
-                    self.key, 0, "__INSERT_IDENTIFIER__"
-                )
+                self.redis.lrem(self.key, 0, "__INSERT_IDENTIFIER__")
                 return
 
             size += end - start
