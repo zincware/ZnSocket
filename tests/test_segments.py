@@ -60,3 +60,9 @@ def test_list_extend(client, request):
     assert raw[4] == [2, 3, "segments:test"]
     assert len(raw) == 5
 
+    segments[1] = "b"
+    assert list(segments) == ["a", "b", "x", 3, "z"]
+
+    segments[0] = "i"
+    assert list(segments) == ["i", "b", "x", 3, "z"]
+
