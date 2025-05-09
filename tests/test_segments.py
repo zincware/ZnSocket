@@ -63,12 +63,12 @@ def test_list_extend(client, request):
     segments[1] = "b"
     assert list(segments) == ["a", "b", "x", 3, "z"]
     raw =  segments.get_raw()
-    # TODO: combine segments again!
-    # assert raw[0] == [1, 2, "segments:test"] # did not change, becuase we modified "segments:test"
-    # assert raw[1] == [1, 2, "list:test"]
-    # assert raw[2] == [0, 1, "segments:test"]
-    # assert raw[3] == [3, 4, "list:test"]
-    # assert raw[4] == [2, 3, "segments:test"]
+    # TODO: combine segments again (1-3) / have a sanitze method.
+    assert raw[0] == [1, 2, "segments:test"] # did not change, becuase we modified "segments:test"
+    assert raw[1] == [4, 5, 'segments:test']
+    assert raw[2] == [0, 1, "segments:test"]
+    assert raw[3] == [3, 4, "list:test"]
+    assert raw[4] == [2, 3, "segments:test"]
     assert len(raw) == 5
 
     segments[0] = "i"
