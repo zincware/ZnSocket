@@ -8,6 +8,7 @@ def test_segments_len_znsocket(znsclient, run_npm_test, request):
     assert list(segments) == [0, 1, 2, 3, 4]
     run_npm_test(request.node.name, client_url=znsclient.address)
 
+
 def test_segments_getitem_znsocket(znsclient, run_npm_test, request):
     lst = znsocket.List(r=znsclient, key="list:test")
     lst.extend(list(range(5)))
