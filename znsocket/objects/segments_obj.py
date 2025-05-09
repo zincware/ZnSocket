@@ -98,11 +98,12 @@ class Segments(ZnSocketObject, ):  # MutableSequence
 
         # list to store the values at
         lst = List(r=self.redis, key=self._key)
+        lst.append(value)
+
         # TODO: update the segements, append / insert into the lst
         # [1, 2, 3, 4] -> |insert, x, 2| [1, 2, X, 3, 4]
         # (0, 3, target) -> (0, 2, target), (0, 1, new), (3, 4, target)
 
-        lst.append(value)
 
         # update the segments
         segments = self.redis.lrange(f"segments:{self._key}", 0, -1)
@@ -110,61 +111,33 @@ class Segments(ZnSocketObject, ):  # MutableSequence
         for idx, segment in enumerate(segments):
             segment = json.loads(segment)
             start, end, target = segment
-            shifted_start = start + size
-            shifted_end = end + size
-            # if the index is in the segment, split the segment into two
-            if shifted_start <= index < shifted_end:
-                print(target)
-                if target == self._key:
-                    # if the target is the same as the key, we need to update the segment
-                    # and set the value in the list
-                    lst[index - shifted_start] = value
-                else:
 
-                    self.redis.lset(
-                        f"segments:{self._key}", idx, "__SETITEM_IDENTIFIER__"
-                    )
-                    if start < (index - shifted_start):
-                        self.redis.linsert(
-                            f"segments:{self._key}",
-                            "BEFORE",
-                            "__SETITEM_IDENTIFIER__",
-                            json.dumps((start, index - shifted_start, target)),
-                        )
+            if size <= index < end - start + size:
+                # we are in the segment
+                pos_in_segment = index - size + start
+                self.redis.lset(
+                    f"segments:{self._key}", idx, "__SETITEM_IDENTIFIER__"
+                )
+                if start < pos_in_segment:
                     self.redis.linsert(
                         f"segments:{self._key}",
                         "BEFORE",
                         "__SETITEM_IDENTIFIER__",
-                        json.dumps((len(lst) - 1 , len(lst), self._key)),
+                        json.dumps((start, pos_in_segment, target)),
                     )
-                    if index + 1 - shifted_start < end:
-                        self.redis.linsert(
-                            f"segments:{self._key}",
-                            "BEFORE",
-                            "__SETITEM_IDENTIFIER__",
-                            json.dumps((index + 1 - shifted_start, end, target)),
-                        )
-                    self.redis.lrem(
-                        f"segments:{self._key}", 0, "__SETITEM_IDENTIFIER__"
-                    )
-                break
-            # if the index is at the end, replace
-            elif index == size + end - start - 1:
-                self.redis.lset(
-                    f"segments:{self._key}", idx, "__SETITEM_IDENTIFIER__"
-                )
                 self.redis.linsert(
                     f"segments:{self._key}",
                     "BEFORE",
                     "__SETITEM_IDENTIFIER__",
-                    json.dumps((start, index, target)),
+                    json.dumps((len(lst) - 1, len(lst), self._key)),
                 )
-                self.redis.linsert(
-                    f"segments:{self._key}",
-                    "BEFORE",
-                    "__SETITEM_IDENTIFIER__",
-                    json.dumps((len(lst) - 1 , len(lst), self._key)),
-                )
+                if pos_in_segment + 1 < end:
+                    self.redis.linsert(
+                        f"segments:{self._key}",
+                        "BEFORE",
+                        "__SETITEM_IDENTIFIER__",
+                        json.dumps((pos_in_segment + 1, end, target)),
+                    )
                 self.redis.lrem(
                     f"segments:{self._key}", 0, "__SETITEM_IDENTIFIER__"
                 )
