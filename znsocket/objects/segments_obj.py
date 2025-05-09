@@ -20,7 +20,7 @@ if t.TYPE_CHECKING:
     from znsocket import List
 
 
-class Segments(ZnSocketObject, ):  # MutableSequence
+class Segments(ZnSocketObject, MutableSequence):
     """Copy of a list object with piece table segments.
 
     This copy for large objects is used to avoid the need to copy the entire object
@@ -194,4 +194,52 @@ class Segments(ZnSocketObject, ):  # MutableSequence
 
             size += end - start
         
+        raise IndexError("list index out of range")
+    
+    def insert(self, index: int, value: t.Any) -> None:
+        """Insert an item in the segments list."""
+        from znsocket import List
+        if index < 0:
+            index += len(self)
+
+        lst = List(r=self.redis, key=self._key)
+        lst.append(value)
+
+        segments = self.redis.lrange(f"segments:{self._key}", 0, -1)
+        size = 0
+        for idx, segment in enumerate(segments):
+            segment = json.loads(segment)
+            start, end, target = segment
+
+            if size <= index < end - start + size:
+                pos_in_segment = index - size + start
+                self.redis.lset(
+                    f"segments:{self._key}", idx, "__INSERT_IDENTIFIER__"
+                )
+                if start < pos_in_segment:
+                    self.redis.linsert(
+                        f"segments:{self._key}",
+                        "BEFORE",
+                        "__INSERT_IDENTIFIER__",
+                        json.dumps((start, pos_in_segment, target)),
+                    )
+                self.redis.linsert(
+                    f"segments:{self._key}",
+                    "BEFORE",
+                    "__INSERT_IDENTIFIER__",
+                    json.dumps((len(lst) - 1, len(lst), self._key)),
+                )
+                if pos_in_segment + 1 < end:
+                    self.redis.linsert(
+                        f"segments:{self._key}",
+                        "BEFORE",
+                        "__INSERT_IDENTIFIER__",
+                        json.dumps((pos_in_segment, end, target)),
+                    )
+                self.redis.lrem(
+                    f"segments:{self._key}", 0, "__INSERT_IDENTIFIER__"
+                )
+                return
+
+            size += end - start
         raise IndexError("list index out of range")

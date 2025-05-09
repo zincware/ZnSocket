@@ -131,3 +131,23 @@ def test_list_delitem(client, request):
 
     with pytest.raises(IndexError):
         del segments[10]
+
+
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "redisclient"]
+)
+def test_list_insert(client, request):
+    c = request.getfixturevalue(client)
+    lst = znsocket.List(r=c, key="list:test")
+
+    lst.extend(list(range(5)))
+    segments = znsocket.Segments.from_list(lst, "segments:test")
+    assert len(segments) == 5
+
+    segments.insert(2, "x")
+    assert list(segments) == [0, 1, "x", 2, 3, 4]
+    raw =  segments.get_raw()
+    assert raw[0] == [0, 2, "list:test"]
+    assert raw[1] == [0, 1, "segments:test"]
+    assert raw[2] == [2, 5, "list:test"]
+    assert len(raw) == 3
