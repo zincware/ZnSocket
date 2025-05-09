@@ -31,7 +31,6 @@ def test_segments_setup(client, request):
         _ = znsocket.Segments.from_list(dct, "segments:test")
     with pytest.raises(TypeError):
         _ = znsocket.Segments.from_list(None, "segments:test")
-    
 
 
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
