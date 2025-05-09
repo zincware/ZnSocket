@@ -73,6 +73,9 @@ class Segments(ZnSocketObject, ):  # MutableSequence
             # TODO: only quqery self.redis.lrange once with the length here as well
         if isinstance(index, slice):
             index = list(range(*index.indices(len(self))))
+        # convert any negative indices to positive
+        length = len(self)
+        index = [i + length if i < 0 else i for i in index]
         # get all segments
         segments = self.redis.lrange(f"segments:{self._key}", 0, -1)
         items = []
@@ -99,6 +102,9 @@ class Segments(ZnSocketObject, ):  # MutableSequence
         # list to store the values at
         lst = List(r=self.redis, key=self._key)
         lst.append(value)
+
+        if index < 0:
+            index += len(self)
 
         # TODO: update the segements, append / insert into the lst
         # [1, 2, 3, 4] -> |insert, x, 2| [1, 2, X, 3, 4]
@@ -145,6 +151,47 @@ class Segments(ZnSocketObject, ):  # MutableSequence
                     self.redis.lrem(
                         f"segments:{self._key}", 0, "__SETITEM_IDENTIFIER__"
                     )
-                break
+                return
 
             size += end - start
+
+        raise IndexError("list index out of range")
+
+    def __delitem__(self, index: int) -> None:
+        if index < 0:
+            index += len(self)
+
+        segments = self.redis.lrange(f"segments:{self._key}", 0, -1)
+        size = 0
+        for idx, segment in enumerate(segments):
+            segment = json.loads(segment)
+            start, end, target = segment
+
+
+            if size <= index < end - start + size:
+                pos_in_segment = index - size + start
+                self.redis.lset(
+                    f"segments:{self._key}", idx, "__DELITEM_IDENTIFIER__"
+                )
+                if start < pos_in_segment:
+                    self.redis.linsert(
+                        f"segments:{self._key}",
+                        "BEFORE",
+                        "__DELITEM_IDENTIFIER__",
+                        json.dumps((start, pos_in_segment, target)),
+                    )
+                if pos_in_segment + 1 < end:
+                    self.redis.linsert(
+                        f"segments:{self._key}",
+                        "BEFORE",
+                        "__DELITEM_IDENTIFIER__",
+                        json.dumps((pos_in_segment + 1, end, target)),
+                    )
+                self.redis.lrem(
+                    f"segments:{self._key}", 0, "__DELITEM_IDENTIFIER__"
+                )
+                return
+
+            size += end - start
+        
+        raise IndexError("list index out of range")

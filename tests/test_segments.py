@@ -15,7 +15,22 @@ SLEEP_TIME = 0.1
 @pytest.mark.parametrize(
     "client", ["znsclient", "znsclient_w_redis", "redisclient"]
 )
-def test_list_extend(client, request):
+def test_list_getitem(client, request):
+    c = request.getfixturevalue(client)
+    lst = znsocket.List(r=c, key="list:test")
+
+    lst.extend(list(range(5)))
+    segments = znsocket.Segments.from_list(lst, "segments:test")
+    assert len(segments) == 5
+
+    list(segments) == [0, 1, 2, 3, 4]
+    with pytest.raises(IndexError):
+        _ = segments[10]
+
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "redisclient"]
+)
+def test_list_setitem(client, request):
     c = request.getfixturevalue(client)
     lst = znsocket.List(r=c, key="list:test")
 
@@ -74,3 +89,45 @@ def test_list_extend(client, request):
     segments[0] = "i"
     assert list(segments) == ["i", "b", "x", 3, "z"]
 
+    with pytest.raises(IndexError):
+        segments[10] = "x"
+
+
+
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "redisclient"]
+)
+def test_list_delitem(client, request):
+    c = request.getfixturevalue(client)
+    lst = znsocket.List(r=c, key="list:test")
+
+    lst.extend(list(range(5)))
+    segments = znsocket.Segments.from_list(lst, "segments:test")
+    assert len(segments) == 5
+
+    del segments[2]
+    assert list(segments) == [0, 1, 3, 4]
+    assert len(segments) == 4
+    raw =  segments.get_raw()
+    assert raw[0] == [0, 2, "list:test"]
+    assert raw[1] == [3, 5, "list:test"]
+    assert len(raw) == 2
+
+    del segments[0]
+    assert list(segments) == [1, 3, 4]
+    assert len(segments) == 3
+    raw =  segments.get_raw()
+    assert raw[0] == [1, 2, "list:test"]
+    assert raw[1] == [3, 5, "list:test"]
+    assert len(raw) == 2
+
+    del segments[-1]
+    assert list(segments) == [1, 3]
+    assert len(segments) == 2
+    raw =  segments.get_raw()
+    assert raw[0] == [1, 2, "list:test"]
+    assert raw[1] == [3, 4, "list:test"]
+    assert len(raw) == 2
+
+    with pytest.raises(IndexError):
+        del segments[10]
