@@ -242,4 +242,10 @@ class Segments(ZnSocketObject, MutableSequence):
                 return
 
             size += end - start
+        if index == size:
+            self.redis.rpush(
+                f"segments:{self._key}",
+                json.dumps((len(lst) - 1, len(lst), self._key)),
+            )
+            return
         raise IndexError("list index out of range")

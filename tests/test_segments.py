@@ -15,7 +15,7 @@ SLEEP_TIME = 0.1
 @pytest.mark.parametrize(
     "client", ["znsclient", "znsclient_w_redis", "redisclient"]
 )
-def test_list_getitem(client, request):
+def test_segments_getitem(client, request):
     c = request.getfixturevalue(client)
     lst = znsocket.List(r=c, key="list:test")
 
@@ -30,7 +30,7 @@ def test_list_getitem(client, request):
 @pytest.mark.parametrize(
     "client", ["znsclient", "znsclient_w_redis", "redisclient"]
 )
-def test_list_setitem(client, request):
+def test_segments_setitem(client, request):
     c = request.getfixturevalue(client)
     lst = znsocket.List(r=c, key="list:test")
 
@@ -97,7 +97,7 @@ def test_list_setitem(client, request):
 @pytest.mark.parametrize(
     "client", ["znsclient", "znsclient_w_redis", "redisclient"]
 )
-def test_list_delitem(client, request):
+def test_segments_delitem(client, request):
     c = request.getfixturevalue(client)
     lst = znsocket.List(r=c, key="list:test")
 
@@ -136,7 +136,7 @@ def test_list_delitem(client, request):
 @pytest.mark.parametrize(
     "client", ["znsclient", "znsclient_w_redis", "redisclient"]
 )
-def test_list_insert(client, request):
+def test_segments_insert(client, request):
     c = request.getfixturevalue(client)
     lst = znsocket.List(r=c, key="list:test")
 
@@ -156,3 +156,20 @@ def test_list_insert(client, request):
     assert list(segments) == ["y", 0, 1, "x", 2, 3, 4]
     segments.insert(-1, "z")
     assert list(segments) == ["y", 0, 1, "x", 2, 3, "z", 4]
+
+
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "redisclient"]
+)
+def test_segments_extend_append(client, request):
+    c = request.getfixturevalue(client)
+    lst = znsocket.List(r=c, key="list:test")
+
+    lst.extend(list(range(5)))
+    segments = znsocket.Segments.from_list(lst, "segments:test")
+
+    segments.extend([5, 6, 7])
+    assert list(segments) == list(range(8))
+
+    segments.append(8)
+    assert list(segments) == list(range(9))
