@@ -10,29 +10,29 @@ export class Segments {
     // this._refreshCallback = undefined;
     // this._list = new ZnSocketList({ client, key: key, socket, callbacks });
 
-    // return new Proxy(this, {
-    //   get: (target, prop, receiver) => {
-    //     // If the property is a symbol or a non-numeric property, return it directly
-    //     if (typeof prop === "symbol" || isNaN(Number(prop))) {
-    //       return Reflect.get(target, prop, receiver);
-    //     }
+    return new Proxy(this, {
+      get: (target, prop, receiver) => {
+        // If the property is a symbol or a non-numeric property, return it directly
+        if (typeof prop === "symbol" || isNaN(Number(prop))) {
+          return Reflect.get(target, prop, receiver);
+        }
 
-    //     // Convert the property to a number if it's a numeric index
-    //     const index = Number(prop);
-    //     return target.get(index);
-    //   },
-    //   set: (target, prop, value) => {
-    //     // If the property is a symbol or a non-numeric property, set it directly
-    //     if (typeof prop === "symbol" || isNaN(Number(prop))) {
-    //       return Reflect.set(target, prop, value);
-    //     }
+        // Convert the property to a number if it's a numeric index
+        const index = Number(prop);
+        return target.get(index);
+      },
+      set: (target, prop, value) => {
+        // If the property is a symbol or a non-numeric property, set it directly
+        if (typeof prop === "symbol" || isNaN(Number(prop))) {
+          return Reflect.set(target, prop, value);
+        }
 
-    //     // Convert the property to a number if it's a numeric index
-    //     const index = Number(prop);
-    //     target.set(index, value);
-    //     return true;
-    //   },
-    // });
+        // Convert the property to a number if it's a numeric index
+        const index = Number(prop);
+        target.set(index, value);
+        return true;
+      },
+    });
   }
 
   async length() {
@@ -100,22 +100,24 @@ export class Segments {
     return this._client.del(this._key);
   }
 
-  async get(index) { // Renamed from getitem to get
-    let value = await this._client.lIndex(this._key, index);
-    if (value === null) {
-      return null;
-    }
-    value = JSON.parse(value); // Parse the value
-    if (typeof value === "string") {
-      if (value.startsWith("znsocket.List:")) {
-        const refKey = value.split(/:(.+)/)[1];
-        return new List({ client: this._client,socket: this._socket , key: refKey});
-      } else if (value.startsWith("znsocket.Dict:")) {
-        const refKey = value.split(/:(.+)/)[1];
-        return new ZnSocketDict({ client: this._client, socket: this._socket , key: refKey});
+  async get(index) {
+    const segments = await this._client.hGetAll(this._key);
+    const items = [];
+    let size = 0;
+
+    for (const segment of segments) {
+      const [start, end, target] = JSON.parse(segment);
+      const listKey = target.split(/:(.+)/)[1];
+      const lst = new ZnSocketList({ client: this._client, key: listKey });
+
+      if (size <= index && index < size + (end - start)) {
+        const offset = index + start - size;
+        const item = await lst.get(offset);
+        items.push(item);
       }
+      size += end - start;
     }
-    return value;
+    return items.length > 0 ? items[0] : null;
   }
 
   onRefresh(callback) {

@@ -19,3 +19,14 @@ test("test_segments_len_znsocket", async () => {
   const length = await lst.length();
   expect(length).toBe(5); // Jest uses `expect()` for assertions
 });
+
+
+test("test_segments_getitem_znsocket", async () => {
+  // Test getting each item in the length of the list
+  const length = await lst.length();
+  for (let i = 0; i < length; i++) {
+    const item = await lst.get(i);
+    expect(item).toEqual(i);
+  }
+}
+);
