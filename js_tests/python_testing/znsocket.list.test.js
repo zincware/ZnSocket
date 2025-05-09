@@ -28,8 +28,8 @@ test("test_list_with_list_and_dict", async () => {
   const referencedList = await lst.get(0);
   const referencedDict = await lst.get(1);
 
-  expect(referencedList._key).toBe("list:referenced");
-  expect(referencedDict._key).toBe("dict:referenced");
+  expect(referencedList._key).toBe("znsocket.List:list:referenced");
+  expect(referencedDict._key).toBe("znsocket.Dict:dict:referenced");
 
   expect(referencedList).toBeInstanceOf(List);
   expect(referencedDict).toBeInstanceOf(Dict);

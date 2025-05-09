@@ -4,7 +4,7 @@ import { Dict as ZnSocketDict } from "./dict.js";
 export class List {
   constructor({ client, key, socket, callbacks }) {
     this._client = client;
-    this._key = key;
+    this._key = `znsocket.List:${key}`;
     this._callbacks = callbacks;
     this._socket = socket || (client instanceof ZnSocketClient ? client : null);
     this._refreshCallback = undefined;
@@ -54,9 +54,9 @@ export class List {
       });
     }
     if (value instanceof List) {
-      value = `znsocket.List:${value._key}`;
+      value = value._key;
     } else if (value instanceof ZnSocketDict) {
-      value = `znsocket.Dict:${value._key}`;
+      value = value._key;
     }
     return this._client.rPush(this._key, JSON.stringify(value));
   }
@@ -72,9 +72,9 @@ export class List {
       });
     }
     if (value instanceof List) {
-      value = `znsocket.List:${value._key}`;
+      value = value._key;
     } else if (value instanceof ZnSocketDict) {
-      value = `znsocket.Dict:${value._key}`;
+      value = value._key;
     }
     return this._client.lSet(this._key, index, JSON.stringify(value));
   }
