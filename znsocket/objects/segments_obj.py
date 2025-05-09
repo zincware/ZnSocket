@@ -25,6 +25,9 @@ class Segments(ZnSocketObject, MutableSequence):
     def __init__(self, r: Client | t.Any, origin: "List", key: str) -> None:
         from znsocket import List
 
+        if not isinstance(origin, List):
+            raise TypeError("origin must be a List")
+
         self.redis: redis.Redis = r
         self._origin = origin
         self._key = key
@@ -56,6 +59,11 @@ class Segments(ZnSocketObject, MutableSequence):
     @classmethod
     def from_list(cls, origin: "List", key: str) -> "Segments":
         """Create a Segments object from a list."""
+        from znsocket import List
+
+        if not isinstance(origin, List):
+            raise TypeError("origin must be a List")
+        
         r = origin.redis
         return cls(r, origin, key)
 

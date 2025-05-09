@@ -22,6 +22,18 @@ def test_segments_getitem(client, request):
         _ = segments[10]
 
 
+@pytest.mark.parametrize("client", ["znsclient"])
+def test_segments_setup(client, request):
+    c = request.getfixturevalue(client)
+    dct = znsocket.Dict(r=c, key="list:test")
+
+    with pytest.raises(TypeError):
+        _ = znsocket.Segments.from_list(dct, "segments:test")
+    with pytest.raises(TypeError):
+        _ = znsocket.Segments.from_list(None, "segments:test")
+    
+
+
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_segments_setitem(client, request):
     c = request.getfixturevalue(client)
