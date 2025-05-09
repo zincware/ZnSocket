@@ -63,7 +63,7 @@ def test_segments_setitem(client, request):
         1,
         2,
         "znsocket.List:segments:test",
-    ]  # did not change, becuase we modified "segments:test"
+    ]  # did not change, because we modified "segments:test"
     assert raw[1] == [1, 2, "znsocket.List:list:test"]
     assert raw[2] == [0, 1, "znsocket.List:segments:test"]
     assert raw[3] == [3, 4, "znsocket.List:list:test"]
@@ -78,7 +78,7 @@ def test_segments_setitem(client, request):
         1,
         2,
         "znsocket.List:segments:test",
-    ]  # did not change, becuase we modified "segments:test"
+    ]  # did not change, because we modified "segments:test"
     assert raw[1] == [4, 5, "znsocket.List:segments:test"]
     assert raw[2] == [0, 1, "znsocket.List:segments:test"]
     assert raw[3] == [3, 4, "znsocket.List:list:test"]

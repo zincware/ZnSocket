@@ -104,7 +104,7 @@ class Segments(ZnSocketObject, MutableSequence):
         if index < 0:
             index += len(self)
 
-        # TODO: update the segements, append / insert into the lst
+        # TODO: update the segments, append / insert into the lst
         # [1, 2, 3, 4] -> |insert, x, 2| [1, 2, X, 3, 4]
         # (0, 3, target) -> (0, 2, target), (0, 1, new), (3, 4, target)
 
