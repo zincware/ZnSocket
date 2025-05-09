@@ -229,7 +229,7 @@ class Segments(ZnSocketObject, MutableSequence):
                     "__INSERT_IDENTIFIER__",
                     json.dumps((len(lst) - 1, len(lst), self._key)),
                 )
-                if pos_in_segment + 1 < end:
+                if pos_in_segment < end:
                     self.redis.linsert(
                         f"segments:{self._key}",
                         "BEFORE",

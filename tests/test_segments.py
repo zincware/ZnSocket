@@ -151,3 +151,8 @@ def test_list_insert(client, request):
     assert raw[1] == [0, 1, "segments:test"]
     assert raw[2] == [2, 5, "list:test"]
     assert len(raw) == 3
+
+    segments.insert(0, "y")
+    assert list(segments) == ["y", 0, 1, "x", 2, 3, 4]
+    segments.insert(-1, "z")
+    assert list(segments) == ["y", 0, 1, "x", 2, 3, "z", 4]
