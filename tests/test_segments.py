@@ -1,9 +1,9 @@
-import pytest
-
-import znsocket
 import numpy as np
 import numpy.testing as npt
+import pytest
 import znjson
+
+import znsocket
 
 SLEEP_TIME = 0.1
 
@@ -172,7 +172,9 @@ def test_segments_extend_append(client, request):
 @pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_segments_numpy(client, request):
     c = request.getfixturevalue(client)
-    lst = znsocket.List(r=c, key="list:test", converter=[znjson.converter.NumpyConverter])
+    lst = znsocket.List(
+        r=c, key="list:test", converter=[znjson.converter.NumpyConverter]
+    )
 
     lst.extend(np.arange(9).reshape(3, 3))
     assert len(lst) == 3

@@ -2,7 +2,6 @@ import json
 import typing as t
 from collections.abc import MutableSequence
 
-
 from znsocket.abc import (
     ZnSocketObject,
 )
@@ -35,8 +34,12 @@ class Segments(ZnSocketObject, MutableSequence):
         # create a new segments list
         self.redis.lpush(self.key, json.dumps((0, len(origin), origin.key)))
 
-        self._list = List(r=self.redis, key=key, converter=self.converter, 
-                          convert_nan=self.convert_nan)
+        self._list = List(
+            r=self.redis,
+            key=key,
+            converter=self.converter,
+            convert_nan=self.convert_nan,
+        )
 
     @property
     def key(self) -> str:
@@ -88,8 +91,12 @@ class Segments(ZnSocketObject, MutableSequence):
             segment = json.loads(segment)
             start, end, target = segment
             # TODO: converter and stuff
-            lst = List(r=self.redis, key=target.split(":", 1)[1], converter=self.converter, 
-                       convert_nan=self.convert_nan)
+            lst = List(
+                r=self.redis,
+                key=target.split(":", 1)[1],
+                converter=self.converter,
+                convert_nan=self.convert_nan,
+            )
             # append to items in range
             for i in index:
                 if size <= i < end - start + size:
