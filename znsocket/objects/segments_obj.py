@@ -112,35 +112,39 @@ class Segments(ZnSocketObject, ):  # MutableSequence
             segment = json.loads(segment)
             start, end, target = segment
 
+
             if size <= index < end - start + size:
-                # we are in the segment
                 pos_in_segment = index - size + start
-                self.redis.lset(
-                    f"segments:{self._key}", idx, "__SETITEM_IDENTIFIER__"
-                )
-                if start < pos_in_segment:
+                if target == self._key:
+                    lst[pos_in_segment] = value
+                else:
+                    # we are in the segment
+                    self.redis.lset(
+                        f"segments:{self._key}", idx, "__SETITEM_IDENTIFIER__"
+                    )
+                    if start < pos_in_segment:
+                        self.redis.linsert(
+                            f"segments:{self._key}",
+                            "BEFORE",
+                            "__SETITEM_IDENTIFIER__",
+                            json.dumps((start, pos_in_segment, target)),
+                        )
                     self.redis.linsert(
                         f"segments:{self._key}",
                         "BEFORE",
                         "__SETITEM_IDENTIFIER__",
-                        json.dumps((start, pos_in_segment, target)),
+                        json.dumps((len(lst) - 1, len(lst), self._key)),
                     )
-                self.redis.linsert(
-                    f"segments:{self._key}",
-                    "BEFORE",
-                    "__SETITEM_IDENTIFIER__",
-                    json.dumps((len(lst) - 1, len(lst), self._key)),
-                )
-                if pos_in_segment + 1 < end:
-                    self.redis.linsert(
-                        f"segments:{self._key}",
-                        "BEFORE",
-                        "__SETITEM_IDENTIFIER__",
-                        json.dumps((pos_in_segment + 1, end, target)),
+                    if pos_in_segment + 1 < end:
+                        self.redis.linsert(
+                            f"segments:{self._key}",
+                            "BEFORE",
+                            "__SETITEM_IDENTIFIER__",
+                            json.dumps((pos_in_segment + 1, end, target)),
+                        )
+                    self.redis.lrem(
+                        f"segments:{self._key}", 0, "__SETITEM_IDENTIFIER__"
                     )
-                self.redis.lrem(
-                    f"segments:{self._key}", 0, "__SETITEM_IDENTIFIER__"
-                )
                 break
 
             size += end - start
