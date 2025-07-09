@@ -118,7 +118,7 @@ export class List {
 
   async get(index: number): Promise<any | null> {
     let value = await this._client.lIndex(this._key, index);
-    
+
     if (value === null && this._adapterCheckPromise) {
       const adapterAvailable = await this._adapterCheckPromise;
       if (adapterAvailable) {

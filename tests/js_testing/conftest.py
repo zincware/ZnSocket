@@ -1,6 +1,8 @@
 import os
 import subprocess
+
 import pytest
+
 
 @pytest.fixture
 def run_npm_test():
@@ -18,7 +20,9 @@ def run_npm_test():
 
         # Verify the test name appears in the output (Bun uses test names in output)
         if name not in output and name not in error:
-            raise AssertionError(f"Test '{name}' was not found in output:\n{output}\n{error}")
+            raise AssertionError(
+                f"Test '{name}' was not found in output:\n{output}\n{error}"
+            )
 
         # Raise if the test failed
         if run.returncode != 0:
