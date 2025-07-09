@@ -98,7 +98,7 @@ class Client:
                 _url,
                 namespaces=[self.namespace],
                 wait=True,
-                wait_timeout=self.connect_wait_timeout
+                wait_timeout=self.connect_wait_timeout,
                 socketio_path=f"{_path}/socket.io" if _path else "socket.io",
             )
 
