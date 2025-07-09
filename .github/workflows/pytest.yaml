@@ -64,7 +64,7 @@ jobs:
           uv run coverage lcov
       - name: Run jest
         run: |
-          npm test -- . -t native_
+          bun test --test-name-pattern native_
       - name: Coveralls
         uses: coverallsapp/github-action@master
         with:

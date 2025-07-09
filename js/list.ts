@@ -19,7 +19,9 @@ export class List {
   public readonly _key: string;
   private readonly _callbacks?: ListCallbacks;
   private readonly _socket?: ZnSocketClient;
-  private readonly _refreshCallback?: (data: { target: string; data: any }) => void;
+  private _refreshCallback?: (data: { target: string; data: any }) => void;
+  private _adapterAvailable: boolean = false;
+  private _adapterCheckPromise: Promise<boolean> | null = null;
 
   constructor({ client, key, socket, callbacks }: ListOptions) {
     this._client = client;
@@ -27,24 +29,25 @@ export class List {
     this._callbacks = callbacks;
     this._socket = socket || (client instanceof ZnSocketClient ? client : undefined);
 
+    if (this._socket) {
+      this._adapterCheckPromise = this._client.checkAdapter(this._key).then(available => {
+        this._adapterAvailable = available;
+        return available;
+      });
+    }
+
     return new Proxy(this, {
       get: (target, prop, receiver) => {
-        // If the property is a symbol or a non-numeric property, return it directly
         if (typeof prop === "symbol" || isNaN(Number(prop))) {
           return Reflect.get(target, prop, receiver);
         }
-
-        // Convert the property to a number if it's a numeric index
         const index = Number(prop);
         return target.get(index);
       },
       set: (target, prop, value) => {
-        // If the property is a symbol or a non-numeric property, set it directly
         if (typeof prop === "symbol" || isNaN(Number(prop))) {
           return Reflect.set(target, prop, value);
         }
-
-        // Convert the property to a number if it's a numeric index
         const index = Number(prop);
         target.set(index, value);
         return true;
@@ -53,7 +56,14 @@ export class List {
   }
 
   async length(): Promise<number> {
-    return this._client.lLen(this._key);
+    const length = await this._client.lLen(this._key);
+    if (length === 0 && this._adapterCheckPromise) {
+      const adapterAvailable = await this._adapterCheckPromise;
+      if (adapterAvailable) {
+        return await this._client.adapterGet(this._key, "__len__");
+      }
+    }
+    return length;
   }
 
   async slice(start: number, end: number): Promise<any[]> {
@@ -61,8 +71,8 @@ export class List {
     return values.map((value) => JSON.parse(value));
   }
 
-  async push(value: any): Promise<any> { // Renamed from append to push
-    if (this._callbacks && this._callbacks.push) {
+  async push(value: any): Promise<any> {
+    if (this._callbacks?.push) {
       await this._callbacks.push(value);
     }
     if (this._socket) {
@@ -71,16 +81,14 @@ export class List {
         data: { start: await this.length() },
       });
     }
-    if (value instanceof List) {
-      value = value._key;
-    } else if (value instanceof ZnSocketDict) {
+    if (value instanceof List || value instanceof ZnSocketDict) {
       value = value._key;
     }
     return this._client.rPush(this._key, JSON.stringify(value));
   }
 
-  async set(index: number, value: any): Promise<any> { // Renamed from setitem to set
-    if (this._callbacks && this._callbacks.set) {
+  async set(index: number, value: any): Promise<any> {
+    if (this._callbacks?.set) {
       await this._callbacks.set(value);
     }
     if (this._socket) {
@@ -89,16 +97,14 @@ export class List {
         data: { indices: [index] },
       });
     }
-    if (value instanceof List) {
-      value = value._key;
-    } else if (value instanceof ZnSocketDict) {
+    if (value instanceof List || value instanceof ZnSocketDict) {
       value = value._key;
     }
     return this._client.lSet(this._key, index, JSON.stringify(value));
   }
 
   async clear(): Promise<any> {
-    if (this._callbacks && this._callbacks.clear) {
+    if (this._callbacks?.clear) {
       await this._callbacks.clear();
     }
     if (this._socket) {
@@ -110,12 +116,41 @@ export class List {
     return this._client.del(this._key);
   }
 
-  async get(index: number): Promise<any | null> { // Renamed from getitem to get
+  async get(index: number): Promise<any | null> {
     let value = await this._client.lIndex(this._key, index);
-    if (value === null) {
-      return null;
+    
+    if (value === null && this._adapterCheckPromise) {
+      const adapterAvailable = await this._adapterCheckPromise;
+      if (adapterAvailable) {
+        value = await this._client.adapterGet(this._key, "__getitem__", index);
+        if (value === null) return null;
+
+        if (typeof value === "string") {
+          try {
+            value = JSON.parse(value);
+          } catch {
+            // not JSON, return as is
+          }
+        }
+
+        if (typeof value === "string") {
+          if (value.startsWith("znsocket.List:")) {
+            const refKey = value.split(/:(.+)/)[1];
+            return new List({ client: this._client, socket: this._socket, key: refKey });
+          } else if (value.startsWith("znsocket.Dict:")) {
+            const refKey = value.split(/:(.+)/)[1];
+            return new ZnSocketDict({ client: this._client, socket: this._socket, key: refKey });
+          }
+        }
+
+        return value;
+      }
     }
-    value = JSON.parse(value); // Parse the value
+
+    if (value === null) return null;
+
+    value = JSON.parse(value);
+
     if (typeof value === "string") {
       if (value.startsWith("znsocket.List:")) {
         const refKey = value.split(/:(.+)/)[1];
@@ -125,20 +160,20 @@ export class List {
         return new ZnSocketDict({ client: this._client, socket: this._socket, key: refKey });
       }
     }
+
     return value;
   }
 
   onRefresh(callback: (data: { start?: number; indices?: number[] }) => void): void {
-    if (this._socket) {
-      const refreshCallback = async ({ target, data }: { target: string; data: any }) => {
-        if (target === this._key) {
-          callback(data);
-        }
-      };
-      this._socket.on("refresh", refreshCallback);
-    } else {
-      throw new Error("Socket not available");
-    }
+    if (!this._socket) throw new Error("Socket not available");
+
+    this._refreshCallback = ({ target, data }) => {
+      if (target === this._key) {
+        callback(data);
+      }
+    };
+
+    this._socket.on("refresh", this._refreshCallback);
   }
 
   offRefresh(): void {
@@ -148,7 +183,7 @@ export class List {
   }
 
   async toObject(): Promise<any[]> {
-    const result = [];
+    const result: any[] = [];
     const len = await this.length();
     for (let i = 0; i < len; i++) {
       const value = await this.get(i);
@@ -173,8 +208,7 @@ export class List {
         if (index >= length) {
           return { value: undefined, done: true };
         }
-        const value = await this.get(index);
-        index += 1;
+        const value = await this.get(index++);
         return { value, done: false };
       },
     };

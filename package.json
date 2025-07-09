@@ -1,15 +1,13 @@
 {
   "name": "znsocket",
   "version": "0.2.9",
-  "description": "JS interface for the python znsocket package",
-  "main": "js/index.js",
-  "types": "js/index.d.ts",
+  "description": "Interface to communicate with the python znsocket package",
+  "main": "js/index.ts",
   "type": "module",
   "directories": {
     "test": "tests"
   },
   "scripts": {
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "build": "tsc",
     "build:watch": "tsc --watch",
     "docs": "typedoc --out docs/build/js js/index.ts"
@@ -25,15 +23,14 @@
   },
   "homepage": "https://github.com/zincware/znsocket#readme",
   "dependencies": {
-    "redis": "^4.7.0",
-    "socket.io-client": "^4.8.0"
+    "redis": "^4.7.1",
+    "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "jest": "^29.7.0",
+    "@types/node": "^20.19.6",
     "prettier": "3.3.3",
     "tsx": "^4.20.3",
     "typedoc": "^0.28.7",
-    "typescript": "^5.0.0"
+    "typescript": "^5.8.3"
   }
 }

@@ -1,3 +1,4 @@
+import { test, expect, beforeEach, afterEach } from "bun:test";
 import { List, Dict, createClient } from "znsocket";
 
 let client;
