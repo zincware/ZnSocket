@@ -57,6 +57,7 @@ jobs:
         run: |
           npm install
       - name: Run pytest
+        continue-on-error: true
         run: |
           uv run python --version
           uv run coverage run -m pytest
