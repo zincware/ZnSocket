@@ -34,3 +34,12 @@ def test_list_with_list_and_dict(znsclient, run_npm_test, request):
 
     assert referenced_list[1] == "New Value"
     assert referenced_dict["new_key"] == "new_value"
+
+
+def test_list_adapter_znsocket(znsclient, run_npm_test, request):
+    adapter = znsocket.ListAdapter(r=znsclient, key="list:test")
+    lst = znsocket.List(r=znsclient, key="list:test")
+    # lst.extend(list(range(5)))
+    # assert lst == [0, 1, 2, 3, 4]
+    # run_npm_test(request.node.name, client_url=znsclient.address)
+    # assert lst == [0, 1, 2, 3, 4, 5]

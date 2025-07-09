@@ -56,6 +56,7 @@ class ListAdapter:
             return encode(self, value)
         elif method == "copy":
             from znsocket import List
+            # TODO: support Segments and List
 
             target = kwargs["target"]
             new_list = List(
