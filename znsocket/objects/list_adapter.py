@@ -10,16 +10,32 @@ from znsocket.utils import encode, handle_error
 class ListAdapter:
     """Connect any object to a znsocket server to be used instead of loading data from the database.
 
-    Data will be send via sockets through the server to the client.
+    The ListAdapter allows you to expose any sequence-like object through the znsocket
+    server, making it accessible to clients as if it were a regular List. Data is
+    transmitted via sockets through the server to the client on demand.
 
     Parameters
     ----------
-    converter: list[znjson.ConverterBase]|None
-            Optional list of znjson converters
-            to use for encoding/decoding the data.
-    convert_nan: bool
-        Convert NaN and Infinity to None. Both are no native
-        JSON values and can not be encoded/decoded.
+    key : str
+        The key identifier for this adapter in the server.
+    socket : Client
+        The znsocket client connection to use for communication.
+    object : Sequence
+        The sequence object to expose through the adapter.
+    converter : list[type], optional
+        Optional list of znjson converters to use for encoding/decoding the data.
+    convert_nan : bool, optional
+        Convert NaN and Infinity to None. Both are not native JSON values and
+        cannot be encoded/decoded. Default is False.
+    r : Client, optional
+        Alternative client connection. If None, uses the socket connection.
+
+    Examples
+    --------
+    >>> client = znsocket.Client("http://localhost:5000")
+    >>> my_data = [1, 2, 3, 4, 5]
+    >>> adapter = znsocket.ListAdapter("my_adapter", client, my_data)
+    >>> # Now clients can access my_data as znsocket.List(client, "my_adapter")
     """
 
     key: str
@@ -40,7 +56,26 @@ class ListAdapter:
             self.r = self.socket
 
     def map_callback(self, data):
-        """Map a callback to the object."""
+        """Map a callback to the object.
+
+        This method handles incoming requests from clients and routes them to the
+        appropriate methods on the wrapped object.
+
+        Parameters
+        ----------
+        data : tuple
+            The request data containing arguments and keyword arguments.
+
+        Returns
+        -------
+        Any
+            The result of the requested operation, encoded if necessary.
+
+        Raises
+        ------
+        NotImplementedError
+            If the requested method is not implemented by the adapter.
+        """
         # args = data[0]
         kwargs = data[1]
 

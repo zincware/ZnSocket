@@ -28,20 +28,40 @@ def _handle_data(data: dict):
 class Client:
     """Client to interact with a znsocket server.
 
-    Attributes
+    The Client class provides an interface to connect to and communicate with a znsocket server
+    using websockets. It supports Redis-like commands and provides automatic reconnection
+    capabilities.
+
+    Parameters
     ----------
     address : str
-        The address of the znsocket server.
-    decode_responses : bool
+        The address of the znsocket server (e.g., "http://localhost:5000").
+    decode_responses : bool, optional
         Whether to decode responses from the server. Default is True.
-    namespace : str
+    namespace : str, optional
         The namespace to connect to. Default is "/znsocket".
-    refresh_callbacks : dict
+    refresh_callbacks : dict, optional
         A dictionary of callbacks to call when a refresh event is received.
-    retry : int
-        The number of times to retry a failed call. Default is 3.
-    delay_between_calls : datetime.timedelta
+    adapter_callback : callable, optional
+        Callback function for adapter events. Default is None.
+    delay_between_calls : datetime.timedelta, optional
         The time to wait between calls. Default is None.
+    retry : int, optional
+        The number of times to retry a failed call. Default is 1.
+    connect_wait_timeout : int, optional
+        Timeout in seconds for connection establishment. Default is 1.
+
+    Attributes
+    ----------
+    sio : socketio.Client
+        The underlying socket.io client instance.
+    
+    Examples
+    --------
+    >>> client = Client("http://localhost:5000")
+    >>> client.hset("mykey", "field1", "value1")
+    >>> client.hget("mykey", "field1")
+    'value1'
     """
 
     address: str
@@ -61,6 +81,28 @@ class Client:
     )
 
     def pipeline(self, *args, **kwargs) -> "Pipeline":
+        """Create a pipeline for batching Redis commands.
+
+        Parameters
+        ----------
+        *args
+            Positional arguments to pass to the Pipeline constructor.
+        **kwargs
+            Keyword arguments to pass to the Pipeline constructor.
+
+        Returns
+        -------
+        Pipeline
+            A new Pipeline instance for batching commands.
+
+        Examples
+        --------
+        >>> client = Client("http://localhost:5000")
+        >>> pipe = client.pipeline()
+        >>> pipe.hset("key1", "field1", "value1")
+        >>> pipe.hset("key2", "field2", "value2")
+        >>> results = pipe.execute()
+        """
         return Pipeline(self, *args, **kwargs)
 
     @classmethod
@@ -72,8 +114,20 @@ class Client:
         url : str
             The URL of the znsocket server. Should be in the format
             "znsocket://127.0.0.1:5000".
-        namespace : str
+        namespace : str, optional
             The namespace to connect to. Default is "/znsocket".
+        **kwargs
+            Additional keyword arguments to pass to the Client constructor.
+
+        Returns
+        -------
+        Client
+            A new Client instance connected to the specified server.
+
+        Examples
+        --------
+        >>> client = Client.from_url("znsocket://127.0.0.1:5000")
+        >>> client.hset("key", "field", "value")
         """
         return cls(
             address=url.replace("znsocket://", "http://"), namespace=namespace, **kwargs
@@ -109,7 +163,27 @@ class Client:
             raise NotImplementedError("decode_responses=False is not supported yet")
 
     def call(self, event: str, *args, **kwargs) -> t.Any:
-        """Call an event on the server."""
+        """Call an event on the server.
+
+        Parameters
+        ----------
+        event : str
+            The event name to call on the server.
+        *args
+            Positional arguments to pass to the event.
+        **kwargs
+            Keyword arguments to pass to the event.
+
+        Returns
+        -------
+        Any
+            The response from the server.
+
+        Raises
+        ------
+        socketio.exceptions.TimeoutError
+            If the server does not respond within the timeout period after all retries.
+        """
         if self.delay_between_calls:
             time_since_last_call = datetime.datetime.now() - self._last_call
             delay_needed = self.delay_between_calls - time_since_last_call
@@ -154,14 +228,30 @@ class Client:
 class Pipeline:
     """A pipeline of Redis commands to be executed as a batch on the server.
 
-    Arguments
-    ---------
+    The Pipeline class allows batching multiple Redis commands together to reduce
+    network overhead and improve performance when executing multiple operations.
+
+    Parameters
+    ----------
     client : Client
         The client to send the pipeline to.
-    max_commands_per_call : int
+    max_commands_per_call : int, optional
         The maximum number of commands to send in a single call to the server.
         Decrease this number for large commands to avoid hitting the message size limit.
-        Increase it for small commands to reduce latency.
+        Increase it for small commands to reduce latency. Default is 1,000,000.
+
+    Attributes
+    ----------
+    pipeline : list
+        Internal list storing the commands to be executed.
+
+    Examples
+    --------
+    >>> client = Client("http://localhost:5000")
+    >>> pipe = client.pipeline()
+    >>> pipe.hset("key1", "field1", "value1")
+    >>> pipe.hset("key2", "field2", "value2")
+    >>> results = pipe.execute()
     """
 
     client: Client
@@ -196,7 +286,29 @@ class Pipeline:
         return [_handle_data(res) for res in result["data"]]
 
     def execute(self):
-        """Executes the pipeline of commands as a batch on the server."""
+        """Execute the pipeline of commands as a batch on the server.
+
+        Sends all queued commands to the server and returns the results in order.
+        The commands are sent in batches if the total number exceeds max_commands_per_call.
+
+        Returns
+        -------
+        list
+            A list of results corresponding to each command in the pipeline, in order.
+
+        Raises
+        ------
+        exceptions.ZnSocketError
+            If the server returns no response or an error occurs.
+
+        Examples
+        --------
+        >>> pipe = client.pipeline()
+        >>> pipe.hset("key1", "field1", "value1")
+        >>> pipe.hget("key1", "field1")
+        >>> results = pipe.execute()
+        >>> print(results)  # [1, 'value1']
+        """
         # iterate over self.pipeline and keep adding until the size is greater than max_message_size
         # then send the message, collect the results and continue
 

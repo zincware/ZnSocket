@@ -16,12 +16,38 @@ if t.TYPE_CHECKING:
 class Segments(ZnSocketObject, MutableSequence):
     """Copy of a list object with piece table segments.
 
-    This copy for large objects is used to avoid the need to copy the entire object
-    when a small part of it is changed.
+    This class implements a copy-on-write list using segment-based storage for
+    efficiency. It's particularly useful for large objects where only small parts
+    are modified, avoiding the need to copy the entire object.
 
-    The data is stored in segments of tubles like:
+    The data is stored in segments represented as tuples:
     (start, end, data), where start and end are the start and end indices of the part
     taken from the data list.
+
+    Parameters
+    ----------
+    r : Client or redis.Redis
+        Connection to the server.
+    origin : List
+        The original List object to create segments from.
+    key : str
+        The key in the server to store the segments data.
+
+    Raises
+    ------
+    TypeError
+        If origin is not a List object.
+
+    Examples
+    --------
+    >>> client = znsocket.Client("http://localhost:5000")
+    >>> original_list = znsocket.List(client, "original")
+    >>> original_list.extend([1, 2, 3, 4, 5])
+    >>> segments = znsocket.Segments(client, original_list, "segments")
+    >>> len(segments)
+    5
+    >>> segments[0]
+    1
     """
 
     def __init__(self, r: Client | t.Any, origin: "List", key: str) -> None:
@@ -48,11 +74,23 @@ class Segments(ZnSocketObject, MutableSequence):
 
     @property
     def key(self) -> str:
-        """The key in the server to store the data from this dict."""
+        """The key in the server to store the data from this segments object.
+
+        Returns
+        -------
+        str
+            The prefixed key used to store this segments object in the server.
+        """
         return f"znsocket.Segments:{self._key}"
 
     def get_raw(self) -> t.Any:
-        """Get the raw data of the segments list."""
+        """Get the raw data of the segments list.
+
+        Returns
+        -------
+        list
+            A list of segments, where each segment is a tuple of (start, end, data).
+        """
         # get all segments
         segments = self.redis.lrange(self.key, 0, -1)
         # decode the segments
@@ -60,7 +98,25 @@ class Segments(ZnSocketObject, MutableSequence):
 
     @classmethod
     def from_list(cls, origin: "List", key: str) -> "Segments":
-        """Create a Segments object from a list."""
+        """Create a Segments object from a list.
+
+        Parameters
+        ----------
+        origin : List
+            The original List object to create segments from.
+        key : str
+            The key in the server to store the segments data.
+
+        Returns
+        -------
+        Segments
+            A new Segments object based on the original list.
+
+        Raises
+        ------
+        TypeError
+            If origin is not a List object.
+        """
         from znsocket import List
 
         if not isinstance(origin, List):

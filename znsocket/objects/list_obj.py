@@ -30,37 +30,44 @@ class List(MutableSequence, ZnSocketObject):
     ):
         """Synchronized list object.
 
-        The content of this list is stored/read from the
-        server. The data is not stored in this object at all.
+        The content of this list is stored/read from the server. The data is not stored
+        in this object at all, making it suitable for distributed applications and
+        real-time synchronization.
 
         Parameters
         ----------
-        r: znsocket.Client|redis.Redis
+        r : znsocket.Client or redis.Redis
             Connection to the server.
-        socket: znsocket.Client|None
-            Socket connection for callbacks.
-            If None, the connection from `r` will be used if it is a Client.
-        key: str
+        key : str
             The key in the server to store the data from this list.
-        callbacks: dict[str, Callable]
-            optional function callbacks for methods
-            which modify the database.
-        repr_type: str
-            Control the `repr` appearance of the object.
-            Reduce for better performance.
-        converter: list[znjson.ConverterBase]|None
-            Optional list of znjson converters
-            to use for encoding/decoding the data.
-        max_commands_per_call: int
-            Maximum number of commands to send in a
-            single call when using pipelines.
-            Reduce for large list operations to avoid
-            hitting the message size limit.
-            Only applies when using `znsocket.Client`.
-        convert_nan: bool
-            Convert NaN and Infinity to None. Both are no native
-            JSON values and can not be encoded/decoded.
+        socket : znsocket.Client, optional
+            Socket connection for callbacks. If None, the connection from `r` will be
+            used if it is a Client.
+        callbacks : dict[str, Callable], optional
+            Optional function callbacks for methods which modify the database.
+        repr_type : {'length', 'minimal', 'full'}, optional
+            Control the `repr` appearance of the object. Reduce for better performance.
+            Default is 'length'.
+        converter : list[znjson.ConverterBase], optional
+            Optional list of znjson converters to use for encoding/decoding the data.
+        max_commands_per_call : int, optional
+            Maximum number of commands to send in a single call when using pipelines.
+            Reduce for large list operations to avoid hitting the message size limit.
+            Only applies when using `znsocket.Client`. Default is 1,000,000.
+        convert_nan : bool, optional
+            Convert NaN and Infinity to None. Both are not native JSON values and
+            cannot be encoded/decoded. Default is False.
 
+        Examples
+        --------
+        >>> client = znsocket.Client("http://localhost:5000")
+        >>> my_list = znsocket.List(client, "my_list")
+        >>> my_list.append("item1")
+        >>> my_list.append("item2")
+        >>> len(my_list)
+        2
+        >>> my_list[0]
+        'item1'
         """
         self.redis = r
         self._key = key
@@ -91,7 +98,13 @@ class List(MutableSequence, ZnSocketObject):
 
     @property
     def key(self) -> str:
-        """The key of the list in the server."""
+        """The key of the list in the server.
+
+        Returns
+        -------
+        str
+            The prefixed key used to store this list in the server.
+        """
         return f"znsocket.List:{self._key}"
 
     def __len__(self) -> int:
@@ -266,7 +279,24 @@ class List(MutableSequence, ZnSocketObject):
     def append(self, value: t.Any) -> None:
         """Append an item to the end of the list.
 
-        Override default method for better performance
+        Parameters
+        ----------
+        value : Any
+            The item to append to the list.
+
+        Raises
+        ------
+        FrozenStorageError
+            If the list is backed by an adapter and is read-only.
+        ValueError
+            If attempting to create a circular reference to self.
+
+        Examples
+        --------
+        >>> my_list = znsocket.List(client, "my_list")
+        >>> my_list.append("new_item")
+        >>> my_list[-1]
+        'new_item'
         """
         from znsocket.objects.dict_obj import Dict
 
@@ -338,8 +368,32 @@ class List(MutableSequence, ZnSocketObject):
     def copy(self, key: str) -> "List":
         """Copy the list to a new key.
 
-        This will not trigger any callbacks as
-        the data is not modified.
+        Creates a new list with the same content but under a different key.
+        This operation does not trigger any callbacks as the original data
+        is not modified.
+
+        Parameters
+        ----------
+        key : str
+            The new key for the copied list.
+
+        Returns
+        -------
+        List
+            A new List instance pointing to the copied data.
+
+        Raises
+        ------
+        ValueError
+            If the copy operation fails.
+
+        Examples
+        --------
+        >>> original_list = znsocket.List(client, "original")
+        >>> original_list.extend([1, 2, 3])
+        >>> copied_list = original_list.copy("copied")
+        >>> len(copied_list)
+        3
         """
         if self._adapter_available:
             success = self.socket.call(

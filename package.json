@@ -9,7 +9,10 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "docs": "typedoc --out docs/build/js js/index.ts"
   },
   "repository": {
     "type": "git",
@@ -26,7 +29,11 @@
     "socket.io-client": "^4.8.0"
   },
   "devDependencies": {
+    "@types/node": "^20.0.0",
     "jest": "^29.7.0",
-    "prettier": "3.3.3"
+    "prettier": "3.3.3",
+    "tsx": "^4.20.3",
+    "typedoc": "^0.28.7",
+    "typescript": "^5.0.0"
   }
 }

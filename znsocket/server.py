@@ -11,6 +11,30 @@ from znsocket.exceptions import DataError, ResponseError
 
 @dataclasses.dataclass
 class Storage:
+    """In-memory storage backend for znsocket server.
+
+    The Storage class provides Redis-compatible data storage operations including
+    hash tables, lists, sets, and basic key-value operations. All data is stored
+    in memory using Python data structures.
+
+    Parameters
+    ----------
+    content : dict, optional
+        Initial content for the storage. Default is an empty dictionary.
+
+    Attributes
+    ----------
+    content : dict
+        The internal storage dictionary containing all data.
+
+    Examples
+    --------
+    >>> storage = Storage()
+    >>> storage.hset("users", "user1", "John")
+    1
+    >>> storage.hget("users", "user1")
+    'John'
+    """
     content: dict = dataclasses.field(default_factory=dict)
 
     def hset(
@@ -21,6 +45,31 @@ class Storage:
         mapping: t.Optional[dict] = None,
         items: t.Optional[list] = None,
     ):
+        """Set field(s) in a hash.
+
+        Parameters
+        ----------
+        name : str
+            The name of the hash.
+        key : str, optional
+            The field name to set.
+        value : str, optional
+            The value to set for the field.
+        mapping : dict, optional
+            A dictionary of field-value pairs to set.
+        items : list, optional
+            A list of alternating field-value pairs to set.
+
+        Returns
+        -------
+        int
+            The number of fields that were added.
+
+        Raises
+        ------
+        DataError
+            If no key-value pairs are provided or if value is None when key is provided.
+        """
         if key is None and not mapping and not items:
             raise DataError("'hset' with no key value pairs")
         if value is None and not mapping and not items:
@@ -41,6 +90,20 @@ class Storage:
         return len(pieces) // 2
 
     def hget(self, name, key):
+        """Get the value of a hash field.
+
+        Parameters
+        ----------
+        name : str
+            The name of the hash.
+        key : str
+            The field name to get.
+
+        Returns
+        -------
+        str or None
+            The value of the field, or None if the field does not exist.
+        """
         try:
             return self.content[name][key]
         except KeyError:
@@ -247,6 +310,27 @@ class Storage:
 
 @dataclasses.dataclass
 class Server:
+    """znsocket server implementation.
+
+    The Server class provides a websocket-based server that implements Redis-compatible
+    operations. It uses eventlet for async operations and socket.io for websocket communication.
+
+    Parameters
+    ----------
+    port : int, optional
+        The port number to bind the server to. Default is 5000.
+    max_http_buffer_size : int, optional
+        Maximum size of HTTP buffer. Default is None (uses socket.io default).
+    async_mode : str, optional
+        Async mode to use ('eventlet', 'gevent', etc.). Default is None.
+    logger : bool, optional
+        Whether to enable logging. Default is False.
+
+    Examples
+    --------
+    >>> server = Server(port=5000)
+    >>> server.run()  # This will block and run the server
+    """
     port: int = 5000
     max_http_buffer_size: t.Optional[int] = None
     async_mode: t.Optional[str] = None
@@ -254,6 +338,25 @@ class Server:
 
     @classmethod
     def from_url(cls, url: str, **kwargs) -> "Server":
+        """Create a Server instance from a URL.
+
+        Parameters
+        ----------
+        url : str
+            The URL to parse, should be in format "znsocket://host:port".
+        **kwargs
+            Additional keyword arguments to pass to the Server constructor.
+
+        Returns
+        -------
+        Server
+            A new Server instance configured with the port from the URL.
+
+        Raises
+        ------
+        ValueError
+            If the URL doesn't start with "znsocket://".
+        """
         # server url looks like "znsocket://127.0.0.1:5000"
         if not url.startswith("znsocket://"):
             raise ValueError("Invalid URL")
@@ -261,7 +364,17 @@ class Server:
         return cls(port=port, **kwargs)
 
     def run(self) -> None:
-        """Run the server (blocking)."""
+        """Run the server (blocking).
+
+        Starts the znsocket server and blocks until the server is stopped.
+        The server will listen on the configured port and handle incoming
+        websocket connections.
+
+        Notes
+        -----
+        This method blocks the current thread. To run the server in a
+        non-blocking way, consider using threading or asyncio.
+        """
         sio = get_sio(
             max_http_buffer_size=self.max_http_buffer_size,
             async_mode=self.async_mode,
@@ -292,6 +405,32 @@ def get_sio(
 def attach_events(  # noqa: C901
     sio: socketio.Server, namespace: str = "/znsocket", storage=None
 ) -> None:
+    """Attach event handlers to a socket.io server.
+
+    This function sets up all the event handlers needed for the znsocket server
+    to respond to client requests. It handles Redis-compatible operations,
+    pipeline commands, and adapter functionality.
+
+    Parameters
+    ----------
+    sio : socketio.Server
+        The socket.io server instance to attach events to.
+    namespace : str, optional
+        The namespace to attach events to. Default is "/znsocket".
+    storage : Storage, optional
+        The storage backend to use. If None, a new Storage instance is created.
+
+    Returns
+    -------
+    socketio.Server
+        The socket.io server instance with events attached.
+
+    Examples
+    --------
+    >>> sio = socketio.Server()
+    >>> attach_events(sio)
+    >>> # Now sio can handle znsocket events
+    """
     if storage is None:
         storage = Storage()
 

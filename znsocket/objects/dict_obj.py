@@ -27,30 +27,40 @@ class Dict(MutableMapping, ZnSocketObject):
     ):
         """Synchronized dict object.
 
-        The content of this dict is stored/read from the
-        server. The data is not stored in this object at all.
+        The content of this dict is stored/read from the server. The data is not stored
+        in this object at all, making it suitable for distributed applications and
+        real-time synchronization.
 
         Parameters
         ----------
-        r: znsocket.Client|redis.Redis
+        r : znsocket.Client or redis.Redis
             Connection to the server.
-        socket: znsocket.Client|None
-            Socket connection for callbacks.
-            If None, the connection from `r` will be used if it is a Client.
-        key: str
+        key : str
             The key in the server to store the data from this dict.
-        callbacks: dict[str, Callable]
-            optional function callbacks for methods
-            which modify the database.
-        repr_type: "keys"|"minimal"|"full"
-            Control the `repr` appearance of the object.
-            Reduce for better performance.
-        converter: list[znjson.ConverterBase]|None
-            Optional list of znjson converters
-            to use for encoding/decoding the data.
-        convert_nan: bool
-            Convert NaN and Infinity to None. Both are no native
-            JSON values and can not be encoded/decoded.
+        socket : znsocket.Client, optional
+            Socket connection for callbacks. If None, the connection from `r` will be
+            used if it is a Client.
+        callbacks : dict[str, Callable], optional
+            Optional function callbacks for methods which modify the database.
+        repr_type : {'keys', 'minimal', 'full'}, optional
+            Control the `repr` appearance of the object. Reduce for better performance.
+            Default is 'keys'.
+        converter : list[znjson.ConverterBase], optional
+            Optional list of znjson converters to use for encoding/decoding the data.
+        convert_nan : bool, optional
+            Convert NaN and Infinity to None. Both are not native JSON values and
+            cannot be encoded/decoded. Default is False.
+
+        Examples
+        --------
+        >>> client = znsocket.Client("http://localhost:5000")
+        >>> my_dict = znsocket.Dict(client, "my_dict")
+        >>> my_dict["key1"] = "value1"
+        >>> my_dict["key2"] = "value2"
+        >>> len(my_dict)
+        2
+        >>> my_dict["key1"]
+        'value1'
         """
         self.redis = r
         self.socket = socket if socket else (r if isinstance(r, Client) else None)
@@ -71,7 +81,13 @@ class Dict(MutableMapping, ZnSocketObject):
 
     @property
     def key(self) -> str:
-        """The key in the server to store the data from this dict."""
+        """The key in the server to store the data from this dict.
+
+        Returns
+        -------
+        str
+            The prefixed key used to store this dict in the server.
+        """
         return f"znsocket.Dict:{self._key}"
 
     def __getitem__(self, key: str) -> t.Any:
