@@ -8,6 +8,16 @@ export class List {
     this._callbacks = callbacks;
     this._socket = socket || (client instanceof ZnSocketClient ? client : null);
     this._refreshCallback = undefined;
+    this._adapterAvailable = false;
+    this._adapterCheckPromise = null;
+    
+    // Check for adapter availability
+    if (this._socket) {
+      this._adapterCheckPromise = this._client.checkAdapter(this._key).then(available => {
+        this._adapterAvailable = available;
+        return available;
+      });
+    }
 
     return new Proxy(this, {
       get: (target, prop, receiver) => {
@@ -35,7 +45,14 @@ export class List {
   }
 
   async length() {
-    return this._client.lLen(this._key);
+    const length = await this._client.lLen(this._key);
+    if (length === 0 && this._adapterCheckPromise) {
+      const adapterAvailable = await this._adapterCheckPromise;
+      if (adapterAvailable) {
+        return await this._client.adapterGet(this._key, "__len__");
+      }
+    }
+    return length;
   }
 
   async slice(start, end) {
@@ -94,6 +111,35 @@ export class List {
 
   async get(index) { // Renamed from getitem to get
     let value = await this._client.lIndex(this._key, index);
+    if (value === null && this._adapterCheckPromise) {
+      const adapterAvailable = await this._adapterCheckPromise;
+      if (adapterAvailable) {
+        value = await this._client.adapterGet(this._key, "__getitem__", index);
+        if (value === null) {
+          return null;
+        }
+        // Adapter values are JSON-encoded, need to parse them
+        if (typeof value === "string") {
+          try {
+            value = JSON.parse(value);
+          } catch (e) {
+            // If parsing fails, return as-is
+          }
+        }
+        
+        // Handle references to other objects
+        if (typeof value === "string") {
+          if (value.startsWith("znsocket.List:")) {
+            const refKey = value.split(/:(.+)/)[1];
+            return new List({ client: this._client,socket: this._socket , key: refKey});
+          } else if (value.startsWith("znsocket.Dict:")) {
+            const refKey = value.split(/:(.+)/)[1];
+            return new ZnSocketDict({ client: this._client, socket: this._socket , key: refKey});
+          }
+        }
+        return value;
+      }
+    }
     if (value === null) {
       return null;
     }

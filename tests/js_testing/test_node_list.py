@@ -41,5 +41,4 @@ def test_list_adapter_znsocket(znsclient, run_npm_test, request):
     _ = znsocket.ListAdapter(socket=znsclient, key="list:test", object=data)
     lst = znsocket.List(r=znsclient, key="list:test")
     assert list(lst) == data
-    # TODO: run a js test to verify that one can read the list from the client
-    # run_npm_test(request.node.name, client_url=znsclient.address)
+    run_npm_test(request.node.name, client_url=znsclient.address)

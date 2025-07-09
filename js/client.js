@@ -207,4 +207,25 @@ export class Client {
       });
     });
   }
+
+  // Adapter protocol methods
+  checkAdapter(key) {
+    return new Promise((resolve, reject) => {
+      this._socket.emit("check_adapter", [[], { key: key }], (data) => {
+        resolve(data || false);
+      });
+    });
+  }
+
+  adapterGet(key, method, ...args) {
+    return new Promise((resolve, reject) => {
+      let kwargs = { key: key, method: method };
+      if (method === "__getitem__" && args.length > 0) {
+        kwargs.index = args[0];
+      }
+      this._socket.emit("adapter:get", [[], kwargs], (data) => {
+        resolve(data);
+      });
+    });
+  }
 }
