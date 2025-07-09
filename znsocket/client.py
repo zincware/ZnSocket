@@ -54,6 +54,7 @@ class Client:
     adapter_callback: t.Callable | None = None
     delay_between_calls: datetime.timedelta | None = None
     retry: int = 1
+    connect_wait_timeout: int = 1
 
     _last_call: datetime.datetime = dataclasses.field(
         default_factory=datetime.datetime.now, init=False
@@ -97,6 +98,7 @@ class Client:
                 _url,
                 namespaces=[self.namespace],
                 wait=True,
+                wait_timeout=self.connect_wait_timeout
                 socketio_path=f"{_path}/socket.io" if _path else "socket.io",
             )
 
