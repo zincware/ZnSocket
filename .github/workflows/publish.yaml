@@ -17,3 +17,11 @@ jobs:
         run: |
           uv build
           uv publish --token $PYPI_TOKEN
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+      - name: Install JS dependencies
+        run: bun install
+      - name: Publish to npm
+        env:
+          NPM_CONFIG_TOKEN: ${{ secrets.NPM_API_TOKEN }}
+        run: bun publish --access public

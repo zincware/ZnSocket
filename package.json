@@ -10,6 +10,12 @@
       "types": "./js/index.ts"
     }
   },
+  "files": [
+    "dist/",
+    "js/",
+    "README.md",
+    "LICENSE"
+  ],
   "directories": {
     "test": "tests"
   },
