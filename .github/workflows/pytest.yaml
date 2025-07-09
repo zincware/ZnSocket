@@ -58,8 +58,6 @@ jobs:
 
       - name: Install JavaScript packages with Bun
         run: bun install
-      - name: Build TypeScript
-        run: bun run build
 
       - name: Run pytest
         continue-on-error: true
