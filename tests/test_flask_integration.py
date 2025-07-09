@@ -1,4 +1,9 @@
+import json
 import random
+import subprocess
+import sys
+import tempfile
+import textwrap
 
 import eventlet.wsgi
 import pytest
@@ -179,54 +184,117 @@ def test_flask_server_multiple_clients(flask_server_with_znsocket):
         client2.flushall()
 
 
-def test_flask_server_custom_storage():
-    """Test Flask server with custom storage instance."""
-    port = random.randint(10000, 20000)
-
-    # Create custom storage with pre-populated data
-    custom_storage = Storage()
-    custom_storage.set("initial_key", "initial_value")
-    custom_storage.hset("initial_hash", "field1", "value1")
-
-    # Create Flask app
-    app = Flask(__name__)
-    app.config['SECRET_KEY'] = 'test-secret'
-
-    # Create socketio server and attach znsocket events with custom storage
-    sio = socketio.Server(cors_allowed_origins="*")
-    attach_events(sio, namespace="/znsocket", storage=custom_storage)
-
-    # Create WSGI app
-    server_app = socketio.WSGIApp(sio, app)
-
-    def start_server():
-        eventlet.wsgi.server(eventlet.listen(("127.0.0.1", port)), server_app)
-
-    thread = eventlet.spawn(start_server)
-
-    # Wait for server to be ready
-    for _ in range(100):
+def test_flask_server_cross_process_communication(flask_server_with_znsocket):
+    """Test Flask server with znsocket.Client in separate process."""
+    url, storage = flask_server_with_znsocket
+    
+    # Set initial data in storage
+    storage.set("process_test", "initial_value")
+    storage.hset("process_hash", "field1", "value1")
+    storage.rpush("process_list", "item1")
+    storage.rpush("process_list", "item2")
+    
+    # Create a Python script to run in subprocess
+    client_script = textwrap.dedent(f"""
+    import sys
+    import json
+    sys.path.insert(0, '{sys.path[0]}')  # Add current path for imports
+    
+    from znsocket import Client
+    
+    def main():
         try:
-            with socketio.SimpleClient() as client:
-                client.connect(f"http://127.0.0.1:{port}")
-                break
-        except socketio.exceptions.ConnectionError:
-            eventlet.sleep(0.1)
-    else:
-        thread.kill()
-        raise TimeoutError("Flask server did not start in time")
-
+            client = Client.from_url('{url}')
+            
+            # Test reading existing data
+            result = {{}}
+            result['get_test'] = client.get('process_test')
+            result['hash_test'] = client.hget('process_hash', 'field1')
+            result['list_test'] = client.lrange('process_list', 0, -1)
+            
+            # Test writing new data
+            client.set('subprocess_key', 'subprocess_value')
+            client.hset('subprocess_hash', 'sub_field', 'sub_value')
+            client.rpush('subprocess_list', 'sub_item')
+            
+            # Verify writes
+            result['write_test'] = client.get('subprocess_key')
+            result['hash_write_test'] = client.hget('subprocess_hash', 'sub_field')
+            result['list_write_test'] = client.lrange('subprocess_list', 0, -1)
+            
+            print(json.dumps(result))
+            return 0
+        except Exception as e:
+            print(f"Error: {{e}}", file=sys.stderr)
+            return 1
+    
+    if __name__ == '__main__':
+        exit(main())
+    """)
+    
+    # Write script to temporary file
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        f.write(client_script)
+        script_path = f.name
+    
     try:
-        # Connect client and verify pre-populated data
-        client = Client.from_url(f"znsocket://127.0.0.1:{port}")
-
-        # Should see pre-populated data
-        assert client.get("initial_key") == "initial_value"
-        assert client.hget("initial_hash", "field1") == "value1"
-
-        # Client operations should work normally
-        client.set("new_key", "new_value")
-        assert client.get("new_key") == "new_value"
-
+        # Run the subprocess
+        result = subprocess.run([
+            sys.executable, script_path
+        ], capture_output=True, text=True, timeout=30)
+        
+        # Check if subprocess succeeded
+        assert result.returncode == 0, f"Subprocess failed: {{result.stderr}}"
+        
+        # Parse JSON output
+        output = json.loads(result.stdout.strip())
+        
+        # Verify subprocess could read existing data
+        assert output['get_test'] == 'initial_value'
+        assert output['hash_test'] == 'value1'
+        assert output['list_test'] == ['item1', 'item2']
+        
+        # Verify subprocess could write data
+        assert output['write_test'] == 'subprocess_value'
+        assert output['hash_write_test'] == 'sub_value'
+        assert output['list_write_test'] == ['sub_item']
+        
+        # Verify main process can see subprocess writes
+        assert storage.get('subprocess_key') == 'subprocess_value'
+        assert storage.hget('subprocess_hash', 'sub_field') == 'sub_value'
+        assert storage.lrange('subprocess_list', 0, -1) == ['sub_item']
+        
+        # Test bidirectional communication
+        # Main process writes, subprocess should see it
+        storage.set('main_to_sub', 'hello_subprocess')
+        
+        # Create another subprocess to verify real-time communication
+        verify_script = textwrap.dedent(f"""
+        import sys
+        sys.path.insert(0, '{sys.path[0]}')
+        from znsocket import Client
+        client = Client.from_url('{url}')
+        print(client.get('main_to_sub'))
+        """)
+        
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write(verify_script)
+            verify_path = f.name
+        
+        try:
+            verify_result = subprocess.run([
+                sys.executable, verify_path
+            ], capture_output=True, text=True, timeout=10)
+            
+            assert verify_result.returncode == 0
+            assert verify_result.stdout.strip() == 'hello_subprocess'
+            
+        finally:
+            import os
+            os.unlink(verify_path)
+    
     finally:
-        thread.kill()
+        # Cleanup
+        import os
+        os.unlink(script_path)
+
