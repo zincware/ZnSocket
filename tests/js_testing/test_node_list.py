@@ -37,9 +37,9 @@ def test_list_with_list_and_dict(znsclient, run_npm_test, request):
 
 
 def test_list_adapter_znsocket(znsclient, run_npm_test, request):
-    adapter = znsocket.ListAdapter(r=znsclient, key="list:test")
+    data = [1, 2, 3, 4]
+    _ = znsocket.ListAdapter(socket=znsclient, key="list:test", object=data)
     lst = znsocket.List(r=znsclient, key="list:test")
-    # lst.extend(list(range(5)))
-    # assert lst == [0, 1, 2, 3, 4]
+    assert list(lst) == data
+    # TODO: run a js test to verify that one can read the list from the client
     # run_npm_test(request.node.name, client_url=znsclient.address)
-    # assert lst == [0, 1, 2, 3, 4, 5]
