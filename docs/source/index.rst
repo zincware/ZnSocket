@@ -26,3 +26,4 @@ Key features:
    python_api
    javascript_api
    examples
+   develop
