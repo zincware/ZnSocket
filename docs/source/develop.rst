@@ -14,4 +14,3 @@ To run JS/TS tests, use
 
     docker run --rm -p 4748:4748 pythonf/znsocket
     bun test --test-name-pattern native_
-
