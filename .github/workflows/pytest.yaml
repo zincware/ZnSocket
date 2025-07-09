@@ -44,27 +44,31 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
       - name: Install uv and set the python version
         uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Install python packages
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install Python packages
         run: uv sync --all-extras --dev
-      - name: Install javascript packages
-        run: |
-          npm install
+
+      - name: Install JavaScript packages with Bun
+        run: bun install
+
       - name: Run pytest
         continue-on-error: true
         run: |
           uv run python --version
           uv run coverage run -m pytest
           uv run coverage lcov
-      - name: Run jest
-        run: |
-          bun test --test-name-pattern native_
+
+      - name: Run Bun tests
+        run: bun test --test-name-pattern native_
+
       - name: Coveralls
         uses: coverallsapp/github-action@master
         with:
