@@ -35,6 +35,7 @@ class Storage:
     >>> storage.hget("users", "user1")
     'John'
     """
+
     content: dict = dataclasses.field(default_factory=dict)
 
     def hset(
@@ -331,6 +332,7 @@ class Server:
     >>> server = Server(port=5000)
     >>> server.run()  # This will block and run the server
     """
+
     port: int = 5000
     max_http_buffer_size: t.Optional[int] = None
     async_mode: t.Optional[str] = None

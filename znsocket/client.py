@@ -55,7 +55,7 @@ class Client:
     ----------
     sio : socketio.Client
         The underlying socket.io client instance.
-    
+
     Examples
     --------
     >>> client = Client("http://localhost:5000")

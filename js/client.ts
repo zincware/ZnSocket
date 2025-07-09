@@ -23,7 +23,7 @@ export const createClient = ({ url, namespace = "znsocket", socket }: ClientOpti
 
 /**
  * znsocket client for connecting to a znsocket server
- * 
+ *
  * The Client class provides an interface to connect to and communicate with a znsocket server
  * using websockets. It supports Redis-like commands and provides automatic reconnection
  * capabilities.

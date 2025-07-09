@@ -49,12 +49,12 @@ Connect to the server and use data structures:
 
    # Connect to server
    client = znsocket.Client("http://localhost:5000")
-   
+
    # Create a distributed list
    my_list = znsocket.List(client, "my_list")
    my_list.append("item1")
    my_list.append("item2")
-   
+
    # Create a distributed dict
    my_dict = znsocket.Dict(client, "my_dict")
    my_dict["key1"] = "value1"
@@ -93,11 +93,11 @@ Multiple clients can share the same data structures and receive real-time update
    # Client 1
    client1 = znsocket.Client("http://localhost:5000")
    shared_list = znsocket.List(client1, "shared_data")
-   
+
    # Client 2
-   client2 = znsocket.Client("http://localhost:5000") 
+   client2 = znsocket.Client("http://localhost:5000")
    shared_list2 = znsocket.List(client2, "shared_data")
-   
+
    # Changes from client1 are immediately visible to client2
    shared_list.append("new_item")
    print(shared_list2[-1])  # "new_item"
@@ -113,10 +113,10 @@ znsocket supports nesting data structures within each other:
    user_data = znsocket.Dict(client, "user_data")
    user_scores = znsocket.List(client, "user_scores")
    user_scores.extend([85, 92, 78, 95])
-   
+
    user_data["name"] = "John"
    user_data["scores"] = user_scores  # List inside Dict
-   
+
    # Access nested data
    print(user_data["scores"][0])  # 85
 
@@ -125,11 +125,11 @@ znsocket supports nesting data structures within each other:
    // JavaScript: Store a Dict inside a List
    const users = new List({ client, key: 'users' });
    const user1 = new Dict({ client, key: 'user1' });
-   
+
    await user1.set('name', 'Alice');
    await user1.set('age', 30);
    await users.push(user1);  // Dict inside List
-   
+
    // Access nested data
    const firstUser = await users.get(0);
    const userName = await firstUser.get('name');  // 'Alice'

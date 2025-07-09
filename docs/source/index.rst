@@ -7,7 +7,7 @@ znsocket documentation
 ======================
 
 znsocket is a Python and JavaScript library that provides Redis-compatible API using websockets.
-It enables real-time synchronization of data structures between multiple clients and supports 
+It enables real-time synchronization of data structures between multiple clients and supports
 distributed applications with automatic reconnection capabilities.
 
 Key features:
@@ -26,4 +26,3 @@ Key features:
    python_api
    javascript_api
    examples
-
