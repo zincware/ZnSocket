@@ -74,3 +74,33 @@ def test_dict_with_list_and_dict(znsclient, run_npm_test, request):
 
     assert referenced_list[1] == "New Value"
     assert referenced_dict["new_key"] == "new_value"
+
+
+def test_dict_adapter_basic(znsclient, run_npm_test, request):
+    test_data = {"a": 1, "b": 2, "c": 3}
+    _ = znsocket.DictAdapter(socket=znsclient, key="dict:test", object=test_data)
+    run_npm_test(request.node.name, client_url=znsclient.address)
+
+
+def test_dict_adapter_keys(znsclient, run_npm_test, request):
+    test_data = {"key1": "value1", "key2": "value2"}
+    _ = znsocket.DictAdapter(socket=znsclient, key="dict:test", object=test_data)
+    run_npm_test(request.node.name, client_url=znsclient.address)
+
+
+def test_dict_adapter_values(znsclient, run_npm_test, request):
+    test_data = {"a": "hello", "b": "world", "c": 42}
+    _ = znsocket.DictAdapter(socket=znsclient, key="dict:test", object=test_data)
+    run_npm_test(request.node.name, client_url=znsclient.address)
+
+
+def test_dict_adapter_entries(znsclient, run_npm_test, request):
+    test_data = {"name": "John", "age": 30, "city": "New York"}
+    _ = znsocket.DictAdapter(socket=znsclient, key="dict:test", object=test_data)
+    run_npm_test(request.node.name, client_url=znsclient.address)
+
+
+def test_dict_adapter_get_item(znsclient, run_npm_test, request):
+    test_data = {"greeting": "Hello", "number": 123, "flag": True}
+    _ = znsocket.DictAdapter(socket=znsclient, key="dict:test", object=test_data)
+    run_npm_test(request.node.name, client_url=znsclient.address)

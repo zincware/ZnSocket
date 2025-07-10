@@ -11,7 +11,7 @@ from znsocket.abc import (
     ZnSocketObject,
 )
 from znsocket.client import Client
-from znsocket.utils import decode, encode
+from znsocket.utils import decode, encode, handle_error
 
 
 class Dict(MutableMapping, ZnSocketObject):
@@ -95,19 +95,29 @@ class Dict(MutableMapping, ZnSocketObject):
 
         value = self.redis.hget(self.key, key)
         if value is None:
-            raise KeyError(key)  # TODO: items can not be None?
+            if self._adapter_available:
+                value = self.socket.call(
+                    "adapter:get", key=self.key, method="__getitem__", dict_key=key
+                )
+            if value is None:
+                raise KeyError(key)
         value = decode(self, value)
         if isinstance(value, str):
             if value.startswith("znsocket.List:"):
-                key = value.split(":", 1)[1]
-                value = List(r=self.redis, key=key)
+                ref_key = value.split(":", 1)[1]
+                value = List(r=self.redis, key=ref_key)
             elif value.startswith("znsocket.Dict:"):
-                key = value.split(":", 1)[1]
-                value = Dict(r=self.redis, key=key, repr_type=self.repr_type)
+                ref_key = value.split(":", 1)[1]
+                value = Dict(r=self.redis, key=ref_key, repr_type=self.repr_type)
         return value
 
     def __setitem__(self, key: str, value: t.Any) -> None:
         from znsocket.objects.list_obj import List
+
+        if self._adapter_available:
+            from znsocket.exceptions import FrozenStorageError
+
+            raise FrozenStorageError(key=self.key)
 
         if isinstance(value, List):
             value = value.key
@@ -124,6 +134,11 @@ class Dict(MutableMapping, ZnSocketObject):
             self.socket.sio.emit("refresh", refresh_data, namespace="/znsocket")
 
     def __delitem__(self, key: str) -> None:
+        if self._adapter_available:
+            from znsocket.exceptions import FrozenStorageError
+
+            raise FrozenStorageError(key=self.key)
+
         if not self.redis.hexists(self.key, key):
             raise KeyError(key)
         self.redis.hdel(self.key, key)
@@ -138,46 +153,99 @@ class Dict(MutableMapping, ZnSocketObject):
         return iter(self.keys())
 
     def __len__(self) -> int:
-        return self.redis.hlen(self.key)
+        result = self.redis.hlen(self.key)
+        if result == 0 and self._adapter_available:
+            result = int(
+                self.socket.call("adapter:get", key=self.key, method="__len__")
+            )
+        return result
 
     def keys(self) -> list[str]:
-        return self.redis.hkeys(self.key)
+        result = self.redis.hkeys(self.key)
+        if len(result) == 0 and self._adapter_available:
+            result = self.socket.call("adapter:get", key=self.key, method="keys")
+        return result
 
     def values(self) -> list[t.Any]:
         from znsocket.objects.list_obj import List
 
+        vals = self.redis.hvals(self.key)
+        if len(vals) == 0 and self._adapter_available:
+            adapter_values = self.socket.call(
+                "adapter:get", key=self.key, method="values"
+            )
+            response = []
+            for value in adapter_values:
+                value = decode(self, value)
+                if isinstance(value, str):
+                    if value.startswith("znsocket.List:"):
+                        ref_key = value.split(":", 1)[1]
+                        value = List(r=self.redis, key=ref_key)
+                    elif value.startswith("znsocket.Dict:"):
+                        ref_key = value.split(":", 1)[1]
+                        value = Dict(
+                            r=self.redis, key=ref_key, repr_type=self.repr_type
+                        )
+                response.append(value)
+            return response
+
         response = []
-        for v in self.redis.hvals(self.key):
+        for v in vals:
             value = decode(self, v)
             if isinstance(value, str):
                 if value.startswith("znsocket.List:"):
-                    key = value.split(":", 1)[1]
-                    value = List(r=self.redis, key=key)
+                    ref_key = value.split(":", 1)[1]
+                    value = List(r=self.redis, key=ref_key)
                 elif value.startswith("znsocket.Dict:"):
-                    key = value.split(":", 1)[1]
-                    value = Dict(r=self.redis, key=key, repr_type=self.repr_type)
+                    ref_key = value.split(":", 1)[1]
+                    value = Dict(r=self.redis, key=ref_key, repr_type=self.repr_type)
             response.append(value)
         return response
 
     def items(self) -> list[t.Tuple[str, t.Any]]:
         from znsocket.objects.list_obj import List
 
+        all_items = self.redis.hgetall(self.key)
+        if len(all_items) == 0 and self._adapter_available:
+            adapter_items = self.socket.call(
+                "adapter:get", key=self.key, method="items"
+            )
+            response = []
+            for k, v in adapter_items:
+                value = decode(self, v)
+                if isinstance(value, str):
+                    if value.startswith("znsocket.List:"):
+                        ref_key = value.split(":", 1)[1]
+                        value = List(r=self.redis, key=ref_key)
+                    elif value.startswith("znsocket.Dict:"):
+                        ref_key = value.split(":", 1)[1]
+                        value = Dict(
+                            r=self.redis, key=ref_key, repr_type=self.repr_type
+                        )
+                response.append((k, value))
+            return response
+
         response = []
-        for k, v in self.redis.hgetall(self.key).items():
+        for k, v in all_items.items():
             value = decode(self, v)
             if isinstance(value, str):
                 if value.startswith("znsocket.List:"):
-                    key = value.split(":", 1)[1]
-                    value = List(r=self.redis, key=key)
+                    ref_key = value.split(":", 1)[1]
+                    value = List(r=self.redis, key=ref_key)
                 elif value.startswith("znsocket.Dict:"):
-                    key = value.split(":", 1)[1]
-                    value = Dict(r=self.redis, key=key, repr_type=self.repr_type)
+                    ref_key = value.split(":", 1)[1]
+                    value = Dict(r=self.redis, key=ref_key, repr_type=self.repr_type)
 
             response.append((k, value))
         return response
 
     def __contains__(self, key: str) -> bool:
-        return self.redis.hexists(self.key, key)
+        result = self.redis.hexists(self.key, key)
+        if not result and self._adapter_available:
+            result = self.socket.call(
+                "adapter:get", key=self.key, method="__contains__", dict_key=key
+            )
+        return result
 
     def __repr__(self) -> str:
         if self.repr_type == "keys":
@@ -203,10 +271,28 @@ class Dict(MutableMapping, ZnSocketObject):
         This will not trigger any callbacks as
         the data is not modified.
         """
-        if not self.redis.copy(self.key, f"znsocket.Dict:{key}"):
-            raise ValueError("Could not copy dict")
-
-        return Dict(r=self.redis, key=key, socket=self.socket)
+        if self._adapter_available:
+            result = self.socket.call(
+                "adapter:get", key=self.key, method="copy", target=key
+            )
+            handle_error(result)
+            return Dict(
+                r=self.redis,
+                key=key,
+                socket=self.socket,
+                converter=self.converter,
+                convert_nan=self.convert_nan,
+            )
+        else:
+            if not self.redis.copy(self.key, f"znsocket.Dict:{key}"):
+                raise ValueError("Could not copy dict")
+            return Dict(
+                r=self.redis,
+                key=key,
+                socket=self.socket,
+                converter=self.converter,
+                convert_nan=self.convert_nan,
+            )
 
     def on_refresh(self, callback: t.Callable[[RefreshDataTypeDict], None]) -> None:
         if self.socket is None:
@@ -214,9 +300,14 @@ class Dict(MutableMapping, ZnSocketObject):
 
         self.socket.refresh_callbacks[self.key] = callback
 
-    def update(self, *args, **kwargs):
+    def update(self, *args, **kwargs):  # noqa: C901
         """Update the dict with another dict or iterable."""
         from znsocket.objects.list_obj import List
+
+        if self._adapter_available:
+            from znsocket.exceptions import FrozenStorageError
+
+            raise FrozenStorageError(key=self.key)
 
         if len(args) > 1:
             raise TypeError("update expected at most 1 argument, got %d" % len(args))

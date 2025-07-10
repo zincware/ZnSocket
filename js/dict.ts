@@ -19,12 +19,21 @@ export class Dict {
   public readonly _key: string;
   private readonly _callbacks?: DictCallbacks;
   private readonly _refreshCallback?: (data: { target: string; data: any }) => void;
+  private _adapterAvailable: boolean = false;
+  private _adapterCheckPromise: Promise<boolean> | null = null;
 
   constructor({ client, socket, key, callbacks }: DictOptions) {
     this._client = client;
     this._socket = socket || (client instanceof ZnSocketClient ? client : undefined);
     this._key = `znsocket.Dict:${key}`;
     this._callbacks = callbacks;
+
+    if (this._socket) {
+      this._adapterCheckPromise = this._client.checkAdapter(this._key).then(available => {
+        this._adapterAvailable = available;
+        return available;
+      });
+    }
 
     // Use Proxy to enable bracket notation for getting and setting
     return new Proxy(this, {
@@ -49,7 +58,14 @@ export class Dict {
   }
 
   async length(): Promise<number> {
-    return this._client.hLen(this._key);
+    const length = await this._client.hLen(this._key);
+    if (length === 0 && this._adapterCheckPromise) {
+      const adapterAvailable = await this._adapterCheckPromise;
+      if (adapterAvailable) {
+        return await this._client.adapterGet(this._key, "__len__");
+      }
+    }
+    return length;
   }
 
   async set(key: string, value: any): Promise<any> {
@@ -100,22 +116,49 @@ export class Dict {
   }
 
   async get(key: string): Promise<any | null> {
-    return this._client.hGet(this._key, key).then((value) => {
-      if (value === null) {
-        return null;
-      }
-      value = JSON.parse(value); // Parse the value
-      if (typeof value === "string") {
-        if (value.startsWith("znsocket.List:")) {
-          const refKey = value.split(/:(.+)/)[1];
-          return new ZnSocketList({ client: this._client, socket: this._socket, key: refKey });
-        } else if (value.startsWith("znsocket.Dict:")) {
-          const refKey = value.split(/:(.+)/)[1];
-          return new Dict({ client: this._client, socket: this._socket, key: refKey });
+    let value = await this._client.hGet(this._key, key);
+
+    if (value === null && this._adapterCheckPromise) {
+      const adapterAvailable = await this._adapterCheckPromise;
+      if (adapterAvailable) {
+        value = await this._client.adapterGet(this._key, "__getitem__", key);
+        if (value === null) return null;
+
+        if (typeof value === "string") {
+          try {
+            value = JSON.parse(value);
+          } catch {
+            // not JSON, return as is
+          }
         }
+
+        if (typeof value === "string") {
+          if (value.startsWith("znsocket.List:")) {
+            const refKey = value.split(/:(.+)/)[1];
+            return new ZnSocketList({ client: this._client, socket: this._socket, key: refKey });
+          } else if (value.startsWith("znsocket.Dict:")) {
+            const refKey = value.split(/:(.+)/)[1];
+            return new Dict({ client: this._client, socket: this._socket, key: refKey });
+          }
+        }
+
+        return value;
       }
-      return value;
-    });
+    }
+
+    if (value === null) return null;
+
+    value = JSON.parse(value);
+    if (typeof value === "string") {
+      if (value.startsWith("znsocket.List:")) {
+        const refKey = value.split(/:(.+)/)[1];
+        return new ZnSocketList({ client: this._client, socket: this._socket, key: refKey });
+      } else if (value.startsWith("znsocket.Dict:")) {
+        const refKey = value.split(/:(.+)/)[1];
+        return new Dict({ client: this._client, socket: this._socket, key: refKey });
+      }
+    }
+    return value;
   }
 
   async clear(): Promise<any> {
@@ -123,11 +166,47 @@ export class Dict {
   }
 
   async keys(): Promise<string[]> {
-    return this._client.hKeys(this._key);
+    const keys = await this._client.hKeys(this._key);
+    if (keys.length === 0 && this._adapterCheckPromise) {
+      const adapterAvailable = await this._adapterCheckPromise;
+      if (adapterAvailable) {
+        return await this._client.adapterGet(this._key, "keys");
+      }
+    }
+    return keys;
   }
 
   async values(): Promise<any[]> {
     const values = await this._client.hVals(this._key);
+    if (values.length === 0 && this._adapterCheckPromise) {
+      const adapterAvailable = await this._adapterCheckPromise;
+      if (adapterAvailable) {
+        const adapterValues = await this._client.adapterGet(this._key, "values");
+        return adapterValues.map((x: any) => {
+          // Parse the JSON encoded value
+          let value = x;
+          if (typeof x === "string") {
+            try {
+              value = JSON.parse(x);
+            } catch {
+              // If parsing fails, use the original value
+              value = x;
+            }
+          }
+
+          if (typeof value === "string") {
+            if (value.startsWith("znsocket.List:")) {
+              const refKey = value.split(/:(.+)/)[1];
+              return new ZnSocketList({ client: this._client, socket: this._socket, key: refKey });
+            } else if (value.startsWith("znsocket.Dict:")) {
+              const refKey = value.split(/:(.+)/)[1];
+              return new Dict({ client: this._client, socket: this._socket, key: refKey });
+            }
+          }
+          return value;
+        });
+      }
+    }
     return values.map((x) => {
       const value = JSON.parse(x);
       if (typeof value === "string") {
@@ -145,6 +224,35 @@ export class Dict {
 
   async entries(): Promise<[string, any][]> {
     const entries = await this._client.hGetAll(this._key);
+    if (Object.keys(entries).length === 0 && this._adapterCheckPromise) {
+      const adapterAvailable = await this._adapterCheckPromise;
+      if (adapterAvailable) {
+        const adapterEntries = await this._client.adapterGet(this._key, "items");
+        return adapterEntries.map(([key, val]: [string, any]) => {
+          // Parse the JSON encoded value
+          let value = val;
+          if (typeof val === "string") {
+            try {
+              value = JSON.parse(val);
+            } catch {
+              // If parsing fails, use the original value
+              value = val;
+            }
+          }
+
+          if (typeof value === "string") {
+            if (value.startsWith("znsocket.List:")) {
+              const refKey = value.split(/:(.+)/)[1];
+              return [key, new ZnSocketList({ client: this._client, socket: this._socket, key: refKey })];
+            } else if (value.startsWith("znsocket.Dict:")) {
+              const refKey = value.split(/:(.+)/)[1];
+              return [key, new Dict({ client: this._client, socket: this._socket, key: refKey })];
+            }
+          }
+          return [key, value];
+        });
+      }
+    }
     return Object.entries(entries).map(([key, value]) => {
       const parsedValue = JSON.parse(value);
 

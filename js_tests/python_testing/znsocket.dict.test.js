@@ -64,3 +64,31 @@ test("test_dict_with_list_and_dict", async () => {
   await referencedList.push("New Value");
   await referencedDict.set("new_key", "new_value");
 });
+
+test("test_dict_adapter_basic", async () => {
+  expect(await dct.length()).toBe(3);
+  expect(await dct.get("a")).toBe(1);
+  expect(await dct.get("b")).toBe(2);
+  expect(await dct.get("c")).toBe(3);
+});
+
+test("test_dict_adapter_keys", async () => {
+  const keys = await dct.keys();
+  expect(keys.sort()).toEqual(["key1", "key2"]);
+});
+
+test("test_dict_adapter_values", async () => {
+  const values = await dct.values();
+  expect(values.sort()).toEqual([42, "hello", "world"]);
+});
+
+test("test_dict_adapter_entries", async () => {
+  const entries = await dct.entries();
+  expect(entries.sort()).toEqual([["age", 30], ["city", "New York"], ["name", "John"]]);
+});
+
+test("test_dict_adapter_get_item", async () => {
+  expect(await dct.get("greeting")).toBe("Hello");
+  expect(await dct.get("number")).toBe(123);
+  expect(await dct.get("flag")).toBe(true);
+});

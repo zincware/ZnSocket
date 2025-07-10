@@ -279,7 +279,16 @@ export class Client {
     return new Promise((resolve, reject) => {
       let kwargs: any = { key: key, method: method };
       if (method === "__getitem__" && args.length > 0) {
-        kwargs.index = args[0];
+        if (key.startsWith("znsocket.List:")) {
+          kwargs.index = args[0];
+        } else if (key.startsWith("znsocket.Dict:")) {
+          kwargs.dict_key = args[0];
+        }
+      }
+      if (method === "__contains__" && args.length > 0) {
+        if (key.startsWith("znsocket.Dict:")) {
+          kwargs.dict_key = args[0];
+        }
       }
       this._socket.emit("adapter:get", [[], kwargs], (data: any) => {
         resolve(data);
