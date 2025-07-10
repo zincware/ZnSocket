@@ -71,7 +71,7 @@ export class List {
       },
     });
   }
-  
+
   async length(): Promise<number> {
 
     const length = await this._client.lLen(this._key);
