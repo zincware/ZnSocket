@@ -71,7 +71,7 @@ export class List {
       },
     });
   }
-
+  
   async length(): Promise<number> {
 
     const length = await this._client.lLen(this._key);
@@ -79,7 +79,7 @@ export class List {
       const adapterAvailable = await this._adapterCheckPromise;
       if (adapterAvailable) {
         const value = await this._client.adapterGet(this._key, "__len__");
-        console.log(`Adapter length for ${this._key} - ${value}`);
+        console.error(`Adapter length for ${this._key} - ${value}`);
         return value
       }
     }
@@ -87,10 +87,10 @@ export class List {
     // Check fallback for length if policy is not "copy"
     if (length === 0 && this._fallback_object) {
       const value = await this._fallback_object.length();
-      console.log(`Fallback length for ${this._key} - ${value}`);
+      console.error(`Fallback length for ${this._key} - ${value}`);
       return value;
     }
-    console.log(`Length for ${this._key} - ${length}`);
+    console.error(`Length for ${this._key} - ${length}`);
     return length;
   }
 
