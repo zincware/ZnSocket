@@ -145,7 +145,7 @@ export class Client {
     return new Promise((resolve, reject) => {
       this._socket.emit(
         "lrange",
-        [[key, start, end - 1], {}],
+        [[key, start, end], {}],
         (data: any) => {
           resolve(data["data"]);
         });
