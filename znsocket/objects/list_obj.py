@@ -120,10 +120,37 @@ class List(MutableSequence, ZnSocketObject):
         from znsocket.objects.dict_obj import Dict
 
         single_item = isinstance(index, int)
+        original_slice = isinstance(index, slice)
+        
         if single_item:
             index = [index]
-        if isinstance(index, slice):
-            index = list(range(*index.indices(len(self))))
+        elif original_slice:
+            # If we have an adapter and it's a slice, use the efficient slice method
+            if self._adapter_available:
+                start, stop, step = index.indices(len(self))
+                adapter_values = self.socket.call(
+                    "adapter:get",
+                    key=self.key,
+                    method="slice",
+                    start=start,
+                    stop=stop,
+                    step=step,
+                )
+                items = []
+                for value in adapter_values:
+                    item = decode(self, value)
+                    if isinstance(item, str):
+                        if item.startswith("znsocket.List:"):
+                            key = item.split(":", 1)[1]
+                            item = List(r=self.redis, key=key)
+                        elif item.startswith("znsocket.Dict:"):
+                            key = item.split(":", 1)[1]
+                            item = Dict(r=self.redis, key=key)
+                    items.append(item)
+                return items
+            else:
+                # Fallback to individual index calls for non-adapter slices
+                index = list(range(*index.indices(len(self))))
 
         pipeline = self.redis.pipeline(**self._pipeline_kwargs)
         for i in index:

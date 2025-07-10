@@ -42,3 +42,21 @@ def test_list_adapter_znsocket(znsclient, run_npm_test, request):
     lst = znsocket.List(r=znsclient, key="list:test")
     assert list(lst) == data
     run_npm_test(request.node.name, client_url=znsclient.address)
+
+
+def test_list_adapter_slice_basic(znsclient, run_npm_test, request):
+    data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    _ = znsocket.ListAdapter(socket=znsclient, key="list:test", object=data)
+    run_npm_test(request.node.name, client_url=znsclient.address)
+
+
+def test_list_adapter_slice_with_step(znsclient, run_npm_test, request):
+    data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    _ = znsocket.ListAdapter(socket=znsclient, key="list:test", object=data)
+    run_npm_test(request.node.name, client_url=znsclient.address)
+
+
+def test_list_adapter_slice_negative_indices(znsclient, run_npm_test, request):
+    data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    _ = znsocket.ListAdapter(socket=znsclient, key="list:test", object=data)
+    run_npm_test(request.node.name, client_url=znsclient.address)

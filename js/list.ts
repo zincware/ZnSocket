@@ -66,8 +66,38 @@ export class List {
     return length;
   }
 
-  async slice(start: number, end: number): Promise<any[]> {
-    const values = await this._client.lRange(this._key, start, end);
+  async slice(start: number, end: number, step: number = 1): Promise<any[]> {
+    // Check if adapter is available and use it for slicing
+    if (this._adapterCheckPromise) {
+      const adapterAvailable = await this._adapterCheckPromise;
+      if (adapterAvailable) {
+        const length = await this.length();
+        // Convert negative indices to positive
+        if (start < 0) start = Math.max(0, length + start);
+        if (end < 0) end = Math.max(0, length + end);
+        
+        const adapterValues = await this._client.adapterGet(this._key, "slice", start, end, step);
+        return adapterValues.map((value: any) => {
+          value = JSON.parse(value);
+
+          if (typeof value === "string") {
+            if (value.startsWith("znsocket.List:")) {
+              const refKey = value.split(/:(.+)/)[1];
+              return new List({ client: this._client, socket: this._socket, key: refKey });
+            } else if (value.startsWith("znsocket.Dict:")) {
+              const refKey = value.split(/:(.+)/)[1];
+              return new ZnSocketDict({ client: this._client, socket: this._socket, key: refKey });
+            }
+          }
+          return value;
+        });
+      }
+    }
+    
+    // Fallback to Redis lRange for non-adapter lists
+    // Note: Redis lRange is inclusive on both ends, but JavaScript slice is exclusive on end
+    // So we adjust end-1 to match JavaScript slice semantics
+    const values = await this._client.lRange(this._key, start, end - 1);
     return values.map((value) => JSON.parse(value));
   }
 
@@ -125,14 +155,8 @@ export class List {
         value = await this._client.adapterGet(this._key, "__getitem__", index);
         if (value === null) return null;
 
-        if (typeof value === "string") {
-          try {
-            value = JSON.parse(value);
-          } catch {
-            // not JSON, return as is
-          }
-        }
-
+        value = JSON.parse(value);
+        
         if (typeof value === "string") {
           if (value.startsWith("znsocket.List:")) {
             const refKey = value.split(/:(.+)/)[1];

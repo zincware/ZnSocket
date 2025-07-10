@@ -83,12 +83,21 @@ class ListAdapter:
         if method == "__len__":
             return len(self.object)
         elif method == "__getitem__":
-            index: list[int] = kwargs["index"]
+            index = kwargs["index"]
             try:
                 value = self.object[index]
             except Exception as e:
                 value = {"error": {"msg": str(e), "type": type(e).__name__}}
             return encode(self, value)
+        elif method == "slice":
+            start: int = kwargs.get("start", 0)
+            stop: int = kwargs.get("stop", len(self.object))
+            step: int = kwargs.get("step", 1)
+            try:
+                values = self.object[start:stop:step]
+                return [encode(self, value) for value in values]
+            except Exception as e:
+                return {"error": {"msg": str(e), "type": type(e).__name__}}
         elif method == "copy":
             from znsocket import List
             # TODO: support Segments and List

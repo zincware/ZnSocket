@@ -290,6 +290,13 @@ export class Client {
           kwargs.dict_key = args[0];
         }
       }
+      if (method === "slice" && args.length >= 2) {
+        kwargs.start = args[0];
+        kwargs.stop = args[1];
+        if (args.length > 2) {
+          kwargs.step = args[2];
+        }
+      }
       this._socket.emit("adapter:get", [[], kwargs], (data: any) => {
         resolve(data);
       });

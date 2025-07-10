@@ -124,13 +124,7 @@ export class Dict {
         value = await this._client.adapterGet(this._key, "__getitem__", key);
         if (value === null) return null;
 
-        if (typeof value === "string") {
-          try {
-            value = JSON.parse(value);
-          } catch {
-            // not JSON, return as is
-          }
-        }
+        value = JSON.parse(value);
 
         if (typeof value === "string") {
           if (value.startsWith("znsocket.List:")) {

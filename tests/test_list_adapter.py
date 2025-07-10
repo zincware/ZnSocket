@@ -179,3 +179,99 @@ def test_list_adapter_w_converter_copy(client, request):
     assert len(new_lst) == 3
     new_lst_array = np.array(new_lst)
     npt.assert_array_equal(new_lst_array, adapter.object)
+
+
+@pytest.mark.parametrize(
+    "client",
+    ["znsclient", "znsclient_w_redis"],
+)
+def test_list_adapter_slice_basic(client, request):
+    """Test basic slicing with list adapter"""
+    c = request.getfixturevalue(client)
+    key = "list:test"
+    test_data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    _ = znsocket.ListAdapter(socket=c, key=key, object=test_data)
+    lst = znsocket.List(r=c, key=key)
+    
+    # Test basic slice
+    assert lst[1:5] == test_data[1:5]
+    assert lst[:3] == test_data[:3]
+    assert lst[7:] == test_data[7:]
+    assert lst[:] == test_data[:]
+
+
+@pytest.mark.parametrize(
+    "client",
+    ["znsclient", "znsclient_w_redis"],
+)
+def test_list_adapter_slice_with_step(client, request):
+    """Test slicing with step with list adapter"""
+    c = request.getfixturevalue(client)
+    key = "list:test"
+    test_data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    _ = znsocket.ListAdapter(socket=c, key=key, object=test_data)
+    lst = znsocket.List(r=c, key=key)
+    
+    # Test slice with step
+    assert lst[::2] == test_data[::2]
+    assert lst[1::2] == test_data[1::2]
+    assert lst[1:8:2] == test_data[1:8:2]
+
+
+@pytest.mark.parametrize(
+    "client",
+    ["znsclient", "znsclient_w_redis"],
+)
+def test_list_adapter_slice_negative_indices(client, request):
+    """Test slicing with negative indices with list adapter"""
+    c = request.getfixturevalue(client)
+    key = "list:test"
+    test_data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    _ = znsocket.ListAdapter(socket=c, key=key, object=test_data)
+    lst = znsocket.List(r=c, key=key)
+    
+    # Test slice with negative indices
+    assert lst[-3:] == test_data[-3:]
+    assert lst[:-2] == test_data[:-2]
+    assert lst[-5:-1] == test_data[-5:-1]
+
+
+@pytest.mark.parametrize(
+    "client",
+    ["znsclient", "znsclient_w_redis"],
+)
+def test_list_adapter_slice_empty(client, request):
+    """Test slicing that returns empty list"""
+    c = request.getfixturevalue(client)
+    key = "list:test"
+    test_data = [1, 2, 3, 4, 5]
+    _ = znsocket.ListAdapter(socket=c, key=key, object=test_data)
+    lst = znsocket.List(r=c, key=key)
+    
+    # Test empty slices
+    assert lst[10:20] == test_data[10:20]  # Should be empty
+    assert lst[3:3] == test_data[3:3]      # Should be empty
+
+
+@pytest.mark.parametrize(
+    "client",
+    ["znsclient", "znsclient_w_redis"],
+)
+def test_list_adapter_slice_with_converter(client, request):
+    """Test slicing with converter"""
+    c = request.getfixturevalue(client)
+    key = "list:test"
+    test_data = [np.array([1, 2]), np.array([3, 4]), np.array([5, 6]), np.array([7, 8])]
+    _ = znsocket.ListAdapter(
+        socket=c,
+        key=key,
+        object=test_data,
+        converter=[znjson.converter.NumpyConverter],
+    )
+    lst = znsocket.List(r=c, key=key, converter=[znjson.converter.NumpyConverter])
+    
+    # Test slice with converter
+    sliced = lst[1:3]
+    assert len(sliced) == 2
+    npt.assert_array_equal(sliced[0], test_data[1])
+    npt.assert_array_equal(sliced[1], test_data[2])
