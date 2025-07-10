@@ -367,6 +367,7 @@ def test_list_adapter_object_clear_and_extend(client, request):
     assert lst[1:3] == [20, 30]
     assert lst[:2] == [10, 20]
 
+
 @pytest.mark.parametrize(
     "client",
     ["znsclient", "znsclient_w_redis"],  # , "redisclient", "empty" TODO
