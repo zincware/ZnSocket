@@ -78,19 +78,14 @@ export class List {
     if (length === 0 && this._adapterCheckPromise) {
       const adapterAvailable = await this._adapterCheckPromise;
       if (adapterAvailable) {
-        const value = await this._client.adapterGet(this._key, "__len__");
-        console.error(`Adapter length for ${this._key} - ${value}`);
-        return value
+        return await this._client.adapterGet(this._key, "__len__");
       }
     }
 
     // Check fallback for length if policy is not "copy"
     if (length === 0 && this._fallback_object) {
-      const value = await this._fallback_object.length();
-      console.error(`Fallback length for ${this._key} - ${value}`);
-      return value;
+      return await this._fallback_object.length();
     }
-    console.error(`Length for ${this._key} - ${length}`);
     return length;
   }
 
