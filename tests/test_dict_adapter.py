@@ -273,3 +273,156 @@ def test_dict_adapter_convert_nan(client, request):
     assert dct["inf"] is None
     assert dct["nan"] is None
     assert dct["ninf"] is None
+
+
+@pytest.mark.parametrize(
+    "client",
+    ["znsclient", "znsclient_w_redis"],
+)
+def test_dict_adapter_object_update(client, request):
+    """Test what happens when the adapter object is updated"""
+    c = request.getfixturevalue(client)
+    key = "dict:test"
+    test_data = {"a": 1, "b": 2, "c": 3}
+    adapter = znsocket.DictAdapter(socket=c, key=key, object=test_data)
+    dct = znsocket.Dict(r=c, key=key)
+    
+    # Initial state
+    assert len(dct) == 3
+    assert dct["a"] == 1
+    assert dct["b"] == 2
+    assert dct["c"] == 3
+    assert dict(dct) == {"a": 1, "b": 2, "c": 3}
+    assert set(dct.keys()) == {"a", "b", "c"}
+    assert set(dct.values()) == {1, 2, 3}
+    
+    # Update the adapter object
+    adapter.object["d"] = 4
+    adapter.object["a"] = 10
+    adapter.object["e"] = 5
+    
+    # The Dict should reflect the changes immediately
+    assert len(dct) == 5  # 3 + 2 new keys
+    assert dct["a"] == 10  # Modified value
+    assert dct["b"] == 2   # Unchanged
+    assert dct["c"] == 3   # Unchanged
+    assert dct["d"] == 4   # New key
+    assert dct["e"] == 5   # New key
+    
+    # Test keys, values, items with updated object
+    assert set(dct.keys()) == {"a", "b", "c", "d", "e"}
+    assert set(dct.values()) == {10, 2, 3, 4, 5}
+    assert set(dct.items()) == {("a", 10), ("b", 2), ("c", 3), ("d", 4), ("e", 5)}
+    
+    # Test contains with updated object
+    assert "a" in dct
+    assert "d" in dct
+    assert "e" in dct
+    assert "f" not in dct
+    
+    # Test get with updated object
+    assert dct.get("a") == 10
+    assert dct.get("d") == 4
+    assert dct.get("f") is None
+    assert dct.get("f", "default") == "default"
+    
+    # Remove elements
+    del adapter.object["b"]
+    adapter.object.pop("c")
+    
+    # Should reflect removals
+    assert len(dct) == 3
+    assert set(dct.keys()) == {"a", "d", "e"}
+    assert dict(dct) == {"a": 10, "d": 4, "e": 5}
+    assert "b" not in dct
+    assert "c" not in dct
+
+
+@pytest.mark.parametrize(
+    "client",
+    ["znsclient", "znsclient_w_redis"],
+)
+def test_dict_adapter_object_clear_and_update(client, request):
+    """Test what happens when the adapter object is cleared and updated"""
+    c = request.getfixturevalue(client)
+    key = "dict:test"
+    test_data = {"a": 1, "b": 2, "c": 3}
+    adapter = znsocket.DictAdapter(socket=c, key=key, object=test_data)
+    dct = znsocket.Dict(r=c, key=key)
+    
+    # Initial state
+    assert len(dct) == 3
+    assert dict(dct) == {"a": 1, "b": 2, "c": 3}
+    
+    # Clear the adapter object
+    adapter.object.clear()
+    
+    # The Dict should reflect the empty state
+    assert len(dct) == 0
+    assert dict(dct) == {}
+    assert list(dct.keys()) == []
+    assert list(dct.values()) == []
+    assert list(dct.items()) == []
+    
+    # Test accessing cleared dict
+    assert "a" not in dct
+    assert dct.get("a") is None
+    
+    # Update with new data
+    adapter.object.update({"x": 10, "y": 20, "z": 30})
+    
+    # The Dict should reflect the new data
+    assert len(dct) == 3
+    assert dict(dct) == {"x": 10, "y": 20, "z": 30}
+    assert dct["x"] == 10
+    assert dct["y"] == 20
+    assert dct["z"] == 30
+    
+    # Test operations with new data
+    assert set(dct.keys()) == {"x", "y", "z"}
+    assert set(dct.values()) == {10, 20, 30}
+    assert "x" in dct
+    assert "a" not in dct
+    assert dct.get("x") == 10
+    assert dct.get("a") is None
+
+
+@pytest.mark.parametrize(
+    "client",
+    ["znsclient", "znsclient_w_redis"],
+)
+def test_dict_adapter_object_nested_update(client, request):
+    """Test what happens when nested objects in the adapter are updated"""
+    c = request.getfixturevalue(client)
+    key = "dict:test"
+    nested_list = [1, 2, 3]
+    nested_dict = {"inner": "value"}
+    test_data = {"list": nested_list, "dict": nested_dict, "simple": "text"}
+    adapter = znsocket.DictAdapter(socket=c, key=key, object=test_data)
+    dct = znsocket.Dict(r=c, key=key)
+    
+    # Initial state
+    assert len(dct) == 3
+    assert dct["list"] == [1, 2, 3]
+    assert dct["dict"] == {"inner": "value"}
+    assert dct["simple"] == "text"
+    
+    # Update nested objects
+    nested_list.append(4)
+    nested_list[0] = 10
+    nested_dict["inner"] = "updated"
+    nested_dict["new"] = "added"
+    
+    # The Dict should reflect the changes to nested objects
+    assert dct["list"] == [10, 2, 3, 4]
+    assert dct["dict"] == {"inner": "updated", "new": "added"}
+    assert dct["simple"] == "text"  # Unchanged
+    
+    # Replace nested objects
+    adapter.object["list"] = ["a", "b", "c"]
+    adapter.object["dict"] = {"completely": "different"}
+    
+    # Should reflect the replacements
+    assert dct["list"] == ["a", "b", "c"]
+    assert dct["dict"] == {"completely": "different"}
+    assert dct["simple"] == "text"
