@@ -38,6 +38,12 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y pandoc
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.17
+      - name: Install packages with Bun
+        run: bun install
 
       - name: Build documentation
         run: |

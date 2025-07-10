@@ -12,6 +12,8 @@ export interface ListOptions {
   key: string;
   socket?: ZnSocketClient;
   callbacks?: ListCallbacks;
+  fallback?: string;
+  fallbackPolicy?: "copy" | "frozen";
 }
 
 export class List {
@@ -22,12 +24,16 @@ export class List {
   private _refreshCallback?: (data: { target: string; data: any }) => void;
   private _adapterAvailable: boolean = false;
   private _adapterCheckPromise: Promise<boolean> | null = null;
+  private readonly _fallback?: string;
+  private readonly _fallbackPolicy?: "copy" | "frozen";
 
-  constructor({ client, key, socket, callbacks }: ListOptions) {
+  constructor({ client, key, socket, callbacks, fallback, fallbackPolicy }: ListOptions) {
     this._client = client;
     this._key = `znsocket.List:${key}`;
     this._callbacks = callbacks;
     this._socket = socket || (client instanceof ZnSocketClient ? client : undefined);
+    this._fallback = fallback;
+    this._fallbackPolicy = fallbackPolicy;
 
     if (this._socket) {
       this._adapterCheckPromise = this._client.checkAdapter(this._key).then(available => {
@@ -35,6 +41,8 @@ export class List {
         return available;
       });
     }
+
+    // Fallback data will be initialized on first access
 
     return new Proxy(this, {
       get: (target, prop, receiver) => {
@@ -55,7 +63,54 @@ export class List {
     });
   }
 
+  private _fallbackInitialized = false;
+
+  private async _initializeFallbackData(): Promise<void> {
+    if (!this._fallback || this._fallbackPolicy !== "copy" || this._fallbackInitialized) return;
+
+    const currentLength = await this._client.lLen(this._key);
+    if (currentLength === 0 && !this._adapterAvailable) {
+      const fallbackList = new List({
+        client: this._client,
+        key: this._fallback.replace("znsocket.List:", ""),
+        socket: this._socket
+      });
+      const fallbackLength = await fallbackList.length();
+      if (fallbackLength > 0) {
+        await this._copyFromFallback(fallbackList);
+      }
+    }
+    this._fallbackInitialized = true;
+  }
+
+  private async _copyFromFallback(fallbackList: List): Promise<void> {
+    const fallbackData = await fallbackList.slice(0, await fallbackList.length());
+    for (const item of fallbackData) {
+      await this._client.rPush(this._key, JSON.stringify(item));
+    }
+  }
+
+  private async _copyFallbackIfNeeded(): Promise<void> {
+    if (!this._fallback || !this._fallbackPolicy) return;
+
+    const currentLength = await this._client.lLen(this._key);
+    if (currentLength === 0 && !this._adapterAvailable) {
+      const fallbackList = new List({
+        client: this._client,
+        key: this._fallback.replace("znsocket.List:", ""),
+        socket: this._socket
+      });
+      const fallbackLength = await fallbackList.length();
+      if (fallbackLength > 0) {
+        await this._copyFromFallback(fallbackList);
+      }
+    }
+  }
+
   async length(): Promise<number> {
+    // Initialize fallback data if needed
+    await this._initializeFallbackData();
+
     const length = await this._client.lLen(this._key);
     if (length === 0 && this._adapterCheckPromise) {
       const adapterAvailable = await this._adapterCheckPromise;
@@ -63,10 +118,24 @@ export class List {
         return await this._client.adapterGet(this._key, "__len__");
       }
     }
+
+    // Check fallback for length if policy is not "copy"
+    if (length === 0 && this._fallback && this._fallbackPolicy !== "copy") {
+      const fallbackList = new List({
+        client: this._client,
+        key: this._fallback.replace("znsocket.List:", ""),
+        socket: this._socket,
+      });
+      return await fallbackList.length();
+    }
+
     return length;
   }
 
   async slice(start: number, end: number, step: number = 1): Promise<any[]> {
+    // Initialize fallback data if needed
+    await this._initializeFallbackData();
+
     // Check if adapter is available and use it for slicing
     if (this._adapterCheckPromise) {
       const adapterAvailable = await this._adapterCheckPromise;
@@ -95,13 +164,25 @@ export class List {
     }
 
     // Fallback to Redis lRange for non-adapter lists
-    // Note: Redis lRange is inclusive on both ends, but JavaScript slice is exclusive on end
-    // So we adjust end-1 to match JavaScript slice semantics
     const values = await this._client.lRange(this._key, start, end - 1);
+
+    // Check fallback for slice if policy is not "copy"
+    if (values.length === 0 && this._fallback && this._fallbackPolicy !== "copy") {
+      const fallbackList = new List({
+        client: this._client,
+        key: this._fallback.replace("znsocket.List:", ""),
+        socket: this._socket,
+      });
+      return await fallbackList.slice(start, end, step);
+    }
+
     return values.map((value) => JSON.parse(value));
   }
 
   async push(value: any): Promise<any> {
+    // Check if we need to copy fallback data before modifying
+    await this._copyFallbackIfNeeded();
+
     if (this._callbacks?.push) {
       await this._callbacks.push(value);
     }
@@ -147,6 +228,9 @@ export class List {
   }
 
   async get(index: number): Promise<any | null> {
+    // Initialize fallback data if needed
+    await this._initializeFallbackData();
+
     let value = await this._client.lIndex(this._key, index);
 
     if (value === null && this._adapterCheckPromise) {
@@ -168,6 +252,23 @@ export class List {
         }
 
         return value;
+      }
+    }
+
+    // Check fallback for item access if policy is not "copy"
+    if (value === null && this._fallback && this._fallbackPolicy !== "copy") {
+      const fallbackList = new List({
+        client: this._client,
+        key: this._fallback.replace("znsocket.List:", ""),
+        socket: this._socket
+      });
+      try {
+        const fallbackValue = await fallbackList.get(index);
+        if (fallbackValue !== null) {
+          return fallbackValue;
+        }
+      } catch (error) {
+        // Fallback doesn't have this index either
       }
     }
 

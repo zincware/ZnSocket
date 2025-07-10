@@ -570,3 +570,27 @@ def test_invalid_json(client, request):
     assert dct[0] is None
     assert dct[1] is None
     assert dct[2] is None
+
+
+@pytest.mark.parametrize(
+    "client",
+    ["znsclient", "znsclient_w_redis"],
+)
+def test_list_list_fallback_get(client, request):
+    """Test what happens when nested objects in the adapter are updated"""
+    c = request.getfixturevalue(client)
+    key = "list:test"
+    fallback_key = "list:fallback"
+    fallback_lst = znsocket.List(r=c, key=fallback_key)
+    fallback_lst.extend(["a", "b", "c"])
+    lst = znsocket.List(r=c, key=key, fallback=fallback_key, fallback_policy="frozen")
+
+    assert len(lst) == 3
+    assert lst[0] == "a"
+    assert lst[1] == "b"
+    assert lst[2] == "c"
+    total = 0
+    for val in lst:
+        assert val in fallback_lst
+        total += 1
+    assert total == 3

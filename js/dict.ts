@@ -11,6 +11,8 @@ export interface DictOptions {
   socket?: ZnSocketClient;
   key: string;
   callbacks?: DictCallbacks;
+  fallback?: string;
+  fallbackPolicy?: "copy" | "frozen";
 }
 
 export class Dict {
@@ -21,12 +23,16 @@ export class Dict {
   private readonly _refreshCallback?: (data: { target: string; data: any }) => void;
   private _adapterAvailable: boolean = false;
   private _adapterCheckPromise: Promise<boolean> | null = null;
+  private readonly _fallback?: string;
+  private readonly _fallbackPolicy?: "copy" | "frozen";
 
-  constructor({ client, socket, key, callbacks }: DictOptions) {
+  constructor({ client, socket, key, callbacks, fallback, fallbackPolicy }: DictOptions) {
     this._client = client;
     this._socket = socket || (client instanceof ZnSocketClient ? client : undefined);
     this._key = `znsocket.Dict:${key}`;
     this._callbacks = callbacks;
+    this._fallback = fallback;
+    this._fallbackPolicy = fallbackPolicy;
 
     if (this._socket) {
       this._adapterCheckPromise = this._client.checkAdapter(this._key).then(available => {
@@ -58,12 +64,21 @@ export class Dict {
   }
 
   async length(): Promise<number> {
-    const length = await this._client.hLen(this._key);
+    let length = await this._client.hLen(this._key);
     if (length === 0 && this._adapterCheckPromise) {
       const adapterAvailable = await this._adapterCheckPromise;
       if (adapterAvailable) {
-        return await this._client.adapterGet(this._key, "__len__");
+        length = await this._client.adapterGet(this._key, "__len__");
       }
+    }
+
+    if (length === 0 && this._fallback && this._fallbackPolicy !== "copy") {
+      const fallbackDict = new Dict({
+        client: this._client,
+        key: this._fallback.replace("znsocket.Dict:", ""),
+        socket: this._socket,
+      });
+      length = await fallbackDict.length();
     }
     return length;
   }
@@ -122,22 +137,16 @@ export class Dict {
       const adapterAvailable = await this._adapterCheckPromise;
       if (adapterAvailable) {
         value = await this._client.adapterGet(this._key, "__getitem__", key);
-        if (value === null) return null;
-
-        value = JSON.parse(value);
-
-        if (typeof value === "string") {
-          if (value.startsWith("znsocket.List:")) {
-            const refKey = value.split(/:(.+)/)[1];
-            return new ZnSocketList({ client: this._client, socket: this._socket, key: refKey });
-          } else if (value.startsWith("znsocket.Dict:")) {
-            const refKey = value.split(/:(.+)/)[1];
-            return new Dict({ client: this._client, socket: this._socket, key: refKey });
-          }
-        }
-
-        return value;
       }
+    }
+
+    if (value === null && this._fallback && this._fallbackPolicy !== "copy") {
+      const fallbackDict = new Dict({
+        client: this._client,
+        key: this._fallback.replace("znsocket.Dict:", ""),
+        socket: this._socket,
+      });
+      value = await fallbackDict.get(key);
     }
 
     if (value === null) return null;
@@ -160,49 +169,55 @@ export class Dict {
   }
 
   async keys(): Promise<string[]> {
-    const keys = await this._client.hKeys(this._key);
+    let keys = await this._client.hKeys(this._key);
     if (keys.length === 0 && this._adapterCheckPromise) {
       const adapterAvailable = await this._adapterCheckPromise;
       if (adapterAvailable) {
-        return await this._client.adapterGet(this._key, "keys");
+        keys = await this._client.adapterGet(this._key, "keys");
       }
+    }
+
+    if (keys.length === 0 && this._fallback && this._fallbackPolicy !== "copy") {
+      const fallbackDict = new Dict({
+        client: this._client,
+        key: this._fallback.replace("znsocket.Dict:", ""),
+        socket: this._socket,
+      });
+      keys = await fallbackDict.keys();
     }
     return keys;
   }
 
   async values(): Promise<any[]> {
-    const values = await this._client.hVals(this._key);
+    let values = await this._client.hVals(this._key);
     if (values.length === 0 && this._adapterCheckPromise) {
       const adapterAvailable = await this._adapterCheckPromise;
       if (adapterAvailable) {
-        const adapterValues = await this._client.adapterGet(this._key, "values");
-        return adapterValues.map((x: any) => {
-          // Parse the JSON encoded value
-          let value = x;
-          if (typeof x === "string") {
-            try {
-              value = JSON.parse(x);
-            } catch {
-              // If parsing fails, use the original value
-              value = x;
-            }
-          }
-
-          if (typeof value === "string") {
-            if (value.startsWith("znsocket.List:")) {
-              const refKey = value.split(/:(.+)/)[1];
-              return new ZnSocketList({ client: this._client, socket: this._socket, key: refKey });
-            } else if (value.startsWith("znsocket.Dict:")) {
-              const refKey = value.split(/:(.+)/)[1];
-              return new Dict({ client: this._client, socket: this._socket, key: refKey });
-            }
-          }
-          return value;
-        });
+        values = await this._client.adapterGet(this._key, "values");
       }
     }
+
+    if (values.length === 0 && this._fallback && this._fallbackPolicy !== "copy") {
+      const fallbackDict = new Dict({
+        client: this._client,
+        key: this._fallback.replace("znsocket.Dict:", ""),
+        socket: this._socket,
+      });
+      values = await fallbackDict.values();
+    }
+
     return values.map((x) => {
-      const value = JSON.parse(x);
+      // Parse the JSON encoded value
+      let value = x;
+      if (typeof x === "string") {
+        try {
+          value = JSON.parse(x);
+        } catch {
+          // If parsing fails, use the original value
+          value = x;
+        }
+      }
+
       if (typeof value === "string") {
         if (value.startsWith("znsocket.List:")) {
           const refKey = value.split(/:(.+)/)[1];
@@ -216,51 +231,77 @@ export class Dict {
     });
   }
 
-  async entries(): Promise<[string, any][]> {
-    const entries = await this._client.hGetAll(this._key);
-    if (Object.keys(entries).length === 0 && this._adapterCheckPromise) {
-      const adapterAvailable = await this._adapterCheckPromise;
-      if (adapterAvailable) {
-        const adapterEntries = await this._client.adapterGet(this._key, "items");
-        return adapterEntries.map(([key, val]: [string, any]) => {
-          // Parse the JSON encoded value
-          let value = val;
-          if (typeof val === "string") {
-            try {
-              value = JSON.parse(val);
-            } catch {
-              // If parsing fails, use the original value
-              value = val;
-            }
-          }
+async entries(): Promise<[string, any][]> {
+    let rawEntries: Record<string, string> | [string, any][] = await this._client.hGetAll(this._key);
+    let processedEntries: [string, any][] = [];
 
-          if (typeof value === "string") {
-            if (value.startsWith("znsocket.List:")) {
-              const refKey = value.split(/:(.+)/)[1];
-              return [key, new ZnSocketList({ client: this._client, socket: this._socket, key: refKey })];
-            } else if (value.startsWith("znsocket.Dict:")) {
-              const refKey = value.split(/:(.+)/)[1];
-              return [key, new Dict({ client: this._client, socket: this._socket, key: refKey })];
+    if (Object.keys(rawEntries).length === 0) {
+        if (this._adapterCheckPromise) {
+            const adapterAvailable = await this._adapterCheckPromise;
+            if (adapterAvailable) {
+                rawEntries = await this._client.adapterGet(this._key, "items");
             }
-          }
-          return [key, value];
-        });
-      }
+        }
+
+        if (Object.keys(rawEntries).length === 0 && this._fallback && this._fallbackPolicy !== "copy") {
+            const fallbackDict = new Dict({
+                client: this._client,
+                key: this._fallback.replace("znsocket.Dict:", ""),
+                socket: this._socket,
+            });
+            // Get the entries from fallback and ensure they're properly decoded
+            const fallbackEntries = await fallbackDict.entries();
+            // Convert to the expected raw format (object with string values)
+            rawEntries = {};
+            for (const [key, value] of fallbackEntries) {
+                rawEntries[key] = JSON.stringify(value);
+            }
+        }
     }
-    return Object.entries(entries).map(([key, value]) => {
-      const parsedValue = JSON.parse(value);
 
-      if (typeof parsedValue === "string") {
-        if (parsedValue.startsWith("znsocket.List:")) {
-          const refKey = parsedValue.split(/:(.+)/)[1];
+    // Determine if rawEntries is an object (from hGetAll) or an array (from adapter/fallback)
+    if (!Array.isArray(rawEntries)) {
+      // It's an object from hGetAll, so convert to array and parse values
+      processedEntries = Object.entries(rawEntries).map(([key, value]) => {
+        let parsedValue = value;
+        if (typeof value === "string") {
+          try {
+            parsedValue = JSON.parse(value);
+          } catch (e) {
+            // If parsing fails, it means it's not a JSON string, so use the original value
+            parsedValue = value;
+          }
+        }
+        return [key, parsedValue];
+      });
+    } else {
+      // It's already an array from adapter or fallback, but values might still be strings
+      processedEntries = rawEntries.map(([key, value]) => {
+        let parsedValue = value;
+        if (typeof value === "string") {
+          try {
+            parsedValue = JSON.parse(value);
+          } catch (e) {
+            // If parsing fails, it means it's not a JSON string, so use the original value
+            parsedValue = value;
+          }
+        }
+        return [key, parsedValue];
+      });
+    }
+
+    // Now process the values for nested ZnSocket objects
+    return processedEntries.map(([key, value]) => {
+      if (typeof value === "string") {
+        if (value.startsWith("znsocket.List:")) {
+          const refKey = value.split(/:(.+)/)[1];
           return [key, new ZnSocketList({ client: this._client, socket: this._socket, key: refKey })];
-        } else if (parsedValue.startsWith("znsocket.Dict:")) {
-          const refKey = parsedValue.split(/:(.+)/)[1];
+        } else if (value.startsWith("znsocket.Dict:")) {
+          const refKey = value.split(/:(.+)/)[1];
           return [key, new Dict({ client: this._client, socket: this._socket, key: refKey })];
         }
       }
-
-      return [key, parsedValue];
+      return [key, value];
     });
   }
 

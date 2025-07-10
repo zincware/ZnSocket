@@ -431,3 +431,29 @@ def test_invalid_json(client, request):
     assert dct["inf"] is None
     assert dct["nan"] is None
     assert dct["-inf"] is None
+
+
+@pytest.mark.parametrize(
+    "client",
+    ["znsclient", "znsclient_w_redis"],
+)
+def test_dict_dict_fallback_get(client, request):
+    """Test what happens when nested objects in the adapter are updated"""
+    c = request.getfixturevalue(client)
+    key = "dict:test"
+    fallback_key = "dict:fallback"
+    fallback_dct = znsocket.Dict(r=c, key=fallback_key)
+    fallback_dct.update({"a": 1, "b": 2, "c": 3})
+    dct = znsocket.Dict(r=c, key=key, fallback=fallback_key, fallback_policy="frozen")
+
+    assert len(dct) == 3
+    assert dct["a"] == 1
+    assert dct.values() == [1, 2, 3]
+    assert dct.keys() == ["a", "b", "c"]
+    assert dct.items() == [("a", 1), ("b", 2), ("c", 3)]
+    assert dict(dct) == {"a": 1, "b": 2, "c": 3}
+    total = 0
+    for k, v in dct.items():
+        assert dct[k] == v
+        total += 1
+    assert total == 3
