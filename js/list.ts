@@ -133,6 +133,9 @@ export class List {
   }
 
   async slice(start: number, end: number, step: number = 1): Promise<any[]> {
+    // Initialize fallback data if needed
+    await this._initializeFallbackData();
+
     // Check if adapter is available and use it for slicing
     if (this._adapterCheckPromise) {
       const adapterAvailable = await this._adapterCheckPromise;
@@ -161,9 +164,18 @@ export class List {
     }
 
     // Fallback to Redis lRange for non-adapter lists
-    // Note: Redis lRange is inclusive on both ends, but JavaScript slice is exclusive on end
-    // So we adjust end-1 to match JavaScript slice semantics
     const values = await this._client.lRange(this._key, start, end - 1);
+
+    // Check fallback for slice if policy is not "copy"
+    if (values.length === 0 && this._fallback && this._fallbackPolicy !== "copy") {
+      const fallbackList = new List({
+        client: this._client,
+        key: this._fallback.replace("znsocket.List:", ""),
+        socket: this._socket,
+      });
+      return await fallbackList.slice(start, end, step);
+    }
+
     return values.map((value) => JSON.parse(value));
   }
 

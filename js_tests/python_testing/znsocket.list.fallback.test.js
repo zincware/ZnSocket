@@ -21,3 +21,32 @@ test("test_empty_list_adapter_fallback", async () => {
   expect(length).toBe(5); // Jest uses `expect()` for assertions
 });
 
+
+test("test_list_fallback_frozen_get", async () => {
+  const val0 = await lst.get(0);
+  expect(val0).toBe(10);
+  const val4 = await lst.get(4);
+  expect(val4).toBe(50);
+});
+
+test("test_list_fallback_frozen_slice", async () => {
+  const slice = await lst.slice(1, 4);
+  expect(slice).toEqual([20, 30, 40]);
+});
+
+test("test_list_fallback_copy_len", async () => {
+  const length = await lst.length();
+  expect(length).toBe(5);
+});
+
+test("test_list_fallback_copy_get", async () => {
+  const val0 = await lst.get(0);
+  expect(val0).toBe(10);
+  const val4 = await lst.get(4);
+  expect(val4).toBe(50);
+});
+
+test("test_list_fallback_copy_slice", async () => {
+  const slice = await lst.slice(1, 4);
+  expect(slice).toEqual([20, 30, 40]);
+});
