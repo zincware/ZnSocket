@@ -147,7 +147,9 @@ class List(MutableSequence, ZnSocketObject):
             result = int(
                 self.socket.call("adapter:get", key=self.key, method="__len__")
             )
-        if result == 0 and self.fallback is not None:
+        if result == 0 and self.fallback is not None and self.fallback_policy is not None and self.fallback_policy != "copy":
+            # Use fallback for length if policy is "frozen" or other non-copy policies
+            # If policy is "copy", data should have been copied during initialization
             fallback_lst = type(self)(
                 r=self.redis,
                 key=self.fallback,
@@ -209,8 +211,9 @@ class List(MutableSequence, ZnSocketObject):
                         method="__getitem__",
                         index=idx,
                     )
-                if value is None and self.fallback is not None:
-                    # TODO: create a function that returns the fallback list
+                if value is None and self.fallback is not None and self.fallback_policy != "copy":
+                    # Only use fallback for item access if policy is not "copy"
+                    # If policy is "copy", data should have been copied during initialization
                     fallback_lst = type(self)(
                         r=self.redis,
                         key=self.fallback,
@@ -218,9 +221,12 @@ class List(MutableSequence, ZnSocketObject):
                         convert_nan=self.convert_nan,
                         converter=self.converter,
                     )
-                    return (
-                        fallback_lst[index][0] if single_item else fallback_lst[index]
-                    )
+                    try:
+                        value = fallback_lst[idx]
+                        value = encode(self, value)
+                    except IndexError:
+                        # Fallback doesn't have this index either
+                        pass
 
             if value is None:  # check if the value is still None
                 raise IndexError("list index out of range")
@@ -384,11 +390,13 @@ class List(MutableSequence, ZnSocketObject):
 
         if self._adapter_available:
             raise FrozenStorageError(key=self.key)
-        # check if the list has a fallback option and the fallback policy is set to copy and it would go to the fallback list
+        # check if the list has a fallback option and it would go to the fallback list
+        # For frozen policy, we need to copy fallback data before modifying if list is empty
         if (
             self.fallback is not None
-            and self.fallback_policy == "copy"
-            and _used_fallback(self)
+            and self.fallback_policy is not None
+            and int(self.redis.llen(self.key)) == 0
+            and not self._adapter_available
         ):
             fallback_lst = type(self)(
                 r=self.redis,
@@ -397,7 +405,8 @@ class List(MutableSequence, ZnSocketObject):
                 convert_nan=self.convert_nan,
                 converter=self.converter,
             )
-            fallback_lst.copy(self.key)
+            if len(fallback_lst) > 0:
+                fallback_lst.copy(self._key)
 
         if callback := self._callbacks["append"]:
             callback(value)

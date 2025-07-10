@@ -418,3 +418,304 @@ def test_list_adapter_fallback(client, request):
 
     # TODO: test pop, insert, setitem, delete, etc.
     # TODO: test with and without adapter
+
+@pytest.mark.parametrize(
+    "client",
+    ["znsclient", "znsclient_w_redis"],
+)
+def test_list_adapter_fallback_operations(client, request):
+    """Test various list operations with fallback copy policy"""
+    c = request.getfixturevalue(client)
+    fallback_key = "list:fallback_ops"
+    key = "list:test_ops"
+    
+    # Create adapter with initial data
+    initial_data = [10, 20, 30, 40, 50]
+    znsocket.ListAdapter(
+        socket=c,
+        key=fallback_key,
+        object=initial_data,
+    )
+
+    # Create list with fallback copy policy
+    lst = znsocket.List(
+        r=c,
+        key=key,
+        fallback=fallback_key,
+        fallback_policy="copy",
+    )
+
+    # Should start with copied data
+    assert len(lst) == 5
+    assert list(lst) == [10, 20, 30, 40, 50]
+
+    # Test insert operation
+    lst.insert(2, 25)
+    assert len(lst) == 6
+    assert list(lst) == [10, 20, 25, 30, 40, 50]
+
+    # Test setitem operation
+    lst[0] = 15
+    assert lst[0] == 15
+    assert list(lst) == [15, 20, 25, 30, 40, 50]
+
+    # Test pop operation
+    popped = lst.pop()
+    assert popped == 50
+    assert len(lst) == 5
+    assert list(lst) == [15, 20, 25, 30, 40]
+
+    # Test pop with index
+    popped = lst.pop(2)
+    assert popped == 25
+    assert len(lst) == 4
+    assert list(lst) == [15, 20, 30, 40]
+
+    # Test remove operation
+    lst.remove(30)
+    assert len(lst) == 3
+    assert list(lst) == [15, 20, 40]
+
+    # Test del operation
+    del lst[1]
+    assert len(lst) == 2
+    assert list(lst) == [15, 40]
+
+
+@pytest.mark.parametrize(
+    "client",
+    ["znsclient", "znsclient_w_redis"],
+)
+def test_list_fallback_regular_list(client, request):
+    """Test fallback pointing to a regular list (not adapter)"""
+    c = request.getfixturevalue(client)
+    fallback_key = "list:regular_fallback"
+    key = "list:test_regular"
+    
+    # Create a regular list as fallback (not an adapter)
+    fallback_list = znsocket.List(r=c, key=fallback_key)
+    fallback_list.extend(["apple", "banana", "cherry", "date"])
+
+    # Create list with fallback copy policy
+    lst = znsocket.List(
+        r=c,
+        key=key,
+        fallback=fallback_key,
+        fallback_policy="copy",
+    )
+
+    # Should start with copied data from regular list
+    assert len(lst) == 4
+    assert list(lst) == ["apple", "banana", "cherry", "date"]
+
+    # Test that modifications work independently
+    lst.append("elderberry")
+    assert len(lst) == 5
+    assert len(fallback_list) == 4  # Original unchanged
+
+    # Test that original fallback is unchanged
+    assert list(fallback_list) == ["apple", "banana", "cherry", "date"]
+    assert list(lst) == ["apple", "banana", "cherry", "date", "elderberry"]
+
+
+@pytest.mark.parametrize(
+    "client",
+    ["znsclient", "znsclient_w_redis"],
+)
+def test_list_fallback_frozen_policy(client, request):
+    """Test fallback with frozen policy vs copy policy"""
+    c = request.getfixturevalue(client)
+    fallback_key = "list:frozen_fallback"
+    
+    # Create adapter with initial data
+    initial_data = [100, 200, 300]
+    znsocket.ListAdapter(
+        socket=c,
+        key=fallback_key,
+        object=initial_data,
+    )
+
+    # Test with frozen policy
+    lst_frozen = znsocket.List(
+        r=c,
+        key="list:test_frozen",
+        fallback=fallback_key,
+        fallback_policy="frozen",
+    )
+
+    # With frozen policy, should use fallback data but not copy it
+    assert len(lst_frozen) == 3
+    assert list(lst_frozen) == [100, 200, 300]
+
+    # Test with copy policy
+    lst_copy = znsocket.List(
+        r=c,
+        key="list:test_copy",
+        fallback=fallback_key,
+        fallback_policy="copy",
+    )
+
+    # With copy policy, should copy the data
+    assert len(lst_copy) == 3
+    assert list(lst_copy) == [100, 200, 300]
+
+    # Copy policy should allow modifications
+    lst_copy.append(400)
+    assert len(lst_copy) == 4
+    assert list(lst_copy) == [100, 200, 300, 400]
+
+    # Frozen policy should also allow modifications once data is accessed
+    # (frozen policy affects fallback access, not the list itself)
+    lst_frozen.append(500)
+    assert len(lst_frozen) == 4
+
+
+@pytest.mark.parametrize(
+    "client",
+    ["znsclient", "znsclient_w_redis"],
+)
+def test_list_fallback_edge_cases(client, request):
+    """Test edge cases and error conditions with fallback"""
+    c = request.getfixturevalue(client)
+    
+    # Test with non-existent fallback
+    lst_no_fallback = znsocket.List(
+        r=c,
+        key="list:no_fallback",
+        fallback="list:does_not_exist",
+        fallback_policy="copy",
+    )
+    assert len(lst_no_fallback) == 0
+
+    # Test with empty fallback
+    znsocket.List(r=c, key="list:empty_fallback")
+    # empty_fallback is already empty
+
+    lst_empty_fallback = znsocket.List(
+        r=c,
+        key="list:test_empty_fallback",
+        fallback="list:empty_fallback",
+        fallback_policy="copy",
+    )
+    assert len(lst_empty_fallback) == 0
+
+    # Test fallback with None policy (should not use fallback)
+    fallback_list = znsocket.List(r=c, key="list:fallback_none")
+    fallback_list.extend([1, 2, 3])
+
+    lst_none_policy = znsocket.List(
+        r=c,
+        key="list:test_none_policy",
+        fallback="list:fallback_none",
+        fallback_policy=None,
+    )
+    assert len(lst_none_policy) == 0  # Should not use fallback
+
+    # Test that fallback doesn't interfere with existing data
+    lst_existing = znsocket.List(r=c, key="list:existing_data")
+    lst_existing.extend([100, 200])
+
+    # Create another list with same key but with fallback
+    lst_same_key = znsocket.List(
+        r=c,
+        key="list:existing_data",  # Same key
+        fallback="list:fallback_none",
+        fallback_policy="copy",
+    )
+    # Should keep existing data, not use fallback
+    assert len(lst_same_key) == 2
+    assert list(lst_same_key) == [100, 200]
+
+
+@pytest.mark.parametrize(
+    "client",
+    ["znsclient", "znsclient_w_redis"],
+)
+def test_list_fallback_with_complex_data(client, request):
+    """Test fallback with complex data types and converters"""
+    c = request.getfixturevalue(client)
+    fallback_key = "list:complex_fallback"
+    key = "list:test_complex"
+    
+    # Create adapter with numpy arrays
+    complex_data = [
+        np.array([1, 2, 3]),
+        np.array([[4, 5], [6, 7]]),
+        np.array([8, 9, 10, 11])
+    ]
+    znsocket.ListAdapter(
+        socket=c,
+        key=fallback_key,
+        object=complex_data,
+        converter=[znjson.converter.NumpyConverter],
+    )
+
+    # Create list with fallback and converter
+    lst = znsocket.List(
+        r=c,
+        key=key,
+        fallback=fallback_key,
+        fallback_policy="copy",
+        converter=[znjson.converter.NumpyConverter],
+    )
+
+    # Should start with copied complex data
+    assert len(lst) == 3
+    
+    # Test that numpy arrays are preserved
+    npt.assert_array_equal(lst[0], np.array([1, 2, 3]))
+    npt.assert_array_equal(lst[1], np.array([[4, 5], [6, 7]]))
+    npt.assert_array_equal(lst[2], np.array([8, 9, 10, 11]))
+
+    # Test operations with complex data
+    lst.append(np.array([12, 13]))
+    assert len(lst) == 4
+    npt.assert_array_equal(lst[3], np.array([12, 13]))
+
+
+@pytest.mark.parametrize(
+    "client",
+    ["znsclient", "znsclient_w_redis"],
+)
+def test_list_fallback_nested_structures(client, request):
+    """Test fallback with nested list and dict structures"""
+    c = request.getfixturevalue(client)
+    fallback_key = "list:nested_fallback"
+    key = "list:test_nested"
+    
+    # Create nested structure as fallback
+    nested_list = znsocket.List(r=c, key="list:inner")
+    nested_list.extend([1, 2, 3])
+    
+    nested_dict = znsocket.Dict(r=c, key="dict:inner")
+    nested_dict["a"] = "hello"
+    nested_dict["b"] = "world"
+    
+    fallback_list = znsocket.List(r=c, key=fallback_key)
+    fallback_list.extend([nested_list, nested_dict, "simple_string"])
+
+    # Create list with fallback
+    lst = znsocket.List(
+        r=c,
+        key=key,
+        fallback=fallback_key,
+        fallback_policy="copy",
+    )
+
+    # Should start with copied nested structures
+    assert len(lst) == 3
+    
+    # Test access to nested structures
+    inner_list = lst[0]
+    inner_dict = lst[1]
+    simple_str = lst[2]
+    
+    assert isinstance(inner_list, znsocket.List)
+    assert isinstance(inner_dict, znsocket.Dict)
+    assert simple_str == "simple_string"
+    
+    # Test that nested structures work
+    assert len(inner_list) == 3
+    assert list(inner_list) == [1, 2, 3]
+    assert inner_dict["a"] == "hello"
+    assert inner_dict["b"] == "world"
