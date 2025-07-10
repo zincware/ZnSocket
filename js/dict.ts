@@ -21,10 +21,10 @@ export class Dict {
   public readonly _key: string;
   private readonly _callbacks?: DictCallbacks;
   private readonly _refreshCallback?: (data: { target: string; data: any }) => void;
-  private _adapterAvailable: boolean = false;
   private _adapterCheckPromise: Promise<boolean> | null = null;
   private readonly _fallback?: string;
   private readonly _fallbackPolicy?: "copy" | "frozen";
+  private _fallback_object?: Dict;
 
   constructor({ client, socket, key, callbacks, fallback, fallbackPolicy }: DictOptions) {
     this._client = client;
@@ -34,9 +34,17 @@ export class Dict {
     this._fallback = fallback;
     this._fallbackPolicy = fallbackPolicy;
 
+    // create a fallback object if fallback is provided
+    if (this._fallback ) {
+      this._fallback_object = new Dict({
+        client: this._client,
+        key: this._fallback,
+        socket: this._socket,
+      });
+    }
+
     if (this._socket) {
       this._adapterCheckPromise = this._client.checkAdapter(this._key).then(available => {
-        this._adapterAvailable = available;
         return available;
       });
     }
@@ -72,13 +80,8 @@ export class Dict {
       }
     }
 
-    if (length === 0 && this._fallback && this._fallbackPolicy !== "copy") {
-      const fallbackDict = new Dict({
-        client: this._client,
-        key: this._fallback.replace("znsocket.Dict:", ""),
-        socket: this._socket,
-      });
-      length = await fallbackDict.length();
+    if (length === 0 && this._fallback_object) {
+      return await this._fallback_object.length();
     }
     return length;
   }
@@ -140,13 +143,8 @@ export class Dict {
       }
     }
 
-    if (value === null && this._fallback && this._fallbackPolicy !== "copy") {
-      const fallbackDict = new Dict({
-        client: this._client,
-        key: this._fallback.replace("znsocket.Dict:", ""),
-        socket: this._socket,
-      });
-      value = await fallbackDict.get(key);
+    if (value === null && this._fallback_object) {
+      return await this._fallback_object.get(key);
     }
 
     if (value === null) return null;
@@ -177,14 +175,10 @@ export class Dict {
       }
     }
 
-    if (keys.length === 0 && this._fallback && this._fallbackPolicy !== "copy") {
-      const fallbackDict = new Dict({
-        client: this._client,
-        key: this._fallback.replace("znsocket.Dict:", ""),
-        socket: this._socket,
-      });
-      keys = await fallbackDict.keys();
+    if (keys.length === 0 && this._fallback_object) {
+      keys = await this._fallback_object.keys();
     }
+
     return keys;
   }
 
@@ -197,13 +191,8 @@ export class Dict {
       }
     }
 
-    if (values.length === 0 && this._fallback && this._fallbackPolicy !== "copy") {
-      const fallbackDict = new Dict({
-        client: this._client,
-        key: this._fallback.replace("znsocket.Dict:", ""),
-        socket: this._socket,
-      });
-      values = await fallbackDict.values();
+    if (values.length === 0 && this._fallback_object) {
+      return await this._fallback_object.values();
     }
 
     return values.map((x) => {
@@ -243,19 +232,8 @@ async entries(): Promise<[string, any][]> {
             }
         }
 
-        if (Object.keys(rawEntries).length === 0 && this._fallback && this._fallbackPolicy !== "copy") {
-            const fallbackDict = new Dict({
-                client: this._client,
-                key: this._fallback.replace("znsocket.Dict:", ""),
-                socket: this._socket,
-            });
-            // Get the entries from fallback and ensure they're properly decoded
-            const fallbackEntries = await fallbackDict.entries();
-            // Convert to the expected raw format (object with string values)
-            rawEntries = {};
-            for (const [key, value] of fallbackEntries) {
-                rawEntries[key] = JSON.stringify(value);
-            }
+          if (Object.keys(rawEntries).length === 0 && this._fallback_object) {
+            return await this._fallback_object.entries();
         }
     }
 

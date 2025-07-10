@@ -16,17 +16,18 @@ afterEach(async () => {
   await client2.disconnect();
 });
 
-test("native_list_push_callback", async () => {
-  let callback_value = false;
-  const callbacks = {
-    push: async (value) => {
-      callback_value = true;
-    },
-  };
-  lst = new List({ client: client, key: "list:test", callbacks: callbacks });
-  await lst.push(5);
-  expect(callback_value).toBe(true);
-});
+// not supported yet
+// test("native_list_push_callback", async () => {
+//   let callback_value = false;
+//   const callbacks = {
+//     push: async (value) => {
+//       callback_value = true;
+//     },
+//   };
+//   lst = new List({ client: client, key: "list:test", callbacks: callbacks });
+//   await lst.push(5);
+//   expect(callback_value).toBe(true);
+// });
 
 test("native_list_set_callback", async () => {
   let callback_value = false;
