@@ -419,6 +419,7 @@ def test_list_adapter_fallback(client, request):
     # TODO: test pop, insert, setitem, delete, etc.
     # TODO: test with and without adapter
 
+
 @pytest.mark.parametrize(
     "client",
     ["znsclient", "znsclient_w_redis"],
@@ -428,7 +429,7 @@ def test_list_adapter_fallback_operations(client, request):
     c = request.getfixturevalue(client)
     fallback_key = "list:fallback_ops"
     key = "list:test_ops"
-    
+
     # Create adapter with initial data
     initial_data = [10, 20, 30, 40, 50]
     znsocket.ListAdapter(
@@ -491,7 +492,7 @@ def test_list_fallback_regular_list(client, request):
     c = request.getfixturevalue(client)
     fallback_key = "list:regular_fallback"
     key = "list:test_regular"
-    
+
     # Create a regular list as fallback (not an adapter)
     fallback_list = znsocket.List(r=c, key=fallback_key)
     fallback_list.extend(["apple", "banana", "cherry", "date"])
@@ -526,7 +527,7 @@ def test_list_fallback_frozen_policy(client, request):
     """Test fallback with frozen policy vs copy policy"""
     c = request.getfixturevalue(client)
     fallback_key = "list:frozen_fallback"
-    
+
     # Create adapter with initial data
     initial_data = [100, 200, 300]
     znsocket.ListAdapter(
@@ -577,7 +578,7 @@ def test_list_fallback_frozen_policy(client, request):
 def test_list_fallback_edge_cases(client, request):
     """Test edge cases and error conditions with fallback"""
     c = request.getfixturevalue(client)
-    
+
     # Test with non-existent fallback
     lst_no_fallback = znsocket.List(
         r=c,
@@ -636,12 +637,12 @@ def test_list_fallback_with_complex_data(client, request):
     c = request.getfixturevalue(client)
     fallback_key = "list:complex_fallback"
     key = "list:test_complex"
-    
+
     # Create adapter with numpy arrays
     complex_data = [
         np.array([1, 2, 3]),
         np.array([[4, 5], [6, 7]]),
-        np.array([8, 9, 10, 11])
+        np.array([8, 9, 10, 11]),
     ]
     znsocket.ListAdapter(
         socket=c,
@@ -661,7 +662,7 @@ def test_list_fallback_with_complex_data(client, request):
 
     # Should start with copied complex data
     assert len(lst) == 3
-    
+
     # Test that numpy arrays are preserved
     npt.assert_array_equal(lst[0], np.array([1, 2, 3]))
     npt.assert_array_equal(lst[1], np.array([[4, 5], [6, 7]]))
@@ -682,15 +683,15 @@ def test_list_fallback_nested_structures(client, request):
     c = request.getfixturevalue(client)
     fallback_key = "list:nested_fallback"
     key = "list:test_nested"
-    
+
     # Create nested structure as fallback
     nested_list = znsocket.List(r=c, key="list:inner")
     nested_list.extend([1, 2, 3])
-    
+
     nested_dict = znsocket.Dict(r=c, key="dict:inner")
     nested_dict["a"] = "hello"
     nested_dict["b"] = "world"
-    
+
     fallback_list = znsocket.List(r=c, key=fallback_key)
     fallback_list.extend([nested_list, nested_dict, "simple_string"])
 
@@ -704,16 +705,16 @@ def test_list_fallback_nested_structures(client, request):
 
     # Should start with copied nested structures
     assert len(lst) == 3
-    
+
     # Test access to nested structures
     inner_list = lst[0]
     inner_dict = lst[1]
     simple_str = lst[2]
-    
+
     assert isinstance(inner_list, znsocket.List)
     assert isinstance(inner_dict, znsocket.Dict)
     assert simple_str == "simple_string"
-    
+
     # Test that nested structures work
     assert len(inner_list) == 3
     assert list(inner_list) == [1, 2, 3]

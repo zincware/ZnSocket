@@ -4,7 +4,7 @@ import znsocket
 def test_empty_list_adapter_fallback(znsclient, run_npm_test, request):
     fallback_key = "list:test:fallback"
     key = "list:test"
-    
+
     # Create adapter with initial data
     initial_data = [10, 20, 30, 40, 50]
     znsocket.ListAdapter(
@@ -45,7 +45,7 @@ def test_empty_list_adapter_fallback(znsclient, run_npm_test, request):
 def test_list_fallback_frozen_get(znsclient, run_npm_test, request):
     fallback_key = "list:test:fallback"
     key = "list:test"
-    
+
     # Create adapter with initial data
     initial_data = [10, 20, 30, 40, 50]
     znsocket.ListAdapter(
@@ -66,10 +66,11 @@ def test_list_fallback_frozen_get(znsclient, run_npm_test, request):
     assert lst[0] == 10
     assert lst[4] == 50
 
+
 def test_list_fallback_frozen_slice(znsclient, run_npm_test, request):
     fallback_key = "list:test:fallback"
     key = "list:test"
-    
+
     # Create adapter with initial data
     initial_data = [10, 20, 30, 40, 50]
     znsocket.ListAdapter(
@@ -89,10 +90,11 @@ def test_list_fallback_frozen_slice(znsclient, run_npm_test, request):
 
     assert lst[1:4] == [20, 30, 40]
 
+
 def test_list_fallback_copy_len(znsclient, run_npm_test, request):
     fallback_key = "list:test:fallback"
     key = "list:test"
-    
+
     # Create adapter with initial data
     initial_data = [10, 20, 30, 40, 50]
     znsocket.ListAdapter(
@@ -112,10 +114,11 @@ def test_list_fallback_copy_len(znsclient, run_npm_test, request):
 
     assert len(lst) == 5
 
+
 def test_list_fallback_copy_get(znsclient, run_npm_test, request):
     fallback_key = "list:test:fallback"
     key = "list:test"
-    
+
     # Create adapter with initial data
     initial_data = [10, 20, 30, 40, 50]
     znsocket.ListAdapter(
@@ -136,10 +139,11 @@ def test_list_fallback_copy_get(znsclient, run_npm_test, request):
     assert lst[0] == 10
     assert lst[4] == 50
 
+
 def test_list_fallback_copy_slice(znsclient, run_npm_test, request):
     fallback_key = "list:test:fallback"
     key = "list:test"
-    
+
     # Create adapter with initial data
     initial_data = [10, 20, 30, 40, 50]
     znsocket.ListAdapter(

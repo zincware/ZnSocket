@@ -24,6 +24,8 @@ class Dict(MutableMapping, ZnSocketObject):
         repr_type: DictRepr = "keys",
         converter: list[t.Type[znjson.ConverterBase]] | None = None,
         convert_nan: bool = False,
+        fallback: str | None = None,
+        fallback_policy: t.Literal["copy", "frozen"] | None = None,
     ):
         """Synchronized dict object.
 
@@ -50,6 +52,12 @@ class Dict(MutableMapping, ZnSocketObject):
         convert_nan : bool, optional
             Convert NaN and Infinity to None. Both are not native JSON values and
             cannot be encoded/decoded. Default is False.
+        fallback : str, optional
+            The key of a fallback dict to use if this dict is empty.
+        fallback_policy : {'copy', 'frozen'}, optional
+            The policy to use for the fallback dict.
+            'copy': Copy the fallback dict to this dict on initialization.
+            'frozen': Use the fallback dict as a read-only source of data.
 
         Examples
         --------
@@ -68,6 +76,9 @@ class Dict(MutableMapping, ZnSocketObject):
         self._key = key
         self.repr_type = repr_type
         self.convert_nan = convert_nan
+        self.fallback = fallback
+        self.fallback_policy = fallback_policy
+
         self._callbacks = {
             "setitem": None,
             "delitem": None,
@@ -78,6 +89,24 @@ class Dict(MutableMapping, ZnSocketObject):
         if self.socket is not None:
             # check from the server if the adapter is available
             self._adapter_available = self.socket.call("check_adapter", key=self.key)
+
+        self._fallback_object: t.Optional["Dict"] = None
+
+        if (
+            self.fallback is not None
+            and int(self.redis.hlen(self.key)) == 0
+            and not self._adapter_available  # TODO: what should happen, if adapter is available but empty
+        ):
+            self._fallback_object = type(self)(
+                r=self.redis,
+                key=self.fallback,
+                socket=self.socket,
+                convert_nan=self.convert_nan,
+                converter=self.converter,
+                repr_type=self.repr_type,
+            )
+            if len(self._fallback_object) > 0 and self.fallback_policy == "copy":
+                self._fallback_object.copy(self._key)
 
     @property
     def key(self) -> str:
@@ -99,6 +128,8 @@ class Dict(MutableMapping, ZnSocketObject):
                 value = self.socket.call(
                     "adapter:get", key=self.key, method="__getitem__", dict_key=key
                 )
+            if value is None and self._fallback_object is not None:
+                return self._fallback_object.get(key, None)
             if value is None:
                 raise KeyError(key)
         value = decode(self, value)
@@ -158,17 +189,19 @@ class Dict(MutableMapping, ZnSocketObject):
             result = int(
                 self.socket.call("adapter:get", key=self.key, method="__len__")
             )
+        if result == 0 and self._fallback_object is not None:
+            result = len(self._fallback_object)
         return result
 
     def keys(self) -> list[str]:
         result = self.redis.hkeys(self.key)
         if len(result) == 0 and self._adapter_available:
             result = self.socket.call("adapter:get", key=self.key, method="keys")
+        if len(result) == 0 and self._fallback_object is not None:
+            result = self._fallback_object.keys()
         return result
 
-    def values(self) -> list[t.Any]:
-        from znsocket.objects.list_obj import List
-
+    def values(self) -> list[t.Any]:  # noqa: C901
         vals = self.redis.hvals(self.key)
         if len(vals) == 0 and self._adapter_available:
             adapter_values = self.socket.call(
@@ -179,6 +212,8 @@ class Dict(MutableMapping, ZnSocketObject):
                 value = decode(self, value)
                 if isinstance(value, str):
                     if value.startswith("znsocket.List:"):
+                        from znsocket import List
+
                         ref_key = value.split(":", 1)[1]
                         value = List(r=self.redis, key=ref_key)
                     elif value.startswith("znsocket.Dict:"):
@@ -188,12 +223,16 @@ class Dict(MutableMapping, ZnSocketObject):
                         )
                 response.append(value)
             return response
+        if len(vals) == 0 and self._fallback_object is not None:
+            return self._fallback_object.values()
 
         response = []
         for v in vals:
             value = decode(self, v)
             if isinstance(value, str):
                 if value.startswith("znsocket.List:"):
+                    from znsocket import List
+
                     ref_key = value.split(":", 1)[1]
                     value = List(r=self.redis, key=ref_key)
                 elif value.startswith("znsocket.Dict:"):
@@ -202,7 +241,7 @@ class Dict(MutableMapping, ZnSocketObject):
             response.append(value)
         return response
 
-    def items(self) -> list[t.Tuple[str, t.Any]]:
+    def items(self) -> list[t.Tuple[str, t.Any]]:  # noqa: C901
         from znsocket.objects.list_obj import List
 
         all_items = self.redis.hgetall(self.key)
@@ -224,6 +263,8 @@ class Dict(MutableMapping, ZnSocketObject):
                         )
                 response.append((k, value))
             return response
+        if len(all_items) == 0 and self._fallback_object is not None:
+            return self._fallback_object.items()
 
         response = []
         for k, v in all_items.items():
@@ -245,6 +286,8 @@ class Dict(MutableMapping, ZnSocketObject):
             result = self.socket.call(
                 "adapter:get", key=self.key, method="__contains__", dict_key=key
             )
+        if not result and self._fallback_object is not None:
+            result = key in self._fallback_object
         return result
 
     def __repr__(self) -> str:

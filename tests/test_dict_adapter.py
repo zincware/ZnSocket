@@ -426,3 +426,39 @@ def test_dict_adapter_object_nested_update(client, request):
     assert dct["list"] == ["a", "b", "c"]
     assert dct["dict"] == {"completely": "different"}
     assert dct["simple"] == "text"
+
+
+@pytest.mark.parametrize(
+    "client",
+    ["znsclient", "znsclient_w_redis"],
+)
+def test_dict_adapter_fallback_get(client, request):
+    """Test what happens when nested objects in the adapter are updated"""
+    c = request.getfixturevalue(client)
+    key = "dict:test"
+    fallback_key = "dict:fallback"
+    test_data = {"a": 1, "b": 2, "c": 3}
+    _ = znsocket.DictAdapter(socket=c, key=fallback_key, object=test_data)
+    dct = znsocket.Dict(r=c, key=key, fallback=fallback_key, fallback_policy="frozen")
+
+    assert len(dct) == 3
+    assert dct["a"] == 1
+    assert dct.values() == [1, 2, 3]
+    assert dct.keys() == ["a", "b", "c"]
+    assert dct.items() == [("a", 1), ("b", 2), ("c", 3)]
+    assert dict(dct) == {"a": 1, "b": 2, "c": 3}
+    total = 0
+    for k, v in dct.items():
+        assert dct[k] == v
+        total += 1
+    assert total == 3
+
+
+@pytest.mark.parametrize(
+    "client",
+    ["znsclient", "znsclient_w_redis"],
+)
+def test_dict_adapter_fallback_set(client, request):
+    """Test what happens when nested objects in the adapter are updated"""
+    pass
+    # Set is currently not supported when using a fallback object.

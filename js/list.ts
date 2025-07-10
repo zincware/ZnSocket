@@ -70,10 +70,10 @@ export class List {
 
     const currentLength = await this._client.lLen(this._key);
     if (currentLength === 0 && !this._adapterAvailable) {
-      const fallbackList = new List({ 
-        client: this._client, 
+      const fallbackList = new List({
+        client: this._client,
         key: this._fallback.replace("znsocket.List:", ""),
-        socket: this._socket 
+        socket: this._socket
       });
       const fallbackLength = await fallbackList.length();
       if (fallbackLength > 0) {
@@ -92,13 +92,13 @@ export class List {
 
   private async _copyFallbackIfNeeded(): Promise<void> {
     if (!this._fallback || !this._fallbackPolicy) return;
-    
+
     const currentLength = await this._client.lLen(this._key);
     if (currentLength === 0 && !this._adapterAvailable) {
-      const fallbackList = new List({ 
-        client: this._client, 
+      const fallbackList = new List({
+        client: this._client,
         key: this._fallback.replace("znsocket.List:", ""),
-        socket: this._socket 
+        socket: this._socket
       });
       const fallbackLength = await fallbackList.length();
       if (fallbackLength > 0) {
@@ -182,7 +182,7 @@ export class List {
   async push(value: any): Promise<any> {
     // Check if we need to copy fallback data before modifying
     await this._copyFallbackIfNeeded();
-    
+
     if (this._callbacks?.push) {
       await this._callbacks.push(value);
     }
@@ -230,7 +230,7 @@ export class List {
   async get(index: number): Promise<any | null> {
     // Initialize fallback data if needed
     await this._initializeFallbackData();
-    
+
     let value = await this._client.lIndex(this._key, index);
 
     if (value === null && this._adapterCheckPromise) {
@@ -257,10 +257,10 @@ export class List {
 
     // Check fallback for item access if policy is not "copy"
     if (value === null && this._fallback && this._fallbackPolicy !== "copy") {
-      const fallbackList = new List({ 
-        client: this._client, 
+      const fallbackList = new List({
+        client: this._client,
         key: this._fallback.replace("znsocket.List:", ""),
-        socket: this._socket 
+        socket: this._socket
       });
       try {
         const fallbackValue = await fallbackList.get(index);

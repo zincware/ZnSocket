@@ -147,7 +147,12 @@ class List(MutableSequence, ZnSocketObject):
             result = int(
                 self.socket.call("adapter:get", key=self.key, method="__len__")
             )
-        if result == 0 and self.fallback is not None and self.fallback_policy is not None and self.fallback_policy != "copy":
+        if (
+            result == 0
+            and self.fallback is not None
+            and self.fallback_policy is not None
+            and self.fallback_policy != "copy"
+        ):
             # Use fallback for length if policy is "frozen" or other non-copy policies
             # If policy is "copy", data should have been copied during initialization
             fallback_lst = type(self)(
@@ -211,7 +216,11 @@ class List(MutableSequence, ZnSocketObject):
                         method="__getitem__",
                         index=idx,
                     )
-                if value is None and self.fallback is not None and self.fallback_policy != "copy":
+                if (
+                    value is None
+                    and self.fallback is not None
+                    and self.fallback_policy != "copy"
+                ):
                     # Only use fallback for item access if policy is not "copy"
                     # If policy is "copy", data should have been copied during initialization
                     fallback_lst = type(self)(
