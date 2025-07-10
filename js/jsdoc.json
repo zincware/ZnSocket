@@ -1,17 +1,11 @@
 {
-  "source": {
-    "include": [
-      "."
-    ],
-    "includePattern": "\\.(js|ts)$",
-    "exclude": [
-      "node_modules/"
-    ]
-  },
-  "opts": {
-    "recurse": true
-  },
-  "plugins": [
-    "plugins/markdown"
-  ]
+	"source": {
+		"include": ["."],
+		"includePattern": "\\.(js|ts)$",
+		"exclude": ["node_modules/"]
+	},
+	"opts": {
+		"recurse": true
+	},
+	"plugins": ["plugins/markdown"]
 }
