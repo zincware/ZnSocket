@@ -288,39 +288,39 @@ def test_list_adapter_object_update(client, request):
     test_data = [1, 2, 3, 4, 5]
     adapter = znsocket.ListAdapter(socket=c, key=key, object=test_data)
     lst = znsocket.List(r=c, key=key)
-    
+
     # Initial state
     assert len(lst) == 5
     assert lst[0] == 1
     assert lst[4] == 5
     assert list(lst) == [1, 2, 3, 4, 5]
-    
+
     # Update the adapter object
     adapter.object.append(6)
     adapter.object[0] = 10
     adapter.object.insert(2, 99)
-    
+
     # The List should reflect the changes immediately
     assert len(lst) == 7  # 5 + 1 (append) + 1 (insert)
-    assert lst[0] == 10   # Modified first element
-    assert lst[1] == 2    # Second element unchanged
-    assert lst[2] == 99   # Inserted element
-    assert lst[3] == 3    # Third element (shifted)
-    assert lst[4] == 4    # Fourth element (shifted)
-    assert lst[5] == 5    # Fifth element (shifted)
-    assert lst[6] == 6    # Appended element
-    
+    assert lst[0] == 10  # Modified first element
+    assert lst[1] == 2  # Second element unchanged
+    assert lst[2] == 99  # Inserted element
+    assert lst[3] == 3  # Third element (shifted)
+    assert lst[4] == 4  # Fourth element (shifted)
+    assert lst[5] == 5  # Fifth element (shifted)
+    assert lst[6] == 6  # Appended element
+
     # Test slicing with updated object
     assert lst[1:4] == [2, 99, 3]
     assert lst[-2:] == [5, 6]
-    
+
     # Test iteration with updated object
     assert list(lst) == [10, 2, 99, 3, 4, 5, 6]
-    
+
     # Remove elements
     adapter.object.remove(99)
     adapter.object.pop()
-    
+
     # Should reflect removals
     assert len(lst) == 5
     assert list(lst) == [10, 2, 3, 4, 5]
@@ -337,32 +337,32 @@ def test_list_adapter_object_clear_and_extend(client, request):
     test_data = [1, 2, 3, 4, 5]
     adapter = znsocket.ListAdapter(socket=c, key=key, object=test_data)
     lst = znsocket.List(r=c, key=key)
-    
+
     # Initial state
     assert len(lst) == 5
     assert list(lst) == [1, 2, 3, 4, 5]
-    
+
     # Clear the adapter object
     adapter.object.clear()
-    
+
     # The List should reflect the empty state
     assert len(lst) == 0
     assert list(lst) == []
-    
+
     # Test accessing empty list
     with pytest.raises(IndexError):
         _ = lst[0]
-    
+
     # Extend with new data
     adapter.object.extend([10, 20, 30])
-    
+
     # The List should reflect the new data
     assert len(lst) == 3
     assert list(lst) == [10, 20, 30]
     assert lst[0] == 10
     assert lst[1] == 20
     assert lst[2] == 30
-    
+
     # Test slicing with new data
     assert lst[1:3] == [20, 30]
     assert lst[:2] == [10, 20]
