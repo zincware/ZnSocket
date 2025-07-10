@@ -135,3 +135,102 @@ znsocket supports nesting data structures within each other:
    const userName = await firstUser.get('name');  // 'Alice'
 
 All data structures (List, Dict, Segments) can be nested within each other, providing maximum flexibility for complex data organization.
+
+Working with Adapters
+~~~~~~~~~~~~~~~~~~~~~~
+
+Adapters allow you to expose existing Python objects through the znsocket interface without copying data. This is particularly useful for sharing live data with JavaScript clients or other Python processes.
+
+ListAdapter Example
+*******************
+
+.. code-block:: python
+
+   import znsocket
+   import numpy as np
+
+   # Connect to server
+   client = znsocket.Client("http://localhost:5000")
+
+   # Create some data (any list-like object)
+   sensor_data = [23.5, 24.1, 23.8, 24.0, 23.9]
+   # Or: sensor_data = np.array([23.5, 24.1, 23.8, 24.0, 23.9])
+
+   # Expose through adapter
+   adapter = znsocket.ListAdapter(
+       socket=client,
+       key="temperature_readings",
+       object=sensor_data
+   )
+
+   # Access from any client
+   readings = znsocket.List(client, "temperature_readings")
+   print(f"Current temperature: {readings[-1]}°C")
+   print(f"Average: {sum(readings) / len(readings):.1f}°C")
+
+   # Real-time updates: modify original data
+   sensor_data.append(24.2)
+   print(f"New reading: {readings[-1]}°C")  # Immediately available
+
+DictAdapter Example
+*******************
+
+.. code-block:: python
+
+   import znsocket
+
+   # Connect to server
+   client = znsocket.Client("http://localhost:5000")
+
+   # Create configuration data
+   app_config = {
+       "database_url": "postgresql://localhost/myapp",
+       "debug": False,
+       "max_users": 1000
+   }
+
+   # Expose through adapter
+   adapter = znsocket.DictAdapter(
+       socket=client,
+       key="app_settings",
+       object=app_config
+   )
+
+   # Access from any client
+   settings = znsocket.Dict(client, "app_settings")
+   print(f"Database: {settings['database_url']}")
+   print(f"Debug mode: {settings['debug']}")
+
+   # Real-time configuration updates
+   app_config["debug"] = True
+   print(f"Debug now: {settings['debug']}")  # Immediately updated
+
+JavaScript Access to Adapters
+******************************
+
+.. code-block:: javascript
+
+   import { createClient, List, Dict } from 'znsocket';
+
+   const client = createClient({ url: 'http://localhost:5000' });
+   await client.connect();
+
+   // Access Python data from JavaScript
+   const temperatures = new List({ client, key: 'temperature_readings' });
+   const settings = new Dict({ client, key: 'app_settings' });
+
+   // All operations work seamlessly
+   console.log(`Latest temp: ${await temperatures.get(-1)}°C`);
+   console.log(`Database: ${await settings.get('database_url')}`);
+
+   // Efficient slicing
+   const recent = await temperatures.slice(-5);  // Last 5 readings
+   console.log(`Recent readings: ${recent}`);
+
+Key Adapter Benefits:
+
+- **No data copying**: Adapters reference original data directly
+- **Real-time updates**: Changes to source data are immediately visible
+- **Cross-language access**: JavaScript clients can access Python data
+- **Efficient operations**: Slicing and other operations are optimized
+- **Read-only safety**: Adapters prevent accidental modifications

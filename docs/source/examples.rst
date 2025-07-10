@@ -180,10 +180,10 @@ Service Consumer
 Data Synchronization with Adapters
 ----------------------------------
 
-Use ListAdapter to expose existing data structures through znsocket.
+Adapters allow you to expose existing Python objects through the znsocket interface, enabling real-time access to your data from both Python and JavaScript clients.
 
-Data Source
-~~~~~~~~~~~
+Basic ListAdapter Example
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
@@ -205,8 +205,44 @@ Data Source
 
    print("Data exposed through adapter")
 
-Data Consumer
-~~~~~~~~~~~~~
+ListAdapter with Real-time Updates
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   import znsocket
+   import time
+   import threading
+
+   # Create dynamic data
+   sensor_data = []
+
+   # Connect to server
+   client = znsocket.Client("http://localhost:5000")
+
+   # Expose data through adapter
+   adapter = znsocket.ListAdapter(
+       key="sensor_readings",
+       socket=client,
+       object=sensor_data
+   )
+
+   # Simulate real-time sensor data updates
+   def update_sensor_data():
+       import random
+       for i in range(100):
+           sensor_data.append(random.randint(0, 100))
+           time.sleep(0.1)  # New reading every 100ms
+
+   # Start updating data in background
+   thread = threading.Thread(target=update_sensor_data)
+   thread.daemon = True
+   thread.start()
+
+   print("Real-time sensor data available at key: sensor_readings")
+
+Data Consumer with Slicing
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
@@ -218,10 +254,267 @@ Data Consumer
    # Access data through List interface
    data = znsocket.List(client, "scientific_data")
 
-   # Read data
+   # Read data with various operations
    print(f"Data length: {len(data)}")
    print(f"First item: {data[0]}")
    print(f"All items: {data[:]}")
+
+   # Efficient slicing operations
+   print(f"First 3 items: {data[:3]}")
+   print(f"Every 2nd item: {data[::2]}")
+   print(f"Last 3 items: {data[-3:]}")
+   print(f"Items 2-4: {data[1:4]}")
+
+Basic DictAdapter Example
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   import znsocket
+
+   # Create configuration data
+   config = {
+       "database_host": "localhost",
+       "database_port": 5432,
+       "cache_enabled": True,
+       "max_connections": 100
+   }
+
+   # Connect to server
+   client = znsocket.Client("http://localhost:5000")
+
+   # Expose config through adapter
+   adapter = znsocket.DictAdapter(
+       key="app_config",
+       socket=client,
+       object=config
+   )
+
+   print("Configuration exposed through adapter")
+
+DictAdapter with Dynamic Updates
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   import znsocket
+   import time
+   import threading
+
+   # Create dynamic configuration
+   system_status = {
+       "cpu_usage": 0.0,
+       "memory_usage": 0.0,
+       "disk_usage": 0.0,
+       "active_connections": 0
+   }
+
+   # Connect to server
+   client = znsocket.Client("http://localhost:5000")
+
+   # Expose status through adapter
+   adapter = znsocket.DictAdapter(
+       key="system_status",
+       socket=client,
+       object=system_status
+   )
+
+   # Simulate system monitoring
+   def update_system_status():
+       import random
+       while True:
+           system_status["cpu_usage"] = random.uniform(0, 100)
+           system_status["memory_usage"] = random.uniform(0, 100)
+           system_status["disk_usage"] = random.uniform(0, 100)
+           system_status["active_connections"] = random.randint(0, 500)
+           time.sleep(1)  # Update every second
+
+   # Start monitoring in background
+   thread = threading.Thread(target=update_system_status)
+   thread.daemon = True
+   thread.start()
+
+   print("System status available at key: system_status")
+
+Configuration Consumer
+~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   import znsocket
+
+   # Connect to server
+   client = znsocket.Client("http://localhost:5000")
+
+   # Access configuration through Dict interface
+   config = znsocket.Dict(client, "app_config")
+
+   # Read configuration
+   print(f"Database host: {config['database_host']}")
+   print(f"Database port: {config['database_port']}")
+   print(f"Cache enabled: {config['cache_enabled']}")
+
+   # Check if keys exist
+   if "debug_mode" in config:
+       print(f"Debug mode: {config['debug_mode']}")
+
+   # Get all keys and values
+   print(f"All keys: {list(config.keys())}")
+   print(f"All values: {list(config.values())}")
+
+JavaScript Client Access
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: javascript
+
+   import { createClient, List, Dict } from 'znsocket';
+
+   // Connect to server
+   const client = createClient({ url: 'http://localhost:5000' });
+   await client.connect();
+
+   // Access sensor data
+   const sensorData = new List({ client, key: 'sensor_readings' });
+   console.log(`Sensor readings: ${await sensorData.length()}`);
+   console.log(`Latest 5 readings: ${await sensorData.slice(-5)}`);
+
+   // Access system status
+   const systemStatus = new Dict({ client, key: 'system_status' });
+   console.log(`CPU Usage: ${await systemStatus.get('cpu_usage')}%`);
+   console.log(`Memory Usage: ${await systemStatus.get('memory_usage')}%`);
+
+   // Access configuration
+   const appConfig = new Dict({ client, key: 'app_config' });
+   const dbHost = await appConfig.get('database_host');
+   console.log(`Database host: ${dbHost}`);
+
+Complex Nested Adapters
+~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   import znsocket
+
+   # Create complex nested data structure
+   user_profiles = {
+       "user1": {
+           "name": "Alice",
+           "scores": [85, 92, 78, 95],
+           "preferences": {"theme": "dark", "notifications": True}
+       },
+       "user2": {
+           "name": "Bob",
+           "scores": [78, 85, 90, 88],
+           "preferences": {"theme": "light", "notifications": False}
+       }
+   }
+
+   # Connect to server
+   client = znsocket.Client("http://localhost:5000")
+
+   # Expose the nested structure
+   adapter = znsocket.DictAdapter(
+       key="user_profiles",
+       socket=client,
+       object=user_profiles
+   )
+
+   # Access nested data
+   profiles = znsocket.Dict(client, "user_profiles")
+
+   # Direct access to nested structures
+   user1 = profiles["user1"]
+   print(f"User 1 name: {user1['name']}")
+   print(f"User 1 scores: {user1['scores']}")
+   print(f"User 1 theme: {user1['preferences']['theme']}")
+
+   # Modify the original data - changes are immediately visible
+   user_profiles["user1"]["scores"].append(99)
+   print(f"Updated scores: {profiles['user1']['scores']}")
+
+Machine Learning Model Serving
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   import znsocket
+   import numpy as np
+   from sklearn.ensemble import RandomForestClassifier
+   from sklearn.datasets import make_classification
+
+   # Train a simple model
+   X, y = make_classification(n_samples=1000, n_features=20, n_classes=2, random_state=42)
+   model = RandomForestClassifier(n_estimators=100, random_state=42)
+   model.fit(X, y)
+
+   # Create model metadata and results storage
+   model_info = {
+       "model_type": "RandomForestClassifier",
+       "n_features": 20,
+       "n_classes": 2,
+       "accuracy": model.score(X, y),
+       "feature_importance": model.feature_importances_.tolist()
+   }
+
+   predictions = []
+   prediction_probabilities = []
+
+   # Connect to server
+   client = znsocket.Client("http://localhost:5000")
+
+   # Expose model information
+   info_adapter = znsocket.DictAdapter(
+       key="model_info",
+       socket=client,
+       object=model_info
+   )
+
+   # Expose predictions
+   pred_adapter = znsocket.ListAdapter(
+       key="predictions",
+       socket=client,
+       object=predictions
+   )
+
+   # Expose prediction probabilities
+   prob_adapter = znsocket.ListAdapter(
+       key="prediction_probabilities",
+       socket=client,
+       object=prediction_probabilities
+   )
+
+   # Simulate real-time predictions
+   def make_predictions():
+       import time
+       import random
+
+       while True:
+           # Generate random input
+           sample = np.random.rand(1, 20)
+
+           # Make prediction
+           pred = model.predict(sample)[0]
+           prob = model.predict_proba(sample)[0].tolist()
+
+           # Store results
+           predictions.append(int(pred))
+           prediction_probabilities.append(prob)
+
+           # Update model info
+           model_info["total_predictions"] = len(predictions)
+
+           time.sleep(2)  # New prediction every 2 seconds
+
+   # Start prediction service
+   import threading
+   thread = threading.Thread(target=make_predictions)
+   thread.daemon = True
+   thread.start()
+
+   print("ML model serving started!")
+   print("Access model info at: model_info")
+   print("Access predictions at: predictions")
+   print("Access probabilities at: prediction_probabilities")
 
 Nested Data Structures
 ----------------------

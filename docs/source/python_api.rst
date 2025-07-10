@@ -43,6 +43,13 @@ ListAdapter
    :members:
    :show-inheritance:
 
+DictAdapter
+-----------
+
+.. autoclass:: znsocket.DictAdapter
+   :members:
+   :show-inheritance:
+
 Segments
 --------
 
