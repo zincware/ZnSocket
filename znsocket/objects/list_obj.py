@@ -121,7 +121,7 @@ class List(MutableSequence, ZnSocketObject):
 
         single_item = isinstance(index, int)
         original_slice = isinstance(index, slice)
-        
+
         if single_item:
             index = [index]
         elif original_slice:

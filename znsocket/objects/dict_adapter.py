@@ -55,7 +55,7 @@ class DictAdapter:
         if self.r is None:
             self.r = self.socket
 
-    def map_callback(self, data):
+    def map_callback(self, data):  # noqa: C901
         """Map a callback to the object.
 
         This method handles incoming requests from clients and routes them to the

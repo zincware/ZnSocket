@@ -192,7 +192,7 @@ def test_list_adapter_slice_basic(client, request):
     test_data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     _ = znsocket.ListAdapter(socket=c, key=key, object=test_data)
     lst = znsocket.List(r=c, key=key)
-    
+
     # Test basic slice
     assert lst[1:5] == test_data[1:5]
     assert lst[:3] == test_data[:3]
@@ -211,7 +211,7 @@ def test_list_adapter_slice_with_step(client, request):
     test_data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     _ = znsocket.ListAdapter(socket=c, key=key, object=test_data)
     lst = znsocket.List(r=c, key=key)
-    
+
     # Test slice with step
     assert lst[::2] == test_data[::2]
     assert lst[1::2] == test_data[1::2]
@@ -229,7 +229,7 @@ def test_list_adapter_slice_negative_indices(client, request):
     test_data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     _ = znsocket.ListAdapter(socket=c, key=key, object=test_data)
     lst = znsocket.List(r=c, key=key)
-    
+
     # Test slice with negative indices
     assert lst[-3:] == test_data[-3:]
     assert lst[:-2] == test_data[:-2]
@@ -247,10 +247,10 @@ def test_list_adapter_slice_empty(client, request):
     test_data = [1, 2, 3, 4, 5]
     _ = znsocket.ListAdapter(socket=c, key=key, object=test_data)
     lst = znsocket.List(r=c, key=key)
-    
+
     # Test empty slices
     assert lst[10:20] == test_data[10:20]  # Should be empty
-    assert lst[3:3] == test_data[3:3]      # Should be empty
+    assert lst[3:3] == test_data[3:3]  # Should be empty
 
 
 @pytest.mark.parametrize(
@@ -269,7 +269,7 @@ def test_list_adapter_slice_with_converter(client, request):
         converter=[znjson.converter.NumpyConverter],
     )
     lst = znsocket.List(r=c, key=key, converter=[znjson.converter.NumpyConverter])
-    
+
     # Test slice with converter
     sliced = lst[1:3]
     assert len(sliced) == 2

@@ -80,7 +80,7 @@ test("test_list_adapter_slice_negative_indices", async () => {
   await new Promise(resolve => setTimeout(resolve, 100));
 
   const length = await lst.length();
-  
+
   // Test slicing with negative indices
   expect(await lst.slice(-3, length)).toEqual([8, 9, 10]);
   expect(await lst.slice(0, -2)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);

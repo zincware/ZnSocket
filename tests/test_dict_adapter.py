@@ -54,11 +54,10 @@ def test_dict_adapter_keys_values_items(client, request):
     test_data = {"a": 1, "b": 2, "c": 3}
     _ = znsocket.DictAdapter(socket=c, key=key, object=test_data)
     dct = znsocket.Dict(r=c, key=key)
-    
+
     assert list(dct.keys()) == list(test_data.keys())
     assert list(dct.values()) == list(test_data.values())
     assert list(dct.items()) == list(test_data.items())
-
 
 
 @pytest.mark.parametrize(
@@ -71,7 +70,7 @@ def test_dict_adapter_contains(client, request):
     test_data = {"a": 1, "b": 2, "c": 3}
     _ = znsocket.DictAdapter(socket=c, key=key, object=test_data)
     dct = znsocket.Dict(r=c, key=key)
-    
+
     assert "a" in dct
     assert "b" in dct
     assert "c" in dct
@@ -88,7 +87,7 @@ def test_dict_adapter_get(client, request):
     test_data = {"a": 1, "b": 2, "c": 3}
     _ = znsocket.DictAdapter(socket=c, key=key, object=test_data)
     dct = znsocket.Dict(r=c, key=key)
-    
+
     assert dct.get("a") == 1
     assert dct.get("nonexistent") is None
     assert dct.get("nonexistent", "default") == "default"
@@ -162,7 +161,7 @@ def test_dict_adapter_w_converter(client, request):
     dct = znsocket.Dict(r=c, key=key, converter=[znjson.converter.NumpyConverter])
 
     assert len(dct) == 2
-    
+
     for k, v in adapter.object.items():
         npt.assert_array_equal(dct[k], v)
         assert isinstance(dct[k], np.ndarray)
@@ -187,7 +186,7 @@ def test_dict_adapter_w_converter_copy(client, request):
 
     new_dct = dct.copy("dict:test_copy")
     assert len(new_dct) == 2
-    
+
     for k, v in adapter.object.items():
         npt.assert_array_equal(new_dct[k], v)
         assert isinstance(new_dct[k], np.ndarray)
@@ -236,7 +235,7 @@ def test_dict_adapter_iteration(client, request):
     # Test iteration over keys
     keys = list(dct)
     assert set(keys) == set(test_data.keys())
-    
+
     # Test dict() conversion
     assert dict(dct) == test_data
 

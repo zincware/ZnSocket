@@ -75,7 +75,7 @@ export class List {
         // Convert negative indices to positive
         if (start < 0) start = Math.max(0, length + start);
         if (end < 0) end = Math.max(0, length + end);
-        
+
         const adapterValues = await this._client.adapterGet(this._key, "slice", start, end, step);
         return adapterValues.map((value: any) => {
           value = JSON.parse(value);
@@ -93,7 +93,7 @@ export class List {
         });
       }
     }
-    
+
     // Fallback to Redis lRange for non-adapter lists
     // Note: Redis lRange is inclusive on both ends, but JavaScript slice is exclusive on end
     // So we adjust end-1 to match JavaScript slice semantics
@@ -156,7 +156,7 @@ export class List {
         if (value === null) return null;
 
         value = JSON.parse(value);
-        
+
         if (typeof value === "string") {
           if (value.startsWith("znsocket.List:")) {
             const refKey = value.split(/:(.+)/)[1];
