@@ -113,6 +113,23 @@ class List(MutableSequence, ZnSocketObject):
             # check from the server if the adapter is available
             self._adapter_available = self.socket.call("check_adapter", key=self.key)
 
+        # If fallback policy is "copy" and the list is empty, copy from fallback
+        if (
+            self.fallback is not None
+            and self.fallback_policy == "copy"
+            and int(self.redis.llen(self.key)) == 0
+            and not self._adapter_available
+        ):
+            fallback_lst = type(self)(
+                r=self.redis,
+                key=self.fallback,
+                socket=self.socket,
+                convert_nan=self.convert_nan,
+                converter=self.converter,
+            )
+            if len(fallback_lst) > 0:
+                fallback_lst.copy(self._key)
+
     @property
     def key(self) -> str:
         """The key of the list in the server.

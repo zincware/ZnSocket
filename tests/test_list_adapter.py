@@ -401,7 +401,6 @@ def test_list_adapter_fallback(client, request):
         key="some-key",
         converter=[znjson.converter.NumpyConverter],
         fallback="does-not-exist",
-        fallback_policy="reference",
     )
     assert len(lst2) == 0
 
