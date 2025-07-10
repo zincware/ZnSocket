@@ -134,6 +134,7 @@ class List(MutableSequence, ZnSocketObject):
                 converter=self.converter,
             )
             if len(fallback_lst) > 0:
+                # here we use the internal key, because we create a new list object.
                 fallback_lst.copy(self._key)
 
     @property
@@ -421,6 +422,7 @@ class List(MutableSequence, ZnSocketObject):
                 converter=self.converter,
             )
             if len(fallback_lst) > 0:
+                # here we use the internal key, because we create a new list object.
                 fallback_lst.copy(self._key)
 
         if callback := self._callbacks["append"]:
@@ -515,6 +517,10 @@ class List(MutableSequence, ZnSocketObject):
         >>> len(copied_list)
         3
         """
+        # TODO!! currently, it is not possible to do copy(list.key) 
+        # because it will be prefixed with "znsocket.List:" twice!
+        # The same is true for the Dict object.
+
         if self._adapter_available:
             success = self.socket.call(
                 "adapter:get",
