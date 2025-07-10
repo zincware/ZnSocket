@@ -517,7 +517,7 @@ class List(MutableSequence, ZnSocketObject):
         >>> len(copied_list)
         3
         """
-        # TODO!! currently, it is not possible to do copy(list.key) 
+        # TODO!! currently, it is not possible to do copy(list.key)
         # because it will be prefixed with "znsocket.List:" twice!
         # The same is true for the Dict object.
 
