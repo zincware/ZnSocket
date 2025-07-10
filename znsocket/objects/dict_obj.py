@@ -58,6 +58,12 @@ class Dict(MutableMapping, ZnSocketObject):
             The policy to use for the fallback dict.
             'copy': Copy the fallback dict to this dict on initialization.
             'frozen': Use the fallback dict as a read-only source of data.
+        fallback : str, optional
+            The key of a fallback dict to use if this dict is empty.
+        fallback_policy : {'copy', 'frozen'}, optional
+            The policy to use for the fallback dict.
+            'copy': Copy the fallback dict to this dict on initialization.
+            'frozen': Use the fallback dict as a read-only source of data.
 
         Examples
         --------

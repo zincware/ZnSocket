@@ -72,6 +72,12 @@ class List(MutableSequence, ZnSocketObject):
         convert_nan : bool, optional
             Convert NaN and Infinity to None. Both are not native JSON values and
             cannot be encoded/decoded. Default is False.
+        fallback : str, optional
+            The key of a fallback list to use if this list is empty.
+        fallback_policy : {'copy', 'frozen'}, optional
+            The policy to use for the fallback list.
+            'copy': Copy the fallback list to this list on initialization.
+            'frozen': Use the fallback list as a read-only source of data.
 
         Examples
         --------
