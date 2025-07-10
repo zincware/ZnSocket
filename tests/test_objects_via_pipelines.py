@@ -3,9 +3,7 @@ import pytest
 import znsocket
 
 
-@pytest.mark.parametrize(
-    "client", ["znsclient", "znsclient_w_redis", "redisclient"]
-)
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
 def test_dct_pipeline(client, request):
     c = request.getfixturevalue(client)
 
