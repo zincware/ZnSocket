@@ -30,40 +30,47 @@ class List(MutableSequence, ZnSocketObject):
     ):
         """Synchronized list object.
 
-        The content of this list is stored/read from the
-        server. The data is not stored in this object at all.
+        The content of this list is stored/read from the server. The data is not stored
+        in this object at all, making it suitable for distributed applications and
+        real-time synchronization.
 
         Parameters
         ----------
-        r: znsocket.Client|redis.Redis
+        r : znsocket.Client or redis.Redis
             Connection to the server.
-        socket: znsocket.Client|None
-            Socket connection for callbacks.
-            If None, the connection from `r` will be used if it is a Client.
-        key: str
+        key : str
             The key in the server to store the data from this list.
-        callbacks: dict[str, Callable]
-            optional function callbacks for methods
-            which modify the database.
-        repr_type: str
-            Control the `repr` appearance of the object.
-            Reduce for better performance.
-        converter: list[znjson.ConverterBase]|None
-            Optional list of znjson converters
-            to use for encoding/decoding the data.
-        max_commands_per_call: int
-            Maximum number of commands to send in a
-            single call when using pipelines.
-            Reduce for large list operations to avoid
-            hitting the message size limit.
-            Only applies when using `znsocket.Client`.
-        convert_nan: bool
-            Convert NaN and Infinity to None. Both are no native
-            JSON values and can not be encoded/decoded.
+        socket : znsocket.Client, optional
+            Socket connection for callbacks. If None, the connection from `r` will be
+            used if it is a Client.
+        callbacks : dict[str, Callable], optional
+            Optional function callbacks for methods which modify the database.
+        repr_type : {'length', 'minimal', 'full'}, optional
+            Control the `repr` appearance of the object. Reduce for better performance.
+            Default is 'length'.
+        converter : list[znjson.ConverterBase], optional
+            Optional list of znjson converters to use for encoding/decoding the data.
+        max_commands_per_call : int, optional
+            Maximum number of commands to send in a single call when using pipelines.
+            Reduce for large list operations to avoid hitting the message size limit.
+            Only applies when using `znsocket.Client`. Default is 1,000,000.
+        convert_nan : bool, optional
+            Convert NaN and Infinity to None. Both are not native JSON values and
+            cannot be encoded/decoded. Default is False.
 
+        Examples
+        --------
+        >>> client = znsocket.Client("http://localhost:5000")
+        >>> my_list = znsocket.List(client, "my_list")
+        >>> my_list.append("item1")
+        >>> my_list.append("item2")
+        >>> len(my_list)
+        2
+        >>> my_list[0]
+        'item1'
         """
         self.redis = r
-        self.key = key
+        self._key = key
         self.repr_type = repr_type
         self.socket = socket if socket else (r if isinstance(r, Client) else None)
         self.converter = converter
@@ -89,6 +96,17 @@ class List(MutableSequence, ZnSocketObject):
             # check from the server if the adapter is available
             self._adapter_available = self.socket.call("check_adapter", key=self.key)
 
+    @property
+    def key(self) -> str:
+        """The key of the list in the server.
+
+        Returns
+        -------
+        str
+            The prefixed key used to store this list in the server.
+        """
+        return f"znsocket.List:{self._key}"
+
     def __len__(self) -> int:
         result = int(self.redis.llen(self.key))
         if result == 0 and self._adapter_available:
@@ -102,10 +120,37 @@ class List(MutableSequence, ZnSocketObject):
         from znsocket.objects.dict_obj import Dict
 
         single_item = isinstance(index, int)
+        original_slice = isinstance(index, slice)
+
         if single_item:
             index = [index]
-        if isinstance(index, slice):
-            index = list(range(*index.indices(len(self))))
+        elif original_slice:
+            # If we have an adapter and it's a slice, use the efficient slice method
+            if self._adapter_available:
+                start, stop, step = index.indices(len(self))
+                adapter_values = self.socket.call(
+                    "adapter:get",
+                    key=self.key,
+                    method="slice",
+                    start=start,
+                    stop=stop,
+                    step=step,
+                )
+                items = []
+                for value in adapter_values:
+                    item = decode(self, value)
+                    if isinstance(item, str):
+                        if item.startswith("znsocket.List:"):
+                            key = item.split(":", 1)[1]
+                            item = List(r=self.redis, key=key)
+                        elif item.startswith("znsocket.Dict:"):
+                            key = item.split(":", 1)[1]
+                            item = Dict(r=self.redis, key=key)
+                    items.append(item)
+                return items
+            else:
+                # Fallback to individual index calls for non-adapter slices
+                index = list(range(*index.indices(len(self))))
 
         pipeline = self.redis.pipeline(**self._pipeline_kwargs)
         for i in index:
@@ -165,11 +210,11 @@ class List(MutableSequence, ZnSocketObject):
             if i >= LENGTH or i < -LENGTH:
                 raise IndexError("list index out of range")
             if isinstance(v, Dict):
-                v = f"znsocket.Dict:{v.key}"
+                v = v.key
             if isinstance(v, List):
                 if value.key == self.key:
                     raise ValueError("Can not set circular reference to self")
-                v = f"znsocket.List:{v.key}"
+                v = v.key
             pipeline.lset(self.key, i, encode(self, v))
         pipeline.execute()
 
@@ -216,11 +261,11 @@ class List(MutableSequence, ZnSocketObject):
             raise FrozenStorageError(key=self.key)
 
         if isinstance(value, Dict):
-            value = f"znsocket.Dict:{value.key}"
+            value = value.key
         if isinstance(value, List):
             if value.key == self.key:
                 raise ValueError("Can not set circular reference to self")
-            value = f"znsocket.List:{value.key}"
+            value = value.key
 
         if index >= len(self):
             self.redis.rpush(self.key, encode(self, value))
@@ -261,7 +306,24 @@ class List(MutableSequence, ZnSocketObject):
     def append(self, value: t.Any) -> None:
         """Append an item to the end of the list.
 
-        Override default method for better performance
+        Parameters
+        ----------
+        value : Any
+            The item to append to the list.
+
+        Raises
+        ------
+        FrozenStorageError
+            If the list is backed by an adapter and is read-only.
+        ValueError
+            If attempting to create a circular reference to self.
+
+        Examples
+        --------
+        >>> my_list = znsocket.List(client, "my_list")
+        >>> my_list.append("new_item")
+        >>> my_list[-1]
+        'new_item'
         """
         from znsocket.objects.dict_obj import Dict
 
@@ -271,11 +333,11 @@ class List(MutableSequence, ZnSocketObject):
         if callback := self._callbacks["append"]:
             callback(value)
         if isinstance(value, Dict):
-            value = f"znsocket.Dict:{value.key}"
+            value = value.key
         if isinstance(value, List):
             if value.key == self.key:
                 raise ValueError("Can not set circular reference to self")
-            value = f"znsocket.List:{value.key}"
+            value = value.key
         self.redis.rpush(self.key, encode(self, value))
         if self.socket is not None:
             refresh: RefreshTypeDict = {"indices": [len(self) - 1]}
@@ -294,11 +356,11 @@ class List(MutableSequence, ZnSocketObject):
         pipe = self.redis.pipeline(**self._pipeline_kwargs)
         for value in values:
             if isinstance(value, Dict):
-                value = f"znsocket.Dict:{value.key}"
+                value = value.key
             if isinstance(value, List):
                 if value.key == self.key:
                     raise ValueError("Can not set circular reference to self")
-                value = f"znsocket.List:{value.key}"
+                value = value.key
             pipe.rpush(self.key, encode(self, value))
         pipe.execute()
 
@@ -333,8 +395,32 @@ class List(MutableSequence, ZnSocketObject):
     def copy(self, key: str) -> "List":
         """Copy the list to a new key.
 
-        This will not trigger any callbacks as
-        the data is not modified.
+        Creates a new list with the same content but under a different key.
+        This operation does not trigger any callbacks as the original data
+        is not modified.
+
+        Parameters
+        ----------
+        key : str
+            The new key for the copied list.
+
+        Returns
+        -------
+        List
+            A new List instance pointing to the copied data.
+
+        Raises
+        ------
+        ValueError
+            If the copy operation fails.
+
+        Examples
+        --------
+        >>> original_list = znsocket.List(client, "original")
+        >>> original_list.extend([1, 2, 3])
+        >>> copied_list = original_list.copy("copied")
+        >>> len(copied_list)
+        3
         """
         if self._adapter_available:
             success = self.socket.call(
@@ -344,7 +430,7 @@ class List(MutableSequence, ZnSocketObject):
                 target=key,
             )
             handle_error(success)
-        elif not self.redis.copy(self.key, key):
+        elif not self.redis.copy(self.key, f"znsocket.List:{key}"):
             raise ValueError("Could not copy list")
 
         return List(
