@@ -94,3 +94,95 @@ sync_dict["Hello"] = "World"
 # Print the added item
 print(sync_dict["Hello"])
 ```
+
+## Adapters
+
+ZnSocket provides adapter classes that allow you to expose existing Python objects through the ZnSocket interface. This enables real-time access to your data structures from both Python and JavaScript clients without copying or modifying the original data.
+
+### ListAdapter
+
+The `ListAdapter` exposes any list-like Python object through the ZnSocket `List` interface:
+
+```python
+from znsocket import Client, List, ListAdapter
+import numpy as np
+
+# Connect to the ZnSocket server
+client = Client.from_url("znsocket://127.0.0.1:5000")
+
+# Create some data (can be any list-like object)
+data = [1, 2, 3, 4, 5]
+# Or numpy array: data = np.array([1, 2, 3, 4, 5])
+
+# Expose the data through an adapter
+adapter = ListAdapter(socket=client, key="data", object=data)
+
+# Access the data through a List interface
+shared_list = List(r=client, key="data")
+print(len(shared_list))  # 5
+print(shared_list[0])    # 1
+print(shared_list[1:3])  # [2, 3] - supports slicing!
+
+# Changes to the original data are immediately visible
+data.append(6)
+print(len(shared_list))  # 6
+print(shared_list[-1])   # 6
+```
+
+### DictAdapter
+
+The `DictAdapter` exposes any dict-like Python object through the ZnSocket `Dict` interface:
+
+```python
+from znsocket import Client, Dict, DictAdapter
+
+# Connect to the ZnSocket server
+client = Client.from_url("znsocket://127.0.0.1:5000")
+
+# Create some data (can be any dict-like object)
+data = {"name": "John", "age": 30, "city": "Berlin"}
+
+# Expose the data through an adapter
+adapter = DictAdapter(socket=client, key="user_data", object=data)
+
+# Access the data through a Dict interface
+shared_dict = Dict(r=client, key="user_data")
+print(shared_dict["name"])           # "John"
+print(list(shared_dict.keys()))      # ["name", "age", "city"]
+print("age" in shared_dict)          # True
+
+# Changes to the original data are immediately visible
+data["country"] = "Germany"
+print(shared_dict["country"])        # "Germany"
+print(len(shared_dict))              # 4
+```
+
+### Key Features of Adapters
+
+- **Real-time synchronization**: Changes to the underlying object are immediately visible through the adapter
+- **Cross-language support**: Access your Python data from JavaScript clients
+- **Efficient slicing**: ListAdapter supports efficient slicing operations (e.g., `list[1:5:2]`)
+- **Read-only access**: Adapters provide read-only access to prevent accidental modifications
+- **Nested data**: Adapters work with complex nested data structures
+- **No data copying**: Adapters reference the original data directly
+
+### JavaScript Access
+
+Both adapters can be accessed from JavaScript clients:
+
+```javascript
+import { createClient, List, Dict } from 'znsocket';
+
+// Connect to the server
+const client = createClient({ url: 'znsocket://127.0.0.1:5000' });
+await client.connect();
+
+// Access Python data through adapters
+const sharedList = new List({ client, key: 'data' });
+const sharedDict = new Dict({ client, key: 'user_data' });
+
+// All operations work seamlessly
+console.log(await sharedList.length());     // Real-time length
+console.log(await sharedList.slice(1, 3));  // Efficient slicing
+console.log(await sharedDict.get('name'));  // Access dict values
+```

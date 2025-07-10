@@ -1,5 +1,5 @@
 import json
-from collections.abc import Sequence
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 from znsocket.client import Client
@@ -7,11 +7,11 @@ from znsocket.utils import encode, handle_error
 
 
 @dataclass
-class ListAdapter:
+class DictAdapter:
     """Connect any object to a znsocket server to be used instead of loading data from the database.
 
-    The ListAdapter allows you to expose any sequence-like object through the znsocket
-    server, making it accessible to clients as if it were a regular List. Data is
+    The DictAdapter allows you to expose any mapping-like object through the znsocket
+    server, making it accessible to clients as if it were a regular Dict. Data is
     transmitted via sockets through the server to the client on demand.
 
     Parameters
@@ -20,8 +20,8 @@ class ListAdapter:
         The key identifier for this adapter in the server.
     socket : Client
         The znsocket client connection to use for communication.
-    object : Sequence
-        The sequence object to expose through the adapter.
+    object : Mapping
+        The mapping object to expose through the adapter.
     converter : list[type], optional
         Optional list of znjson converters to use for encoding/decoding the data.
     convert_nan : bool, optional
@@ -33,20 +33,20 @@ class ListAdapter:
     Examples
     --------
     >>> client = znsocket.Client("http://localhost:5000")
-    >>> my_data = [1, 2, 3, 4, 5]
-    >>> adapter = znsocket.ListAdapter("my_adapter", client, my_data)
-    >>> # Now clients can access my_data as znsocket.List(client, "my_adapter")
+    >>> my_data = {"a": 1, "b": 2, "c": 3}
+    >>> adapter = znsocket.DictAdapter("my_adapter", client, my_data)
+    >>> # Now clients can access my_data as znsocket.Dict(client, "my_adapter")
     """
 
     key: str
     socket: Client
-    object: Sequence
+    object: Mapping
     converter: list[type] | None = None
     convert_nan: bool = False
     r: Client | None = None
 
     def __post_init__(self):
-        self.key = f"znsocket.List:{self.key}"
+        self.key = f"znsocket.Dict:{self.key}"
 
         result = self.socket.call("register_adapter", key=self.key)
         handle_error(result)
@@ -55,7 +55,7 @@ class ListAdapter:
         if self.r is None:
             self.r = self.socket
 
-    def map_callback(self, data):
+    def map_callback(self, data):  # noqa: C901
         """Map a callback to the object.
 
         This method handles incoming requests from clients and routes them to the
@@ -83,34 +83,41 @@ class ListAdapter:
         if method == "__len__":
             return len(self.object)
         elif method == "__getitem__":
-            index = kwargs["index"]
+            dict_key: str = kwargs["dict_key"]
             try:
-                value = self.object[index]
+                value = self.object[dict_key]
             except Exception as e:
                 value = {"error": {"msg": str(e), "type": type(e).__name__}}
             return encode(self, value)
-        elif method == "slice":
-            start: int = kwargs.get("start", 0)
-            stop: int = kwargs.get("stop", len(self.object))
-            step: int = kwargs.get("step", 1)
+        elif method == "__contains__":
+            dict_key: str = kwargs["dict_key"]
+            return dict_key in self.object
+        elif method == "keys":
+            return list(self.object.keys())
+        elif method == "values":
+            return [encode(self, value) for value in self.object.values()]
+        elif method == "items":
+            return [(key, encode(self, value)) for key, value in self.object.items()]
+        elif method == "get":
+            dict_key: str = kwargs["dict_key"]
+            default = kwargs.get("default", None)
             try:
-                values = self.object[start:stop:step]
-                return [encode(self, value) for value in values]
+                value = self.object.get(dict_key, default)
             except Exception as e:
-                return {"error": {"msg": str(e), "type": type(e).__name__}}
+                value = {"error": {"msg": str(e), "type": type(e).__name__}}
+            return encode(self, value)
         elif method == "copy":
-            from znsocket import List
-            # TODO: support Segments and List
+            from znsocket import Dict
 
             target = kwargs["target"]
-            new_list = List(
+            new_dict = Dict(
                 r=self.r,
                 key=target,
                 socket=self.socket,
                 converter=self.converter,
                 convert_nan=self.convert_nan,
             )
-            if new_list._adapter_available:
+            if new_dict._adapter_available:
                 return json.dumps(
                     {
                         "error": {
@@ -119,7 +126,7 @@ class ListAdapter:
                         }
                     }
                 )
-            new_list.extend(self.object)
+            new_dict.update(self.object)
             return True
         else:
             raise NotImplementedError(f"Method {method} not implemented")
