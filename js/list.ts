@@ -65,14 +65,14 @@ export class List {
 
 		return new Proxy(this, {
 			get: (target, prop, receiver) => {
-				if (typeof prop === "symbol" || isNaN(Number(prop))) {
+				if (typeof prop === "symbol" || Number.isNaN(Number(prop))) {
 					return Reflect.get(target, prop, receiver);
 				}
 				const index = Number(prop);
 				return target.get(index);
 			},
 			set: (target, prop, value) => {
-				if (typeof prop === "symbol" || isNaN(Number(prop))) {
+				if (typeof prop === "symbol" || Number.isNaN(Number(prop))) {
 					return Reflect.set(target, prop, value);
 				}
 				const index = Number(prop);

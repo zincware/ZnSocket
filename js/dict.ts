@@ -103,7 +103,7 @@ export class Dict {
 	}
 
 	async set(key: string, value: any): Promise<any> {
-		if (this._callbacks && this._callbacks.set) {
+		if (this._callbacks?.set) {
 			await this._callbacks.set(value);
 		}
 		if (this._socket) {
@@ -123,7 +123,7 @@ export class Dict {
 	}
 
 	async update(dict: Record<string, any>): Promise<any> {
-		if (this._callbacks && this._callbacks.update) {
+		if (this._callbacks?.update) {
 			await this._callbacks.update(dict);
 		}
 		if (this._socket) {
@@ -278,7 +278,7 @@ export class Dict {
 				if (typeof value === "string") {
 					try {
 						parsedValue = JSON.parse(value);
-					} catch (e) {
+					} catch (_e) {
 						// If parsing fails, it means it's not a JSON string, so use the original value
 						parsedValue = value;
 					}
@@ -292,7 +292,7 @@ export class Dict {
 				if (typeof value === "string") {
 					try {
 						parsedValue = JSON.parse(value);
-					} catch (e) {
+					} catch (_e) {
 						// If parsing fails, it means it's not a JSON string, so use the original value
 						parsedValue = value;
 					}

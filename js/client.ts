@@ -108,7 +108,7 @@ export class Client {
 		return new Promise((resolve, reject) => {
 			this._socket.emit("llen", [[key], {}], (data: any) => {
 				// Check if there is an error or invalid response and reject if necessary
-				resolve(data["data"]);
+				resolve(data.data);
 			});
 		});
 	}
@@ -116,7 +116,7 @@ export class Client {
 	lIndex(key: string, index: number): Promise<string | null> {
 		return new Promise((resolve, reject) => {
 			this._socket.emit("lindex", [[key, index], {}], (data: any) => {
-				resolve(data["data"] || null);
+				resolve(data.data || null);
 			});
 		});
 	}
@@ -140,7 +140,7 @@ export class Client {
 	lRange(key: string, start: number, end: number): Promise<string[]> {
 		return new Promise((resolve, reject) => {
 			this._socket.emit("lrange", [[key, start, end], {}], (data: any) => {
-				resolve(data["data"]);
+				resolve(data.data);
 			});
 		});
 	}
@@ -164,7 +164,7 @@ export class Client {
 	hGet(key: string, field: string): Promise<string | null> {
 		return new Promise((resolve, reject) => {
 			this._socket.emit("hget", [[key, field], {}], (data: any) => {
-				resolve(data["data"] || null);
+				resolve(data.data || null);
 			});
 		});
 	}
@@ -208,7 +208,7 @@ export class Client {
 	hExists(key: string, field: string): Promise<boolean> {
 		return new Promise((resolve, reject) => {
 			this._socket.emit("hexists", [[key, field], {}], (data: any) => {
-				if (data["data"] === 1) {
+				if (data.data === 1) {
 					resolve(true);
 				} else {
 					resolve(false);
@@ -220,7 +220,7 @@ export class Client {
 	hLen(key: string): Promise<number> {
 		return new Promise((resolve, reject) => {
 			this._socket.emit("hlen", [[key], {}], (data: any) => {
-				resolve(data["data"]);
+				resolve(data.data);
 			});
 		});
 	}
@@ -228,7 +228,7 @@ export class Client {
 	hKeys(key: string): Promise<string[]> {
 		return new Promise((resolve, reject) => {
 			this._socket.emit("hkeys", [[key], {}], (data: any) => {
-				resolve(data["data"]);
+				resolve(data.data);
 			});
 		});
 	}
@@ -236,7 +236,7 @@ export class Client {
 	hVals(key: string): Promise<string[]> {
 		return new Promise((resolve, reject) => {
 			this._socket.emit("hvals", [[key], {}], (data: any) => {
-				resolve(data["data"]);
+				resolve(data.data);
 			});
 		});
 	}
@@ -244,7 +244,7 @@ export class Client {
 	hGetAll(key: string): Promise<Record<string, string>> {
 		return new Promise((resolve, reject) => {
 			this._socket.emit("hgetall", [[key], {}], (data: any) => {
-				resolve(data["data"]);
+				resolve(data.data);
 			});
 		});
 	}

@@ -19,7 +19,7 @@ export class Segments {
 		return new Proxy(this, {
 			get: (target, prop, receiver) => {
 				// If the property is a symbol or a non-numeric property, return it directly
-				if (typeof prop === "symbol" || isNaN(Number(prop))) {
+				if (typeof prop === "symbol" || Number.isNaN(Number(prop))) {
 					return Reflect.get(target, prop, receiver);
 				}
 

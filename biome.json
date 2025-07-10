@@ -6,7 +6,8 @@
 		"useIgnoreFile": false
 	},
 	"files": {
-		"ignoreUnknown": false
+		"ignoreUnknown": false,
+		"includes": ["js/**", "*.js", "*.ts", "*.jsx", "*.tsx", "*.json"]
 	},
 	"formatter": {
 		"enabled": true,
@@ -15,7 +16,14 @@
 	"linter": {
 		"enabled": true,
 		"rules": {
-			"recommended": true
+			"recommended": true,
+			"suspicious": {
+				"noExplicitAny": "off"
+			},
+			"correctness": {
+				"noConstructorReturn": "off",
+				"noUnusedFunctionParameters": "off"
+			}
 		}
 	},
 	"javascript": {
