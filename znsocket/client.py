@@ -78,7 +78,7 @@ class Client:
     delay_between_calls: datetime.timedelta | None = None
     retry: int = 1
     connect_wait_timeout: int = 1
-    max_message_size_bytes: int = 1 * 1024 * 1024  # 1MB (1% of 100MB limit)
+    max_message_size_bytes: int = 5 * 1024 * 1024  # 5MB (5% of 100MB limit)
 
     _last_call: datetime.datetime = dataclasses.field(
         default_factory=datetime.datetime.now, init=False
