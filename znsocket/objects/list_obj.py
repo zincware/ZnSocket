@@ -38,7 +38,6 @@ class List(MutableSequence, ZnSocketObject):
         callbacks: ListCallbackTypedDict | None = None,
         repr_type: ListRepr = "length",
         converter: list[t.Type[znjson.ConverterBase]] | None = None,
-        max_commands_per_call: int = 1_000_000,
         convert_nan: bool = False,
         fallback: str | None = None,
         fallback_policy: t.Literal["copy", "frozen"] | None = None,
@@ -65,10 +64,6 @@ class List(MutableSequence, ZnSocketObject):
             Default is 'length'.
         converter : list[znjson.ConverterBase], optional
             Optional list of znjson converters to use for encoding/decoding the data.
-        max_commands_per_call : int, optional
-            Maximum number of commands to send in a single call when using pipelines.
-            Reduce for large list operations to avoid hitting the message size limit.
-            Only applies when using `znsocket.Client`. Default is 1,000,000.
         convert_nan : bool, optional
             Convert NaN and Infinity to None. Both are not native JSON values and
             cannot be encoded/decoded. Default is False.
@@ -101,7 +96,7 @@ class List(MutableSequence, ZnSocketObject):
         self.fallback_policy = fallback_policy
 
         if isinstance(r, Client):
-            self._pipeline_kwargs = {"max_commands_per_call": max_commands_per_call}
+            self._pipeline_kwargs = {}
         else:
             self._pipeline_kwargs = {}
 

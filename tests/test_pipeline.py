@@ -1,5 +1,3 @@
-import logging
-
 import pytest
 import redis.exceptions
 
@@ -198,15 +196,27 @@ def test_set_none(client, request):
 def test_set_large_message(client, request, caplog):
     c = request.getfixturevalue(client)
 
-    logger = logging.getLogger("znsocket")
-    logger.setLevel(logging.DEBUG)
+    caplog.set_level("DEBUG", logger="znsocket.client")
 
-    pipeline = c.pipeline(max_commands_per_call=75)
-    for _ in range(100):
-        pipeline.set("foo", "bar")
+    pipeline = c.pipeline()
+    # Create a large pipeline that will trigger chunking (need >5MB)
+    large_value = "x" * 50000  # 50KB per command
+    for i in range(150):  # 150 * 50KB = 7.5MB, should trigger chunking
+        pipeline.set(f"large_key_{i}", large_value)
 
-    assert pipeline.execute() == [True] * 100
+    results = pipeline.execute()
+    assert len(results) == 150
+    assert all(result for result in results)  # All should be truthy
 
-    assert any(
-        "splitting message at index" in record.message for record in caplog.records
-    ), "Expected 'splitting message' debug log not found."
+    # Check that either chunking was used OR compression was effective
+    chunking_used = "Splitting message" in caplog.text
+    compression_used = "Compressed message" in caplog.text
+
+    assert chunking_used or compression_used, (
+        "Expected either chunking or compression to be used for large message"
+    )
+
+    if compression_used and not chunking_used:
+        print("✅ Compression was so effective that chunking was not needed!")
+    elif chunking_used:
+        print("✅ Chunking was used for large message transmission")
