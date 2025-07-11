@@ -369,15 +369,12 @@ class Pipeline:
 
     The Pipeline class allows batching multiple Redis commands together to reduce
     network overhead and improve performance when executing multiple operations.
+    Large pipelines are automatically chunked based on message size.
 
     Parameters
     ----------
     client : Client
         The client to send the pipeline to.
-    max_commands_per_call : int, optional
-        The maximum number of commands to send in a single call to the server.
-        Decrease this number for large commands to avoid hitting the message size limit.
-        Increase it for small commands to reduce latency. Default is 1,000,000.
 
     Attributes
     ----------
@@ -394,7 +391,6 @@ class Pipeline:
     """
 
     client: Client
-    max_commands_per_call: int = 1_000_000
     pipeline: list = dataclasses.field(default_factory=list, init=False)
 
     def _add_to_pipeline(self, command, *args, **kwargs):
@@ -428,7 +424,7 @@ class Pipeline:
         """Execute the pipeline of commands as a batch on the server.
 
         Sends all queued commands to the server and returns the results in order.
-        The commands are sent in batches if the total number exceeds max_commands_per_call.
+        Automatic chunking is handled by the client.call() method based on message size.
 
         Returns
         -------
@@ -448,20 +444,5 @@ class Pipeline:
         >>> results = pipe.execute()
         >>> print(results)  # [1, 'value1']
         """
-        # iterate over self.pipeline and keep adding until the size is greater than max_message_size
-        # then send the message, collect the results and continue
-
-        message = []
-        results = []
-        for idx, entry in enumerate(self.pipeline):
-            message.append(entry)
-            if len(message) > self.max_commands_per_call:
-                log.debug(
-                    f"splitting message at index {idx} due to max_message_chunk",
-                )
-                results.extend(self._send_message(message))
-                message = []
-        if len(message) > 0:
-            results.extend(self._send_message(message))
-
-        return results
+        # Send all commands at once - chunking is handled automatically by client.call()
+        return self._send_message(self.pipeline)

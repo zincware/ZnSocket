@@ -599,7 +599,25 @@ def attach_events(  # noqa: C901
                 # Process the complete message
                 original_event = chunked_messages[chunk_id]["event"]
 
-                if hasattr(storage, original_event):
+                # Handle special events like "pipeline"
+                if original_event == "pipeline":
+                    try:
+                        # Call the pipeline handler directly
+                        result = pipeline(sid, (args, kwargs))
+                        
+                        # Store the result for later retrieval
+                        chunked_messages[chunk_id]["result"] = result
+                        chunked_messages[chunk_id]["complete"] = True
+
+                        return {"status": "complete"}
+                    except Exception as e:
+                        error_result = {
+                            "error": {"msg": str(e), "type": type(e).__name__}
+                        }
+                        chunked_messages[chunk_id]["result"] = error_result
+                        chunked_messages[chunk_id]["complete"] = True
+                        return {"status": "complete"}
+                elif hasattr(storage, original_event):
                     try:
                         result = {
                             "data": getattr(storage, original_event)(*args, **kwargs)
