@@ -392,8 +392,12 @@ class Client:
 
     def _call_chunked(self, event: str, message_bytes: bytes) -> t.Any:
         """Send a chunked message to the server with optimized encoding."""
-        # Reserve space for chunk metadata (approximately 150 bytes for base64 encoding)
-        chunk_size = self.max_message_size_bytes - 150  # subtract metadata overhead
+        # Reserve space for chunk metadata (should not be more than 250 bytes)
+        chunk_size = self.max_message_size_bytes - 250
+        if chunk_size <= 0:
+            raise ValueError(
+                "max_message_size_bytes is too small to accommodate chunk metadata"
+            )
         chunks = self._split_message_bytes(message_bytes, chunk_size)
         chunk_id = str(uuid.uuid4())
 
