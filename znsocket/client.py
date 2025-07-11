@@ -11,7 +11,6 @@ import uuid
 import socketio.exceptions
 import typing_extensions as tyex
 from redis import Redis
-from rich.progress import track
 
 from znsocket import exceptions
 from znsocket.abc import RefreshDataTypeDict
@@ -344,8 +343,8 @@ class Client:
         # chunk_size = self.max_message_size_bytes - 150
 
         # Allow for ~33% expansion during base64 encoding
-        raw_chunk_size = int(self.max_message_size_bytes / 1.37)  # conservative factor
-        chunk_size = raw_chunk_size - 150  # subtract metadata overhead
+        # raw_chunk_size = int(self.max_message_size_bytes / 1.37)  # conservative factor
+        chunk_size = self.max_message_size_bytes - 150  # subtract metadata overhead
         chunks = self._split_message_bytes(message_bytes, chunk_size)
         chunk_id = str(uuid.uuid4())
 
@@ -356,17 +355,13 @@ class Client:
 
         # Send all chunks
         chunk_iter = enumerate(chunks)
-        if log.isEnabledFor(logging.DEBUG):
-            chunk_iter = track(chunk_iter, description="Sending chunks")
         for chunk_index, chunk_data in chunk_iter:
             chunk_metadata = {
                 "chunk_id": chunk_id,
                 "chunk_index": chunk_index,
                 "total_chunks": len(chunks),
                 "event": event,
-                "data": base64.b64encode(chunk_data).decode(
-                    "ascii"
-                ),  # Binary safe encoding
+                "data": chunk_data,  # send bytes directly
                 "size": len(chunk_data),  # Original chunk size for verification
             }
 

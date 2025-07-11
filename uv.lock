@@ -2870,7 +2870,6 @@ dependencies = [
     { name = "eventlet" },
     { name = "python-socketio", extra = ["client"] },
     { name = "redis" },
-    { name = "rich" },
     { name = "typer" },
     { name = "znjson" },
 ]
@@ -2900,7 +2899,6 @@ requires-dist = [
     { name = "eventlet", specifier = ">=0.39.0" },
     { name = "python-socketio", extras = ["client"], specifier = ">=5.12.1" },
     { name = "redis", specifier = ">=5.2.1" },
-    { name = "rich", specifier = ">=13.9.4" },
     { name = "typer", specifier = ">=0.13" },
     { name = "znjson", specifier = ">=0.2.6" },
 ]

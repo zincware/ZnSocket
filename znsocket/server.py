@@ -608,8 +608,9 @@ def attach_events(  # noqa: C901
         chunk_index = data["chunk_index"]
         total_chunks = data["total_chunks"]
         event = data["event"]
-        chunk_data_b64 = data["data"]
+        chunk_bytes = data["data"]
         chunk_size = data.get("size", 0)
+
         log.debug(
             f"Received chunk {chunk_index + 1}/{total_chunks} for chunk ID: {chunk_id}, event: {event}"
         )
@@ -626,7 +627,6 @@ def attach_events(  # noqa: C901
 
         # Decode and store the chunk data
         try:
-            chunk_bytes = base64.b64decode(chunk_data_b64)
             # Verify chunk size if provided
             if chunk_size > 0 and len(chunk_bytes) != chunk_size:
                 return {
