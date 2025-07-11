@@ -2,10 +2,10 @@ import dataclasses
 import gzip
 import json
 import logging
+import threading
 import time
 import typing as t
 from copy import deepcopy
-import threading
 
 import eventlet.wsgi
 import socketio
