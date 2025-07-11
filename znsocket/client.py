@@ -5,6 +5,7 @@ import json
 import logging
 import typing as t
 import uuid
+from rich.progress import track
 
 import socketio.exceptions
 import typing_extensions as tyex
@@ -283,7 +284,10 @@ class Client:
         log.debug(f"Splitting message into {len(chunks)} chunks with ID {chunk_id}")
         
         # Send all chunks
-        for chunk_index, chunk_data in enumerate(chunks):
+        chunk_iter = enumerate(chunks)
+        if log.isEnabledFor(logging.DEBUG):
+            chunk_iter = track(chunk_iter, description="Sending chunks")
+        for chunk_index, chunk_data in chunk_iter:
             chunk_metadata = {
                 "chunk_id": chunk_id,
                 "chunk_index": chunk_index,

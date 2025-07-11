@@ -16,6 +16,7 @@ def server(
         help="The maximum size of the HTTP buffer. The default value is set to 100 MB. If a single data packet exceeds this size, the server will SILENTLY ignore the packet.",
         show_default=True,
     ),
+    storage: str = typer.Option("memory", help="The storage backend to use (memory or redis).")
 ):
     """Run a znsocket server.
 
@@ -25,7 +26,7 @@ def server(
     typer.echo(
         f"{datetime.datetime.now().isoformat()}: Starting znsocket server on port {port}"
     )
-    server = Server(port=port, max_http_buffer_size=max_http_buffer_size)
+    server = Server(port=port, max_http_buffer_size=max_http_buffer_size, storage=storage)
     server.run()
     typer.echo(
         f"{datetime.datetime.now().isoformat()}: Stopped znsocket server on port {port}"

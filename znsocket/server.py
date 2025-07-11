@@ -338,6 +338,7 @@ class Server:
     max_http_buffer_size: t.Optional[int] = None
     async_mode: t.Optional[str] = None
     logger: bool = False
+    storage: str = "memory"
 
     @classmethod
     def from_url(cls, url: str, **kwargs) -> "Server":
@@ -384,8 +385,20 @@ class Server:
             logger=self.logger,
             engineio_logger=self.logger,
         )
+
+        # Resolve storage backend
+        if self.storage.startswith("redis://"):
+            import redis
+            resolved_storage = redis.Redis.from_url(self.storage, decode_responses=True)
+        elif self.storage == "memory":
+            resolved_storage = None  # or some custom memory-backed store
+        else:
+            raise ValueError(f"Unsupported storage backend: {self.storage}")
+
+        # Attach events with resolved storage
+        attach_events(sio, storage=resolved_storage, namespace="/znsocket")
+
         server_app = socketio.WSGIApp(sio)
-        # TODO: for adapter support the server should know the redis!
         eventlet.wsgi.server(eventlet.listen(("0.0.0.0", self.port)), server_app)
 
 
@@ -394,15 +407,11 @@ def get_sio(
     async_mode: t.Optional[str] = None,
     **kwargs,
 ) -> socketio.Server:
-    # We set these as kwargs, because their default
-    # is not None, so if None we leave them out
     if max_http_buffer_size is not None:
         kwargs["max_http_buffer_size"] = max_http_buffer_size
     if async_mode is not None:
         kwargs["async_mode"] = async_mode
-    sio = socketio.Server(**kwargs)
-    attach_events(sio, namespace="/znsocket")
-    return sio
+    return socketio.Server(**kwargs)
 
 
 def attach_events(  # noqa: C901

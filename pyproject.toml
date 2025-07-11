@@ -12,6 +12,7 @@ dependencies = [
     "eventlet>=0.39.0",
     "python-socketio[client]>=5.12.1",
     "redis>=5.2.1",
+    "rich>=13.9.4",
     "typer>=0.13",
     "znjson>=0.2.6",
 ]
@@ -19,6 +20,8 @@ dependencies = [
 [dependency-groups]
 dev = [
     "coverage>=7.6.10",
+    "ipykernel>=6.29.5",
+    "ipywidgets>=8.1.7",
     "numpy>=2.2.2",
     "pytest>=8.3.4",
     "rdkit2ase>=0.1.4",
