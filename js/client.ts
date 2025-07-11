@@ -1,5 +1,4 @@
 import { io, Manager, type Socket } from "socket.io-client";
-import { v4 as uuidv4 } from "uuid";
 
 /**
  * Options for creating a znsocket client
@@ -11,8 +10,6 @@ export interface ClientOptions {
 	namespace?: string;
 	/** An existing socket.io socket to use */
 	socket?: Socket;
-	/** Maximum message size in bytes before chunking (default: 80MB) */
-	maxMessageSizeBytes?: number;
 }
 
 /**
@@ -37,15 +34,12 @@ export const createClient = ({
  */
 export class Client {
 	private _socket: Socket;
-	private _maxMessageSizeBytes: number;
 
 	/**
 	 * Create a new znsocket client
 	 * @param options - Configuration options for the client
 	 */
-	constructor({ url, namespace = "znsocket", socket, maxMessageSizeBytes = 80 * 1024 * 1024 }: ClientOptions) {
-		this._maxMessageSizeBytes = maxMessageSizeBytes;
-		
+	constructor({ url, namespace = "znsocket", socket }: ClientOptions) {
 		// Correct concatenation of URL and namespace for socket connection
 		if (socket) {
 			this._socket = socket;
@@ -57,76 +51,6 @@ export class Client {
 			const manager = new Manager();
 			this._socket = manager.socket("/znsocket");
 		}
-	}
-
-	/**
-	 * Serialize message data to string
-	 * @param data - The data to serialize
-	 * @returns Serialized data as string
-	 */
-	private _serializeMessage(data: any): string {
-		return JSON.stringify(data);
-	}
-
-	/**
-	 * Split message string into chunks
-	 * @param message - The message string to split
-	 * @param maxChunkSize - Maximum size per chunk
-	 * @returns Array of chunk strings
-	 */
-	private _splitMessageString(message: string, maxChunkSize: number): string[] {
-		const chunks: string[] = [];
-		for (let i = 0; i < message.length; i += maxChunkSize) {
-			chunks.push(message.substring(i, i + maxChunkSize));
-		}
-		return chunks;
-	}
-
-	/**
-	 * Send a chunked message to the server
-	 * @param event - The event name
-	 * @param data - The data to send
-	 * @returns Promise that resolves with server response
-	 */
-	private async _emitChunked(event: string, data: any): Promise<any> {
-		const messageString = this._serializeMessage(data);
-		const chunkSize = this._maxMessageSizeBytes - 200; // Reserve space for chunk metadata
-		const chunks = this._splitMessageString(messageString, chunkSize);
-		const chunkId = uuidv4();
-		
-		console.debug(`Splitting message into ${chunks.length} chunks with ID ${chunkId}`);
-		
-		// Send all chunks
-		for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
-			const chunkMetadata = {
-				chunk_id: chunkId,
-				chunk_index: chunkIndex,
-				total_chunks: chunks.length,
-				event: event,
-				data: chunks[chunkIndex]
-			};
-			
-			const response = await new Promise((resolve, reject) => {
-				this._socket.emit("chunked_message", chunkMetadata, (response: any) => {
-					if (response?.error) {
-						reject(new Error(`Chunk ${chunkIndex} failed: ${response.error}`));
-					} else {
-						resolve(response);
-					}
-				});
-			});
-		}
-		
-		// Get final response
-		return new Promise((resolve, reject) => {
-			this._socket.emit("get_chunked_result", { chunk_id: chunkId }, (response: any) => {
-				if (response?.error) {
-					reject(new Error(`Chunked message failed: ${response.error}`));
-				} else {
-					resolve(response);
-				}
-			});
-		});
 	}
 
 	/**
@@ -161,28 +85,16 @@ export class Client {
 
 	/**
 	 * Emit an event to the server
-	 * Automatically handles chunking for large messages that exceed the size limit.
 	 * @param event - The event name
 	 * @param data - The data to send
 	 * @returns A promise that resolves with the server response
 	 */
 	emit<T extends string>(event: T, data: any): Promise<any> {
-		// Check if message needs chunking
-		const messageString = this._serializeMessage(data);
-		const messageSize = new TextEncoder().encode(messageString).length;
-		
-		if (messageSize > this._maxMessageSizeBytes) {
-			// Use chunked transmission
-			console.debug(`Message size (${messageSize.toLocaleString()} bytes) exceeds limit (${this._maxMessageSizeBytes.toLocaleString()} bytes). Using chunked transmission.`);
-			return this._emitChunked(event, data);
-		} else {
-			// Use normal transmission
-			return new Promise((resolve, reject) => {
-				this._socket.emit(event, data, (response: any) => {
-					resolve(response);
-				});
+		return new Promise((resolve, reject) => {
+			this._socket.emit(event, data, (response: any) => {
+				resolve(response);
 			});
-		}
+		});
 	}
 
 	/**
@@ -379,98 +291,5 @@ export class Client {
 				resolve(data);
 			});
 		});
-	}
-
-	/**
-	 * Create a pipeline for batching commands
-	 * @param maxCommandsPerCall - Maximum commands per pipeline call
-	 * @returns A new Pipeline instance
-	 */
-	pipeline(maxCommandsPerCall: number = 1000000): Pipeline {
-		return new Pipeline(this, maxCommandsPerCall);
-	}
-}
-
-/**
- * Pipeline class for batching multiple commands
- */
-export class Pipeline {
-	private _client: Client;
-	private _commands: Array<[string, any]> = [];
-	private _maxCommandsPerCall: number;
-
-	constructor(client: Client, maxCommandsPerCall: number = 1000000) {
-		this._client = client;
-		this._maxCommandsPerCall = maxCommandsPerCall;
-	}
-
-	/**
-	 * Add a command to the pipeline
-	 * @param command - Command name
-	 * @param data - Command data
-	 * @returns This pipeline instance for chaining
-	 */
-	private _addCommand(command: string, data: any): Pipeline {
-		this._commands.push([command, data]);
-		return this;
-	}
-
-	/**
-	 * Execute all commands in the pipeline
-	 * @returns Promise that resolves with array of results
-	 */
-	async execute(): Promise<any[]> {
-		if (this._commands.length === 0) {
-			return [];
-		}
-
-		const results: any[] = [];
-		const commands = [...this._commands];
-		
-		// Process commands in batches
-		for (let i = 0; i < commands.length; i += this._maxCommandsPerCall) {
-			const batch = commands.slice(i, i + this._maxCommandsPerCall);
-			const message = batch.map(([command, data]) => [command, data]);
-			
-			const batchResults = await this._client.emit("pipeline", { message });
-			if (batchResults?.data) {
-				results.push(...batchResults.data);
-			}
-		}
-		
-		return results;
-	}
-
-	// Add common Redis-like methods to the pipeline
-	hset(key: string, field: string, value: any): Pipeline {
-		return this._addCommand("hset", [[], { name: key, mapping: { [field]: value } }]);
-	}
-
-	hget(key: string, field: string): Pipeline {
-		return this._addCommand("hget", [[key, field], {}]);
-	}
-
-	set(key: string, value: any): Pipeline {
-		return this._addCommand("set", [[key, value], {}]);
-	}
-
-	get(key: string): Pipeline {
-		return this._addCommand("get", [[key], {}]);
-	}
-
-	lpush(key: string, value: any): Pipeline {
-		return this._addCommand("lpush", [[key, value], {}]);
-	}
-
-	rpush(key: string, value: any): Pipeline {
-		return this._addCommand("rpush", [[key, value], {}]);
-	}
-
-	llen(key: string): Pipeline {
-		return this._addCommand("llen", [[key], {}]);
-	}
-
-	lindex(key: string, index: number): Pipeline {
-		return this._addCommand("lindex", [[key, index], {}]);
 	}
 }
