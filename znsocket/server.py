@@ -415,11 +415,11 @@ def get_sio(
         kwargs["max_http_buffer_size"] = max_http_buffer_size
     if async_mode is not None:
         kwargs["async_mode"] = async_mode
-    
+
     # Enable compression for better performance
     kwargs.setdefault("compression", True)
     kwargs.setdefault("compression_threshold", 1024)  # Compress messages >1KB
-    
+
     return socketio.Server(**kwargs)
 
 
@@ -566,25 +566,26 @@ def attach_events(  # noqa: C901
 
     # Dictionary to store chunked message data
     chunked_messages = {}
-    
+
     def cleanup_expired_chunks():
         """Clean up expired chunked messages to prevent memory leaks."""
         current_time = time.time()
         expired_chunks = []
-        
+
         for chunk_id, chunk_data in chunked_messages.items():
             # Clean up chunks older than 5 minutes
             if current_time - chunk_data.get("created_at", 0) > 300:
                 expired_chunks.append(chunk_id)
-        
+
         for chunk_id in expired_chunks:
             del chunked_messages[chunk_id]
-        
+
         if expired_chunks:
             print(f"Cleaned up {len(expired_chunks)} expired chunks")
-    
+
     # Run cleanup every 60 seconds
     import threading
+
     cleanup_timer = threading.Timer(60.0, cleanup_expired_chunks)
     cleanup_timer.daemon = True
     cleanup_timer.start()
@@ -615,12 +616,18 @@ def attach_events(  # noqa: C901
             # Verify chunk size if provided
             if chunk_size > 0 and len(chunk_bytes) != chunk_size:
                 return {
-                    "error": {"msg": f"Chunk {chunk_index} size mismatch", "type": "ChunkSizeError"}
+                    "error": {
+                        "msg": f"Chunk {chunk_index} size mismatch",
+                        "type": "ChunkSizeError",
+                    }
                 }
             chunked_messages[chunk_id]["received_chunks"][chunk_index] = chunk_bytes
         except Exception as e:
             return {
-                "error": {"msg": f"Failed to decode chunk {chunk_index}: {str(e)}", "type": "ChunkDecodeError"}
+                "error": {
+                    "msg": f"Failed to decode chunk {chunk_index}: {str(e)}",
+                    "type": "ChunkDecodeError",
+                }
             }
 
         # Check if all chunks are received
@@ -639,23 +646,23 @@ def attach_events(  # noqa: C901
                 # Check for compression flag
                 if len(assembled_bytes) > 0:
                     compression_flag = assembled_bytes[0:1]
-                    
-                    if compression_flag == b'\x01':
+
+                    if compression_flag == b"\x01":
                         # Compressed message: flag (1) + original_size (4) + compressed_data
                         if len(assembled_bytes) < 5:
                             raise ValueError("Invalid compressed message format")
-                        original_size = int.from_bytes(assembled_bytes[1:5], 'big')
+                        original_size = int.from_bytes(assembled_bytes[1:5], "big")
                         compressed_data = assembled_bytes[5:]
                         json_bytes = gzip.decompress(compressed_data)
                         if len(json_bytes) != original_size:
                             raise ValueError("Decompressed size mismatch")
-                    elif compression_flag == b'\x00':
+                    elif compression_flag == b"\x00":
                         # Uncompressed message: flag (1) + json_data
                         json_bytes = assembled_bytes[1:]
                     else:
                         # Legacy format (no compression flag) - assume uncompressed
                         json_bytes = assembled_bytes
-                    
+
                     complete_message = json.loads(json_bytes.decode("utf-8"))
                     args, kwargs = complete_message[0], complete_message[1]
                 else:

@@ -129,20 +129,24 @@ class Client:
             Serialized (and optionally compressed) message as bytes.
         """
         payload = [args, kwargs]
-        json_bytes = json.dumps(payload, separators=(",", ":"), default=str).encode("utf-8")
-        
+        json_bytes = json.dumps(payload, separators=(",", ":"), default=str).encode(
+            "utf-8"
+        )
+
         # Apply compression if enabled and message is large enough
         if self.enable_compression and len(json_bytes) > self.compression_threshold:
             compressed_bytes = gzip.compress(json_bytes, compresslevel=6)
             # Only use compression if it actually reduces size
             if len(compressed_bytes) < len(json_bytes):
-                log.debug(f"Compressed message from {len(json_bytes)} to {len(compressed_bytes)} bytes "
-                         f"({len(compressed_bytes)/len(json_bytes)*100:.1f}%)")
+                log.debug(
+                    f"Compressed message from {len(json_bytes)} to {len(compressed_bytes)} bytes "
+                    f"({len(compressed_bytes) / len(json_bytes) * 100:.1f}%)"
+                )
                 # Prepend compression flag (1 byte) + original size (4 bytes)
-                return b'\x01' + len(json_bytes).to_bytes(4, 'big') + compressed_bytes
-        
+                return b"\x01" + len(json_bytes).to_bytes(4, "big") + compressed_bytes
+
         # Return uncompressed with flag
-        return b'\x00' + json_bytes
+        return b"\x00" + json_bytes
 
     def _split_message_bytes(
         self, message_bytes: bytes, max_chunk_size: int
@@ -181,27 +185,29 @@ class Client:
         """
         if len(message_bytes) == 0:
             raise ValueError("Empty message bytes")
-        
+
         # Check compression flag
         compression_flag = message_bytes[0:1]
-        
-        if compression_flag == b'\x01':
+
+        if compression_flag == b"\x01":
             # Compressed message: flag (1) + original_size (4) + compressed_data
             if len(message_bytes) < 5:
                 raise ValueError("Invalid compressed message format")
-            original_size = int.from_bytes(message_bytes[1:5], 'big')
+            original_size = int.from_bytes(message_bytes[1:5], "big")
             compressed_data = message_bytes[5:]
             json_bytes = gzip.decompress(compressed_data)
             if len(json_bytes) != original_size:
                 raise ValueError("Decompressed size mismatch")
-            log.debug(f"Decompressed message from {len(compressed_data)} to {len(json_bytes)} bytes")
-        elif compression_flag == b'\x00':
+            log.debug(
+                f"Decompressed message from {len(compressed_data)} to {len(json_bytes)} bytes"
+            )
+        elif compression_flag == b"\x00":
             # Uncompressed message: flag (1) + json_data
             json_bytes = message_bytes[1:]
         else:
             # Legacy format (no compression flag) - assume uncompressed
             json_bytes = message_bytes
-        
+
         payload = json.loads(json_bytes.decode("utf-8"))
         return tuple(payload[0]), payload[1]
 
@@ -325,8 +331,10 @@ class Client:
         chunks = self._split_message_bytes(message_bytes, chunk_size)
         chunk_id = str(uuid.uuid4())
 
-        log.debug(f"Splitting message into {len(chunks)} chunks with ID {chunk_id} "
-                 f"(original: {len(message_bytes)} bytes)")
+        log.debug(
+            f"Splitting message into {len(chunks)} chunks with ID {chunk_id} "
+            f"(original: {len(message_bytes)} bytes)"
+        )
 
         # Send all chunks
         chunk_iter = enumerate(chunks)
@@ -338,7 +346,9 @@ class Client:
                 "chunk_index": chunk_index,
                 "total_chunks": len(chunks),
                 "event": event,
-                "data": base64.b64encode(chunk_data).decode('ascii'),  # Binary safe encoding
+                "data": base64.b64encode(chunk_data).decode(
+                    "ascii"
+                ),  # Binary safe encoding
                 "size": len(chunk_data),  # Original chunk size for verification
             }
 

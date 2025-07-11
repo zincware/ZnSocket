@@ -211,9 +211,11 @@ def test_set_large_message(client, request, caplog):
     # Check that either chunking was used OR compression was effective
     chunking_used = "Splitting message" in caplog.text
     compression_used = "Compressed message" in caplog.text
-    
-    assert chunking_used or compression_used, "Expected either chunking or compression to be used for large message"
-    
+
+    assert chunking_used or compression_used, (
+        "Expected either chunking or compression to be used for large message"
+    )
+
     if compression_used and not chunking_used:
         print("✅ Compression was so effective that chunking was not needed!")
     elif chunking_used:
