@@ -281,6 +281,103 @@ This example demonstrates copy-on-write behavior across Python and JavaScript:
     // Both languages can work with the same logical dataset
     // while maintaining independent modifications
 
+ListAdapter + Segments Integration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This example demonstrates copy-on-write with ListAdapter and Segments across languages:
+
+**Python side (ListAdapter setup and Segments modifications):**
+
+.. code-block:: python
+
+    import znsocket
+
+    client = znsocket.Client("http://localhost:5000")
+    
+    # Start with a regular Python list
+    original_data = [
+        {"name": "item_0", "score": 85, "category": "A"},
+        {"name": "item_1", "score": 92, "category": "B"},
+        {"name": "item_2", "score": 78, "category": "A"},
+        {"name": "item_3", "score": 96, "category": "C"},
+        {"name": "item_4", "score": 83, "category": "B"},
+    ]
+    
+    # Use ListAdapter to expose Python list via ZnSocket
+    znsocket.ListAdapter(
+        socket=client,
+        key="test:adapter_data",
+        object=original_data
+    )
+    
+    # Create a List view of the adapted data
+    lst = znsocket.List(r=client, key="test:adapter_data")
+    
+    # Create copy-on-write view using Segments
+    segments = znsocket.Segments(
+        r=client,
+        origin=lst,
+        key="test:adapter_segments"
+    )
+    
+    # Create modified versions using copy-on-write
+    modified_dict = znsocket.Dict(r=client, key="test:adapter_segments/2")
+    modified_dict.clear()
+    modified_dict.update({
+        "name": "item_2_modified",
+        "score": 95,
+        "category": "A+",
+        "modified": True,
+        "source": "segments_copy"
+    })
+    segments[2] = modified_dict
+    
+    # Original Python list remains unchanged: original_data[2]["score"] == 78
+    # Adapter list remains unchanged: lst[2]["score"] == 78
+    # Segments shows modification: segments[2]["score"] == 95
+
+**JavaScript side (accessing adapter data and creating more modifications):**
+
+.. code-block:: javascript
+
+    import { createClient, Dict, List } from 'znsocket';
+
+    const client = createClient({ url: 'znsocket://127.0.0.1:5000' });
+    await client.connect();
+
+    // Access the ListAdapter data from JavaScript
+    const lst = new List({ client, key: 'test:adapter_data' });
+    
+    // Verify original adapter data is accessible
+    const originalItems = [];
+    for (let i = 0; i < await lst.length(); i++) {
+        originalItems.push(await lst.get(i));
+    }
+    console.log('Original adapter data:', originalItems);
+    
+    // Access Python's segment modification
+    const pythonModified = new Dict({ client, key: 'test:adapter_segments/2' });
+    console.log('Python modification:', {
+        name: await pythonModified.get('name'),      // "item_2_modified"
+        score: await pythonModified.get('score'),    // 95
+        source: await pythonModified.get('source')   // "segments_copy"
+    });
+    
+    // Create JavaScript-side segment modification
+    const jsModified = new Dict({ client, key: 'test:adapter_segments/1_js' });
+    await jsModified.clear();
+    await jsModified.set('name', 'item_1_js_enhanced');
+    await jsModified.set('score', 100);
+    await jsModified.set('category', 'S+');
+    await jsModified.set('enhanced_by', 'javascript');
+    
+    // Verify copy-on-write behavior across languages
+    const stillOriginal = await lst.get(1);
+    console.log('Original unchanged:', stillOriginal.score);    // 92
+    console.log('JS modification:', await jsModified.get('score')); // 100
+    
+    // Both Python list, ListAdapter, and all modifications coexist independently
+
 Use Cases and Patterns
 ----------------------
 
