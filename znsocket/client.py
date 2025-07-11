@@ -375,6 +375,14 @@ class Client:
                     self.sio.emit(
                         "chunked_message", chunk_metadata, namespace=self.namespace
                     )
+                    # call would be safer, emit is faster.
+                    # response = self.sio.call(
+                    #     "chunked_message", chunk_metadata, namespace=self.namespace
+                    # )
+                    # if response and response.get("error"):
+                    #     raise exceptions.ZnSocketError(
+                    #         f"Chunked message failed: {response['error']}"
+                    #     )
                     log.debug(
                         f"Chunk {chunk_index + 1}/{len(chunks)} sent successfully"
                     )
