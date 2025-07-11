@@ -9,7 +9,7 @@ import numpy.testing as npt
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "redisclient"],
 )
 def test_chunking_large_dict_set(client, request):
     """Test that large dictionary updates are chunked automatically."""
@@ -33,7 +33,7 @@ def test_chunking_large_dict_set(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "redisclient"],
 )
 def test_chunking_large_list_append(client, request):
     """Test that large list appends are chunked automatically."""
