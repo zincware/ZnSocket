@@ -10,16 +10,18 @@ def test_chunked_large_dict_python_to_js(znsclient, run_npm_test, request, caplo
     """Test that large chunked data from Python can be read by JavaScript."""
     # Create very large data that will definitely trigger chunking (>5MB)
     large_array = np.random.rand(1000, 1000).astype(np.float64)  # ~8MB
-    
+
     # Store using Python client with chunking
-    dct = znsocket.Dict(r=znsclient, key="chunked_test_dict", converter=[NumpyConverter])
+    dct = znsocket.Dict(
+        r=znsclient, key="chunked_test_dict", converter=[NumpyConverter]
+    )
     caplog.set_level("DEBUG", logger="znsocket.client")
     # This should trigger chunking
     dct["large_data"] = large_array
     dct["metadata"] = {
-        "size": large_array.shape, 
+        "size": large_array.shape,
         "type": "chunked_numpy_array",
-        "description": "Large array sent from Python with chunking"
+        "description": "Large array sent from Python with chunking",
     }
     assert "Splitting message" in caplog.text
     # Run the JavaScript test to verify JS can read the chunked data
@@ -35,12 +37,12 @@ def test_chunked_large_list_python_to_js(znsclient, run_npm_test, request, caplo
         # Each item is a large string to ensure we exceed the 5MB limit
         large_item = f"item_{i}_" + "x" * 10000  # 10KB per item, 800 items = 8MB
         large_list.append(large_item)
-    
+
     # Store using Python client
     lst = znsocket.List(r=znsclient, key="chunked_test_list")
     caplog.set_level("DEBUG", logger="znsocket.client")
     lst.extend(large_list)
-    
+
     # Add metadata
     metadata_dict = znsocket.Dict(r=znsclient, key="chunked_list_metadata")
     metadata_dict["total_items"] = len(large_list)

@@ -604,7 +604,7 @@ def attach_events(  # noqa: C901
                     try:
                         # Call the pipeline handler directly
                         result = pipeline(sid, (args, kwargs))
-                        
+
                         # Store the result for later retrieval
                         chunked_messages[chunk_id]["result"] = result
                         chunked_messages[chunk_id]["complete"] = True
