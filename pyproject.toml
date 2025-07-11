@@ -24,6 +24,7 @@ dev = [
     "ipywidgets>=8.1.7",
     "numpy>=2.2.2",
     "pytest>=8.3.4",
+    "pytest-benchmark>=5.1.0",
     "rdkit2ase>=0.1.4",
     "zndraw>=0.5.10",
     "znh5md>=0.4.4",

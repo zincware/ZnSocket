@@ -1,5 +1,8 @@
+import base64
 import dataclasses
+import gzip
 import json
+import time
 import typing as t
 from copy import deepcopy
 
@@ -412,6 +415,11 @@ def get_sio(
         kwargs["max_http_buffer_size"] = max_http_buffer_size
     if async_mode is not None:
         kwargs["async_mode"] = async_mode
+    
+    # Enable compression for better performance
+    kwargs.setdefault("compression", True)
+    kwargs.setdefault("compression_threshold", 1024)  # Compress messages >1KB
+    
     return socketio.Server(**kwargs)
 
 
@@ -558,15 +566,38 @@ def attach_events(  # noqa: C901
 
     # Dictionary to store chunked message data
     chunked_messages = {}
+    
+    def cleanup_expired_chunks():
+        """Clean up expired chunked messages to prevent memory leaks."""
+        current_time = time.time()
+        expired_chunks = []
+        
+        for chunk_id, chunk_data in chunked_messages.items():
+            # Clean up chunks older than 5 minutes
+            if current_time - chunk_data.get("created_at", 0) > 300:
+                expired_chunks.append(chunk_id)
+        
+        for chunk_id in expired_chunks:
+            del chunked_messages[chunk_id]
+        
+        if expired_chunks:
+            print(f"Cleaned up {len(expired_chunks)} expired chunks")
+    
+    # Run cleanup every 60 seconds
+    import threading
+    cleanup_timer = threading.Timer(60.0, cleanup_expired_chunks)
+    cleanup_timer.daemon = True
+    cleanup_timer.start()
 
     @sio.event(namespace=namespace)
     def chunked_message(sid, data):
-        """Handle chunked message fragments."""
+        """Handle chunked message fragments with optimized processing."""
         chunk_id = data["chunk_id"]
         chunk_index = data["chunk_index"]
         total_chunks = data["total_chunks"]
         event = data["event"]
-        chunk_data = data["data"]
+        chunk_data_b64 = data["data"]
+        chunk_size = data.get("size", 0)
 
         # Initialize storage for this chunk ID if not exists
         if chunk_id not in chunked_messages:
@@ -575,26 +606,60 @@ def attach_events(  # noqa: C901
                 "total_chunks": total_chunks,
                 "received_chunks": {},
                 "complete": False,
+                "created_at": time.time(),  # For cleanup
             }
 
-        # Store the chunk data
-        chunked_messages[chunk_id]["received_chunks"][chunk_index] = chunk_data
+        # Decode and store the chunk data
+        try:
+            chunk_bytes = base64.b64decode(chunk_data_b64)
+            # Verify chunk size if provided
+            if chunk_size > 0 and len(chunk_bytes) != chunk_size:
+                return {
+                    "error": {"msg": f"Chunk {chunk_index} size mismatch", "type": "ChunkSizeError"}
+                }
+            chunked_messages[chunk_id]["received_chunks"][chunk_index] = chunk_bytes
+        except Exception as e:
+            return {
+                "error": {"msg": f"Failed to decode chunk {chunk_index}: {str(e)}", "type": "ChunkDecodeError"}
+            }
 
         # Check if all chunks are received
         if len(chunked_messages[chunk_id]["received_chunks"]) == total_chunks:
             # Reassemble the message
-            assembled_data = ""
+            assembled_bytes = b""
             for i in range(total_chunks):
                 if i not in chunked_messages[chunk_id]["received_chunks"]:
                     return {
                         "error": {"msg": f"Missing chunk {i}", "type": "ChunkError"}
                     }
-                assembled_data += chunked_messages[chunk_id]["received_chunks"][i]
+                assembled_bytes += chunked_messages[chunk_id]["received_chunks"][i]
 
-            # Deserialize the complete message
+            # Deserialize the complete message with compression support
             try:
-                complete_message = json.loads(assembled_data)
-                args, kwargs = complete_message[0], complete_message[1]
+                # Check for compression flag
+                if len(assembled_bytes) > 0:
+                    compression_flag = assembled_bytes[0:1]
+                    
+                    if compression_flag == b'\x01':
+                        # Compressed message: flag (1) + original_size (4) + compressed_data
+                        if len(assembled_bytes) < 5:
+                            raise ValueError("Invalid compressed message format")
+                        original_size = int.from_bytes(assembled_bytes[1:5], 'big')
+                        compressed_data = assembled_bytes[5:]
+                        json_bytes = gzip.decompress(compressed_data)
+                        if len(json_bytes) != original_size:
+                            raise ValueError("Decompressed size mismatch")
+                    elif compression_flag == b'\x00':
+                        # Uncompressed message: flag (1) + json_data
+                        json_bytes = assembled_bytes[1:]
+                    else:
+                        # Legacy format (no compression flag) - assume uncompressed
+                        json_bytes = assembled_bytes
+                    
+                    complete_message = json.loads(json_bytes.decode("utf-8"))
+                    args, kwargs = complete_message[0], complete_message[1]
+                else:
+                    raise ValueError("Empty assembled message")
 
                 # Process the complete message
                 original_event = chunked_messages[chunk_id]["event"]
@@ -659,7 +724,7 @@ def attach_events(  # noqa: C901
                     chunked_messages[chunk_id]["complete"] = True
                     return {"status": "complete"}
 
-            except json.JSONDecodeError as e:
+            except (json.JSONDecodeError, ValueError, gzip.BadGzipFile) as e:
                 error_result = {
                     "error": {
                         "msg": f"Failed to deserialize message: {str(e)}",

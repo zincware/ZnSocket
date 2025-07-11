@@ -1,6 +1,8 @@
+import base64
 import dataclasses
 import datetime
 import functools
+import gzip
 import json
 import logging
 import typing as t
@@ -79,6 +81,8 @@ class Client:
     retry: int = 1
     connect_wait_timeout: int = 1
     max_message_size_bytes: int = 5 * 1024 * 1024  # 5MB (5% of 100MB limit)
+    enable_compression: bool = True  # Enable gzip compression for large messages
+    compression_threshold: int = 1024  # Compress messages larger than 1KB
 
     _last_call: datetime.datetime = dataclasses.field(
         default_factory=datetime.datetime.now, init=False
@@ -110,7 +114,7 @@ class Client:
         return Pipeline(self, *args, **kwargs)
 
     def _serialize_message(self, args: tuple, kwargs: dict) -> bytes:
-        """Serialize message arguments to bytes.
+        """Serialize message arguments to bytes with optional compression.
 
         Parameters
         ----------
@@ -122,10 +126,23 @@ class Client:
         Returns
         -------
         bytes
-            Serialized message as bytes.
+            Serialized (and optionally compressed) message as bytes.
         """
         payload = [args, kwargs]
-        return json.dumps(payload, separators=(",", ":"), default=str).encode("utf-8")
+        json_bytes = json.dumps(payload, separators=(",", ":"), default=str).encode("utf-8")
+        
+        # Apply compression if enabled and message is large enough
+        if self.enable_compression and len(json_bytes) > self.compression_threshold:
+            compressed_bytes = gzip.compress(json_bytes, compresslevel=6)
+            # Only use compression if it actually reduces size
+            if len(compressed_bytes) < len(json_bytes):
+                log.debug(f"Compressed message from {len(json_bytes)} to {len(compressed_bytes)} bytes "
+                         f"({len(compressed_bytes)/len(json_bytes)*100:.1f}%)")
+                # Prepend compression flag (1 byte) + original size (4 bytes)
+                return b'\x01' + len(json_bytes).to_bytes(4, 'big') + compressed_bytes
+        
+        # Return uncompressed with flag
+        return b'\x00' + json_bytes
 
     def _split_message_bytes(
         self, message_bytes: bytes, max_chunk_size: int
@@ -150,19 +167,42 @@ class Client:
         return chunks
 
     def _deserialize_message(self, message_bytes: bytes) -> tuple[tuple, dict]:
-        """Deserialize message bytes back to args and kwargs.
+        """Deserialize message bytes back to args and kwargs with compression support.
 
         Parameters
         ----------
         message_bytes : bytes
-            The serialized message.
+            The serialized (and optionally compressed) message.
 
         Returns
         -------
         tuple[tuple, dict]
             The original args and kwargs.
         """
-        payload = json.loads(message_bytes.decode("utf-8"))
+        if len(message_bytes) == 0:
+            raise ValueError("Empty message bytes")
+        
+        # Check compression flag
+        compression_flag = message_bytes[0:1]
+        
+        if compression_flag == b'\x01':
+            # Compressed message: flag (1) + original_size (4) + compressed_data
+            if len(message_bytes) < 5:
+                raise ValueError("Invalid compressed message format")
+            original_size = int.from_bytes(message_bytes[1:5], 'big')
+            compressed_data = message_bytes[5:]
+            json_bytes = gzip.decompress(compressed_data)
+            if len(json_bytes) != original_size:
+                raise ValueError("Decompressed size mismatch")
+            log.debug(f"Decompressed message from {len(compressed_data)} to {len(json_bytes)} bytes")
+        elif compression_flag == b'\x00':
+            # Uncompressed message: flag (1) + json_data
+            json_bytes = message_bytes[1:]
+        else:
+            # Legacy format (no compression flag) - assume uncompressed
+            json_bytes = message_bytes
+        
+        payload = json.loads(json_bytes.decode("utf-8"))
         return tuple(payload[0]), payload[1]
 
     @classmethod
@@ -279,13 +319,14 @@ class Client:
                 self.sio.sleep(1)
 
     def _call_chunked(self, event: str, message_bytes: bytes) -> t.Any:
-        """Send a chunked message to the server."""
-        # Reserve space for chunk metadata (approximately 200 bytes)
-        chunk_size = self.max_message_size_bytes - 200
+        """Send a chunked message to the server with optimized encoding."""
+        # Reserve space for chunk metadata (approximately 150 bytes for base64 encoding)
+        chunk_size = self.max_message_size_bytes - 150
         chunks = self._split_message_bytes(message_bytes, chunk_size)
         chunk_id = str(uuid.uuid4())
 
-        log.debug(f"Splitting message into {len(chunks)} chunks with ID {chunk_id}")
+        log.debug(f"Splitting message into {len(chunks)} chunks with ID {chunk_id} "
+                 f"(original: {len(message_bytes)} bytes)")
 
         # Send all chunks
         chunk_iter = enumerate(chunks)
@@ -297,7 +338,8 @@ class Client:
                 "chunk_index": chunk_index,
                 "total_chunks": len(chunks),
                 "event": event,
-                "data": chunk_data.decode("utf-8"),  # Convert bytes to string for JSON
+                "data": base64.b64encode(chunk_data).decode('ascii'),  # Binary safe encoding
+                "size": len(chunk_data),  # Original chunk size for verification
             }
 
             for idx in reversed(range(self.retry + 1)):
