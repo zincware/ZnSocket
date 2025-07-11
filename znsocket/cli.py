@@ -1,5 +1,6 @@
 import datetime
 import typing as t
+import logging
 
 import typer
 
@@ -19,19 +20,28 @@ def server(
     storage: str = typer.Option(
         "memory", help="The storage backend to use (memory or redis)."
     ),
+    log_level: str = typer.Option(
+        "INFO",
+        help="The logging level for the server. Options are: DEBUG, INFO, WARNING, ERROR, CRITICAL.",
+        show_default=True,
+    ),
 ):
     """Run a znsocket server.
 
     The server will provide a WebSocket interface to the clients.
     It enables keeping the data synchronized between the different clients.
     """
-    typer.echo(
-        f"{datetime.datetime.now().isoformat()}: Starting znsocket server on port {port}"
+    logging.basicConfig(
+        level=log_level.upper(),
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
+
+    log = logging.getLogger(__name__)
+
+    log.info(f"Starting znsocket server on port {port}")
     server = Server(
         port=port, max_http_buffer_size=max_http_buffer_size, storage=storage
     )
     server.run()
-    typer.echo(
-        f"{datetime.datetime.now().isoformat()}: Stopped znsocket server on port {port}"
-    )
+    log.info(f"Stopped znsocket server on port {port}")
+    log.info(f"{datetime.datetime.now().isoformat()}: Stopped znsocket server on port {port}")

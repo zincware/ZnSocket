@@ -5,12 +5,15 @@ import json
 import time
 import typing as t
 from copy import deepcopy
+import logging
 
 import eventlet.wsgi
 import socketio
 
 from znsocket.abc import RefreshDataTypeDict
 from znsocket.exceptions import DataError, ResponseError
+
+log = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -484,6 +487,14 @@ def attach_events(  # noqa: C901
             }
 
     @sio.event(namespace=namespace)
+    def server_config(sid) -> dict:
+        """Get the server configuration."""
+        return {
+                "max_http_buffer_size": sio.eio.max_http_buffer_size,
+                "async_mode": sio.eio.async_mode,
+            }
+
+    @sio.event(namespace=namespace)
     def check_adapter(sid, data: tuple[list, dict]) -> bool:
         """Check if the adapter is available."""
         key = data[1]["key"]
@@ -599,6 +610,9 @@ def attach_events(  # noqa: C901
         event = data["event"]
         chunk_data_b64 = data["data"]
         chunk_size = data.get("size", 0)
+        log.debug(
+            f"Received chunk {chunk_index + 1}/{total_chunks} for chunk ID: {chunk_id}, event: {event}"
+        )
 
         # Initialize storage for this chunk ID if not exists
         if chunk_id not in chunked_messages:
@@ -753,6 +767,7 @@ def attach_events(  # noqa: C901
     def get_chunked_result(sid, data):
         """Get the result of a completed chunked message."""
         chunk_id = data["chunk_id"]
+        log.debug(f"Retrieving result for chunk ID: {chunk_id}")
 
         if chunk_id not in chunked_messages:
             return {

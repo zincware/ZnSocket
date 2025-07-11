@@ -80,7 +80,7 @@ class Client:
     delay_between_calls: datetime.timedelta | None = None
     retry: int = 1
     connect_wait_timeout: int = 1
-    max_message_size_bytes: int = 5 * 1024 * 1024  # 5MB (5% of 100MB limit)
+    max_message_size_bytes: int|None = None   # 5 * 1024 * 1024 5MB (5% of 100MB limit)
     enable_compression: bool = True  # Enable gzip compression for large messages
     compression_threshold: int = 1024  # Compress messages larger than 1KB
 
@@ -267,6 +267,20 @@ class Client:
 
         if not self.decode_responses:
             raise NotImplementedError("decode_responses=False is not supported yet")
+        
+        server_config = self.sio.call(
+            "server_config", namespace=self.namespace
+        )
+        if server_config is None:
+            raise exceptions.ZnSocketError("No response from server")
+        if self.max_message_size_bytes is None:
+            self.max_message_size_bytes = int(server_config.get("max_http_buffer_size", 1000000))  # Default to 1MB if not set
+        if server_config["max_http_buffer_size"] < self.max_message_size_bytes:
+            log.warning(
+                f"Server max_http_buffer_size ({server_config['max_http_buffer_size']:,} bytes) "
+                f"is larger than client max_message_size_bytes ({self.max_message_size_bytes:,} bytes). "
+                "This may cause issues with large messages."
+            )
 
     def call(self, event: str, *args, **kwargs) -> t.Any:
         """Call an event on the server.
@@ -327,7 +341,11 @@ class Client:
     def _call_chunked(self, event: str, message_bytes: bytes) -> t.Any:
         """Send a chunked message to the server with optimized encoding."""
         # Reserve space for chunk metadata (approximately 150 bytes for base64 encoding)
-        chunk_size = self.max_message_size_bytes - 150
+        # chunk_size = self.max_message_size_bytes - 150
+
+        # Allow for ~33% expansion during base64 encoding
+        raw_chunk_size = int(self.max_message_size_bytes / 1.37)  # conservative factor
+        chunk_size = raw_chunk_size - 150  # subtract metadata overhead
         chunks = self._split_message_bytes(message_bytes, chunk_size)
         chunk_id = str(uuid.uuid4())
 
@@ -354,13 +372,17 @@ class Client:
 
             for idx in reversed(range(self.retry + 1)):
                 try:
-                    response = self.sio.call(
+                    log.debug(
+                        f"Sending chunk {chunk_index + 1}/{len(chunks)} "
+                        f"({len(chunk_data):,} bytes)"
+                    )
+                    # emit is faster than call.
+                    self.sio.emit(
                         "chunked_message", chunk_metadata, namespace=self.namespace
                     )
-                    if response and response.get("error"):
-                        raise exceptions.ZnSocketError(
-                            f"Chunk {chunk_index} failed: {response['error']}"
-                        )
+                    log.debug(
+                        f"Chunk {chunk_index + 1}/{len(chunks)} sent successfully"
+                    )
                     break
                 except socketio.exceptions.TimeoutError:
                     if idx == 0:
@@ -382,6 +404,9 @@ class Client:
                     raise exceptions.ZnSocketError(
                         f"Chunked message failed: {final_response['error']}"
                     )
+                log.debug(
+                    f"Received final response for chunk ID {chunk_id}: {final_response}"
+                )
                 return final_response
             except socketio.exceptions.TimeoutError:
                 if idx == 0:
