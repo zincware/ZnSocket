@@ -488,10 +488,13 @@ def attach_events(  # noqa: C901
     @sio.event(namespace=namespace)
     def server_config(sid) -> dict:
         """Get the server configuration."""
-        return {
+        config = {
             "max_http_buffer_size": sio.eio.max_http_buffer_size,
             "async_mode": sio.eio.async_mode,
+            "namespace": namespace,
         }
+        log.debug(f"Server config: {config}")
+        return config
 
     @sio.event(namespace=namespace)
     def check_adapter(sid, data: tuple[list, dict]) -> bool:
@@ -759,6 +762,54 @@ def attach_events(  # noqa: C901
                 "status": "waiting",
                 "received": len(chunked_messages[chunk_id]["received_chunks"]),
                 "total": total_chunks,
+            }
+
+    @sio.event(namespace=namespace)
+    def compressed_message(sid, data):
+        """Handle compressed single messages."""
+        event = data["event"]
+        message_bytes = data["data"]
+
+        log.debug(
+            f"Received compressed message for event: {event}, size: {len(message_bytes)} bytes"
+        )
+
+        try:
+            # Decompress and parse the message (same logic as in chunked messages)
+            args, kwargs = _decompress_message(message_bytes)
+
+            # Execute the event directly
+            if event == "pipeline":
+                return pipeline(sid, (args, kwargs))
+            elif hasattr(storage, event):
+                try:
+                    result = {"data": getattr(storage, event)(*args, **kwargs)}
+                    if isinstance(result["data"], set):
+                        result["data"] = list(result["data"])
+                        result["type"] = "set"
+                    return result
+                except TypeError as e:
+                    return {
+                        "error": {
+                            "msg": f"Invalid arguments for {event}: {str(e)}",
+                            "type": "TypeError",
+                        }
+                    }
+                except Exception as e:
+                    return {"error": {"msg": str(e), "type": type(e).__name__}}
+            else:
+                return {
+                    "error": {
+                        "msg": f"Unknown event: {event}",
+                        "type": "UnknownEventError",
+                    }
+                }
+        except (json.JSONDecodeError, ValueError, gzip.BadGzipFile) as e:
+            return {
+                "error": {
+                    "msg": f"Failed to deserialize message: {str(e)}",
+                    "type": "DeserializationError",
+                }
             }
 
     @sio.event(namespace=namespace)

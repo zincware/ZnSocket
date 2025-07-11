@@ -95,16 +95,16 @@ Chunking also works seamlessly with pipeline operations:
     import numpy as np
 
     client = Client.from_url("znsocket://127.0.0.1:5000")
-    
+
     # Use pipeline for batch operations
     pipeline = client.pipeline()
-    
+
     # Large data operations in pipeline
     for i in range(5):
         data_dict = Dict(r=pipeline, key=f"dataset_{i}")
         large_data = np.random.rand(800, 800)  # ~5MB each
         data_dict["array"] = large_data  # Will be chunked during execution
-    
+
     # Execute all operations - chunking handled automatically
     pipeline.execute()
 
@@ -129,7 +129,7 @@ You can monitor chunking activity by enabling debug logging:
 .. code-block:: python
 
     import logging
-    
+
     # Enable debug logging for chunking
     logging.basicConfig(level=logging.DEBUG)
     logger = logging.getLogger("znsocket.client")
