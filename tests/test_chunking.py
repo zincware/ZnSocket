@@ -95,8 +95,8 @@ def test_chunking_dict_pipeline(client, request, caplog):
 )
 def test_compression_without_chunking(client, request, caplog):
     """Test that large data compresses well enough to avoid chunking.
-    
-    This tests the scenario where raw data exceeds server limits but 
+
+    This tests the scenario where raw data exceeds server limits but
     compression makes it small enough for single transmission.
     """
     c = request.getfixturevalue(client)
@@ -112,12 +112,12 @@ def test_compression_without_chunking(client, request, caplog):
 
     caplog.set_level("DEBUG", logger="znsocket.client")
     dct["data"] = large_array
-    
+
     # Retrieve the data
     retrieved_data = dct["data"]
 
     npt.assert_array_equal(retrieved_data, large_array)
-    
+
     # Should see compression message but NOT chunking message
     assert "Compressed message from" in caplog.text
     assert "Splitting message" not in caplog.text  # Should not be chunked
