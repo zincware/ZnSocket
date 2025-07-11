@@ -293,7 +293,7 @@ Basic DictAdapter Example
    print("Configuration exposed through adapter")
 
 DictAdapter with Dynamic Updates
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
