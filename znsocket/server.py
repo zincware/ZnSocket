@@ -1,4 +1,5 @@
 import dataclasses
+import json
 import typing as t
 from copy import deepcopy
 
@@ -544,5 +545,117 @@ def attach_events(  # noqa: C901
                     }
                 }
         return {"data": results}
+
+    # Dictionary to store chunked message data
+    chunked_messages = {}
+
+    @sio.event(namespace=namespace)
+    def chunked_message(sid, data):
+        """Handle chunked message fragments."""
+        chunk_id = data["chunk_id"]
+        chunk_index = data["chunk_index"]
+        total_chunks = data["total_chunks"]
+        event = data["event"]
+        chunk_data = data["data"]
+        
+        # Initialize storage for this chunk ID if not exists
+        if chunk_id not in chunked_messages:
+            chunked_messages[chunk_id] = {
+                "event": event,
+                "total_chunks": total_chunks,
+                "received_chunks": {},
+                "complete": False
+            }
+        
+        # Store the chunk data
+        chunked_messages[chunk_id]["received_chunks"][chunk_index] = chunk_data
+        
+        # Check if all chunks are received
+        if len(chunked_messages[chunk_id]["received_chunks"]) == total_chunks:
+            # Reassemble the message
+            assembled_data = ""
+            for i in range(total_chunks):
+                if i not in chunked_messages[chunk_id]["received_chunks"]:
+                    return {"error": {"msg": f"Missing chunk {i}", "type": "ChunkError"}}
+                assembled_data += chunked_messages[chunk_id]["received_chunks"][i]
+            
+            # Deserialize the complete message
+            try:
+                complete_message = json.loads(assembled_data)
+                args, kwargs = complete_message[0], complete_message[1]
+                
+                # Process the complete message
+                original_event = chunked_messages[chunk_id]["event"]
+                
+                if hasattr(storage, original_event):
+                    try:
+                        result = {"data": getattr(storage, original_event)(*args, **kwargs)}
+                        if isinstance(result["data"], set):
+                            result["data"] = list(result["data"])
+                            result["type"] = "set"
+                        
+                        # Store the result for later retrieval
+                        chunked_messages[chunk_id]["result"] = result
+                        chunked_messages[chunk_id]["complete"] = True
+                        
+                        return {"status": "complete"}
+                    except TypeError as e:
+                        error_result = {
+                            "error": {
+                                "msg": f"Invalid arguments for {original_event}: {str(e)}",
+                                "type": "TypeError",
+                            }
+                        }
+                        chunked_messages[chunk_id]["result"] = error_result
+                        chunked_messages[chunk_id]["complete"] = True
+                        return {"status": "complete"}
+                    except Exception as e:
+                        error_result = {"error": {"msg": str(e), "type": type(e).__name__}}
+                        chunked_messages[chunk_id]["result"] = error_result
+                        chunked_messages[chunk_id]["complete"] = True
+                        return {"status": "complete"}
+                else:
+                    error_result = {
+                        "error": {
+                            "msg": f"Unknown event: {original_event}",
+                            "type": "UnknownEventError",
+                        }
+                    }
+                    chunked_messages[chunk_id]["result"] = error_result
+                    chunked_messages[chunk_id]["complete"] = True
+                    return {"status": "complete"}
+                    
+            except json.JSONDecodeError as e:
+                error_result = {
+                    "error": {
+                        "msg": f"Failed to deserialize message: {str(e)}",
+                        "type": "DeserializationError",
+                    }
+                }
+                chunked_messages[chunk_id]["result"] = error_result
+                chunked_messages[chunk_id]["complete"] = True
+                return {"status": "complete"}
+        else:
+            # Still waiting for more chunks
+            return {"status": "waiting", "received": len(chunked_messages[chunk_id]["received_chunks"]), "total": total_chunks}
+
+    @sio.event(namespace=namespace)
+    def get_chunked_result(sid, data):
+        """Get the result of a completed chunked message."""
+        chunk_id = data["chunk_id"]
+        
+        if chunk_id not in chunked_messages:
+            return {"error": {"msg": f"Chunk ID {chunk_id} not found", "type": "ChunkNotFoundError"}}
+        
+        chunk_data = chunked_messages[chunk_id]
+        
+        if not chunk_data["complete"]:
+            return {"error": {"msg": f"Chunk ID {chunk_id} not complete", "type": "ChunkIncompleteError"}}
+        
+        # Get the result and clean up
+        result = chunk_data["result"]
+        del chunked_messages[chunk_id]
+        
+        return result
 
     return sio
