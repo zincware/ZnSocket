@@ -18,6 +18,7 @@ Key features:
 - **Cross-language support**: Use the same data structures from Python and JavaScript
 - **Adapter pattern**: Expose existing data structures through the znsocket interface
 - **Automatic chunking**: Large messages are automatically split and reassembled for reliable transmission
+- **Copy-on-write operations**: Efficient data copying using Segments and fallback mechanisms
 
 .. toctree::
    :maxdepth: 2
@@ -25,6 +26,7 @@ Key features:
 
    quickstart
    chunking
+   copy_on_write
    python_api
    javascript_api
    examples
