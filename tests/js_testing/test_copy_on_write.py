@@ -1,6 +1,7 @@
 """Tests for copy-on-write functionality using Segments and List fallbacks."""
 
 import pytest
+
 import znsocket
 
 
@@ -35,11 +36,7 @@ def test_segments_with_dict(client, request, run_npm_test):
     p.execute()
     lst.extend(msg)
 
-    segments = znsocket.Segments(
-        r=c,
-        origin=lst,
-        key="test:data/segments"
-    )
+    segments = znsocket.Segments(r=c, origin=lst, key="test:data/segments")
 
     value_to_modify = segments[2]  # Get the third element
     modified_value = value_to_modify.copy("test:data/segments/2")
@@ -68,7 +65,7 @@ def test_segments_with_dict(client, request, run_npm_test):
     ]
 
     # Run the corresponding TypeScript test
-    test_name = request.node.name.split('[')[0]  # Strip parameter part
+    test_name = request.node.name.split("[")[0]  # Strip parameter part
     run_npm_test(test_name, client_url=c.address)
 
 
@@ -90,11 +87,7 @@ def test_list_adapter_with_segments(client, request, run_npm_test):
     ]
 
     # Use ListAdapter to expose the Python list via ZnSocket
-    znsocket.ListAdapter(
-        socket=c,
-        key="test:adapter_data",
-        object=original_data
-    )
+    znsocket.ListAdapter(socket=c, key="test:adapter_data", object=original_data)
 
     # Create a List view of the adapted data
     lst = znsocket.List(r=c, key="test:adapter_data")
@@ -105,11 +98,7 @@ def test_list_adapter_with_segments(client, request, run_npm_test):
     assert lst[2] == {"name": "item_2", "score": 78, "category": "A"}
 
     # Create copy-on-write view using Segments
-    segments = znsocket.Segments(
-        r=c,
-        origin=lst,
-        key="test:adapter_segments"
-    )
+    segments = znsocket.Segments(r=c, origin=lst, key="test:adapter_segments")
 
     # Verify segments can access the adapted data
     assert len(segments) == 5
@@ -119,13 +108,15 @@ def test_list_adapter_with_segments(client, request, run_npm_test):
     # First create a Dict to store the modified data
     modified_dict = znsocket.Dict(r=c, key="test:adapter_segments/2")
     modified_dict.clear()
-    modified_dict.update({
-        "name": "item_2_modified",
-        "score": 95,  # Improved score
-        "category": "A+",  # Upgraded category
-        "modified": True,
-        "source": "segments_copy"
-    })
+    modified_dict.update(
+        {
+            "name": "item_2_modified",
+            "score": 95,  # Improved score
+            "category": "A+",  # Upgraded category
+            "modified": True,
+            "source": "segments_copy",
+        }
+    )
 
     # Replace the element in segments with the modified version
     segments[2] = modified_dict
@@ -151,22 +142,36 @@ def test_list_adapter_with_segments(client, request, run_npm_test):
     # Modify another element for more comprehensive testing
     modified_dict_4 = znsocket.Dict(r=c, key="test:adapter_segments/4")
     modified_dict_4.clear()
-    modified_dict_4.update({
-        "name": "item_4_enhanced",
-        "score": 99,
-        "category": "S",  # Special category
-        "enhanced": True,
-        "multiplier": 1.2
-    })
+    modified_dict_4.update(
+        {
+            "name": "item_4_enhanced",
+            "score": 99,
+            "category": "S",  # Special category
+            "enhanced": True,
+            "multiplier": 1.2,
+        }
+    )
     segments[4] = modified_dict_4
 
     # Verify multiple modifications work correctly
     expected_segments = [
         {"name": "item_0", "score": 85, "category": "A"},  # Original
         {"name": "item_1", "score": 92, "category": "B"},  # Original
-        {"name": "item_2_modified", "score": 95, "category": "A+", "modified": True, "source": "segments_copy"},  # Modified
+        {
+            "name": "item_2_modified",
+            "score": 95,
+            "category": "A+",
+            "modified": True,
+            "source": "segments_copy",
+        },  # Modified
         {"name": "item_3", "score": 96, "category": "C"},  # Original
-        {"name": "item_4_enhanced", "score": 99, "category": "S", "enhanced": True, "multiplier": 1.2},  # Modified
+        {
+            "name": "item_4_enhanced",
+            "score": 99,
+            "category": "S",
+            "enhanced": True,
+            "multiplier": 1.2,
+        },  # Modified
     ]
 
     for i, expected in enumerate(expected_segments):
@@ -187,5 +192,5 @@ def test_list_adapter_with_segments(client, request, run_npm_test):
         assert original_data[i] == expected, f"Python list changed at index {i}"
 
     # Run the corresponding TypeScript test
-    test_name = request.node.name.split('[')[0]  # Strip parameter part
+    test_name = request.node.name.split("[")[0]  # Strip parameter part
     run_npm_test(test_name, client_url=c.address)

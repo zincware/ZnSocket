@@ -165,7 +165,7 @@ Fallback Policies
     # Copy policy: Full copy of fallback data on initialization
     full_copy = znsocket.List(
         r=client,
-        key="full_copy", 
+        key="full_copy",
         fallback="original_dataset",
         fallback_policy="copy"
     )
@@ -213,17 +213,17 @@ This example demonstrates copy-on-write behavior across Python and JavaScript:
     import znsocket
 
     client = znsocket.Client("http://localhost:5000")
-    
+
     # Create original dataset with Dict objects
     lst = znsocket.List(r=client, key="test:data")
-    
+
     data = [
         {"value": [1, 2, 3]},
         {"value": [4, 5, 6]},
         {"value": [7, 8, 9]},
         {"value": [10, 11, 12]},
     ]
-    
+
     # Use pipeline for efficient batch operations
     p = client.pipeline()
     msg = []
@@ -234,16 +234,16 @@ This example demonstrates copy-on-write behavior across Python and JavaScript:
         msg.append(atoms_dict)
     p.execute()
     lst.extend(msg)
-    
+
     # Create copy-on-write view using Segments
     segments = znsocket.Segments(r=client, origin=lst, key="test:data/segments")
-    
+
     # Modify a single element (copy-on-write)
     value_to_modify = segments[2]
     modified_value = value_to_modify.copy("test:data/segments/2")
     modified_value["value"] = [100, 200, 300]
     segments[2] = modified_value
-    
+
     # Original list remains unchanged: lst[2]["value"] == [7, 8, 9]
     # Segments shows modification: segments[2]["value"] == [100, 200, 300]
 
@@ -258,26 +258,26 @@ This example demonstrates copy-on-write behavior across Python and JavaScript:
 
     // Access the original data created by Python
     const lst = new List({ client, key: 'test:data' });
-    
+
     // Verify original data is accessible
     const item2 = await lst.get(2);
     console.log(await item2.get('value')); // [7, 8, 9] - original unchanged
-    
+
     // Access Python's copy-on-write modification
     const modifiedSegment = new Dict({ client, key: 'test:data/segments/2' });
     console.log(await modifiedSegment.get('value')); // [100, 200, 300] - Python modification
-    
+
     // Create JavaScript-side copy-on-write modification
     const jsModified = new Dict({ client, key: 'test:data/js_copy/1' });
     await jsModified.clear();
     await jsModified.set('value', [400, 500, 600]);
     await jsModified.set('modified_by', 'javascript');
-    
+
     // Verify copy-on-write behavior
     const originalItem1 = await lst.get(1);
     console.log(await originalItem1.get('value')); // [4, 5, 6] - still original
     console.log(await jsModified.get('value')); // [400, 500, 600] - JS modification
-    
+
     // Both languages can work with the same logical dataset
     // while maintaining independent modifications
 
@@ -293,7 +293,7 @@ This example demonstrates copy-on-write with ListAdapter and Segments across lan
     import znsocket
 
     client = znsocket.Client("http://localhost:5000")
-    
+
     # Start with a regular Python list
     original_data = [
         {"name": "item_0", "score": 85, "category": "A"},
@@ -302,24 +302,24 @@ This example demonstrates copy-on-write with ListAdapter and Segments across lan
         {"name": "item_3", "score": 96, "category": "C"},
         {"name": "item_4", "score": 83, "category": "B"},
     ]
-    
+
     # Use ListAdapter to expose Python list via ZnSocket
     znsocket.ListAdapter(
         socket=client,
         key="test:adapter_data",
         object=original_data
     )
-    
+
     # Create a List view of the adapted data
     lst = znsocket.List(r=client, key="test:adapter_data")
-    
+
     # Create copy-on-write view using Segments
     segments = znsocket.Segments(
         r=client,
         origin=lst,
         key="test:adapter_segments"
     )
-    
+
     # Create modified versions using copy-on-write
     modified_dict = znsocket.Dict(r=client, key="test:adapter_segments/2")
     modified_dict.clear()
@@ -331,7 +331,7 @@ This example demonstrates copy-on-write with ListAdapter and Segments across lan
         "source": "segments_copy"
     })
     segments[2] = modified_dict
-    
+
     # Original Python list remains unchanged: original_data[2]["score"] == 78
     # Adapter list remains unchanged: lst[2]["score"] == 78
     # Segments shows modification: segments[2]["score"] == 95
@@ -347,14 +347,14 @@ This example demonstrates copy-on-write with ListAdapter and Segments across lan
 
     // Access the ListAdapter data from JavaScript
     const lst = new List({ client, key: 'test:adapter_data' });
-    
+
     // Verify original adapter data is accessible
     const originalItems = [];
     for (let i = 0; i < await lst.length(); i++) {
         originalItems.push(await lst.get(i));
     }
     console.log('Original adapter data:', originalItems);
-    
+
     // Access Python's segment modification
     const pythonModified = new Dict({ client, key: 'test:adapter_segments/2' });
     console.log('Python modification:', {
@@ -362,7 +362,7 @@ This example demonstrates copy-on-write with ListAdapter and Segments across lan
         score: await pythonModified.get('score'),    // 95
         source: await pythonModified.get('source')   // "segments_copy"
     });
-    
+
     // Create JavaScript-side segment modification
     const jsModified = new Dict({ client, key: 'test:adapter_segments/1_js' });
     await jsModified.clear();
@@ -370,12 +370,12 @@ This example demonstrates copy-on-write with ListAdapter and Segments across lan
     await jsModified.set('score', 100);
     await jsModified.set('category', 'S+');
     await jsModified.set('enhanced_by', 'javascript');
-    
+
     // Verify copy-on-write behavior across languages
     const stillOriginal = await lst.get(1);
     console.log('Original unchanged:', stillOriginal.score);    // 92
     console.log('JS modification:', await jsModified.get('score')); // 100
-    
+
     // Both Python list, ListAdapter, and all modifications coexist independently
 
 Use Cases and Patterns
@@ -407,11 +407,11 @@ Data Preprocessing Pipelines
 
     # Raw dataset
     raw_data = znsocket.List(r=client, key="raw_data")
-    
+
     # Create preprocessing variants
     normalized_data = znsocket.Segments(r=client, origin=raw_data, key="normalized")
     filtered_data = znsocket.Segments(r=client, origin=raw_data, key="filtered")
-    
+
     # Apply transformations only where needed
     for i, sample in enumerate(raw_data):
         if sample["quality_score"] < threshold:
@@ -425,22 +425,22 @@ A/B Testing and Experimentation
 
     # Base configuration
     base_config = znsocket.List(r=client, key="base_config")
-    
+
     # Create test variants
     variant_a = znsocket.List(
-        r=client, 
-        key="variant_a", 
-        fallback="base_config", 
+        r=client,
+        key="variant_a",
+        fallback="base_config",
         fallback_policy="frozen"
     )
-    
+
     variant_b = znsocket.List(
         r=client,
-        key="variant_b", 
-        fallback="base_config", 
+        key="variant_b",
+        fallback="base_config",
         fallback_policy="frozen"
     )
-    
+
     # Modify only test parameters
     variant_a[config_index] = {"feature_x": True, "algorithm": "new_algo"}
     variant_b[config_index] = {"feature_x": False, "algorithm": "baseline"}
@@ -473,43 +473,43 @@ Best Practices
 --------------
 
 1. **Choose the Right Approach**
-   
+
    - Use **Segments** for true copy-on-write with maximum efficiency
    - Use **List Fallbacks** for simpler scenarios with automatic fallback
 
 2. **Data Structure Design**
 
    .. code-block:: python
-   
+
        # Good: Structured data that can be selectively modified
        structured_data = {
            "metadata": {...},
            "parameters": {...},
            "results": {...}
        }
-       
+
        # Avoid: Monolithic structures that require full replacement
        monolithic_data = "large_serialized_blob"
 
 3. **Modification Patterns**
 
    .. code-block:: python
-   
+
        # Good: Modify copy of original data
        original_item = dict(copy_segments[index])
        original_item["field"] = new_value
        copy_segments[index] = original_item
-       
+
        # Avoid: Direct mutation (may not trigger copy-on-write)
        copy_segments[index]["field"] = new_value  # Problematic
 
 4. **Key Management**
 
    .. code-block:: python
-   
+
        # Good: Descriptive keys for tracking variants
        experiment_high_lr = znsocket.Segments(r=client, origin=base, key="exp_high_lr_v1")
-       
+
        # Good: Use timestamps or IDs for versioning
        variant_key = f"experiment_{experiment_id}_{timestamp}"
 
