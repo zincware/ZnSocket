@@ -32,8 +32,13 @@ class Client:
     """Client to interact with a znsocket server.
 
     The Client class provides an interface to connect to and communicate with a znsocket server
-    using websockets. It supports Redis-like commands and provides automatic reconnection
-    capabilities.
+    using websockets. It supports Redis-like commands, automatic message chunking for large data,
+    compression, and provides automatic reconnection capabilities.
+
+    Large messages are automatically handled through compression and chunking:
+    - Messages are compressed using gzip when they exceed the compression threshold
+    - If compressed messages still exceed size limits, they are split into chunks
+    - All chunking and compression operations are transparent to the user
 
     Parameters
     ----------
@@ -53,6 +58,13 @@ class Client:
         The number of times to retry a failed call. Default is 1.
     connect_wait_timeout : int, optional
         Timeout in seconds for connection establishment. Default is 1.
+    max_message_size_bytes : int, optional
+        Maximum size in bytes for a single message before chunking. If None, uses server limit
+        or defaults to 1MB. Messages exceeding this size are automatically chunked.
+    enable_compression : bool, optional
+        Whether to enable gzip compression for large messages. Default is True.
+    compression_threshold : int, optional
+        Minimum message size in bytes to trigger compression. Default is 1024 (1KB).
 
     Attributes
     ----------
@@ -61,10 +73,26 @@ class Client:
 
     Examples
     --------
+    Basic usage:
     >>> client = Client("http://localhost:5000")
     >>> client.hset("mykey", "field1", "value1")
     >>> client.hget("mykey", "field1")
     'value1'
+
+    Large data with automatic chunking:
+    >>> import numpy as np
+    >>> client = Client("http://localhost:5000")
+    >>> large_data = np.random.rand(1000, 1000)  # ~8MB array
+    >>> client.hset("data", "array", large_data)  # Automatically compressed/chunked
+    >>> retrieved = client.hget("data", "array")
+
+    Custom chunking configuration:
+    >>> client = Client(
+    ...     "http://localhost:5000",
+    ...     max_message_size_bytes=500000,  # 500KB limit
+    ...     enable_compression=True,
+    ...     compression_threshold=2048      # Compress messages > 2KB
+    ... )
     """
 
     address: str
@@ -78,9 +106,9 @@ class Client:
     delay_between_calls: datetime.timedelta | None = None
     retry: int = 1
     connect_wait_timeout: int = 1
-    max_message_size_bytes: int | None = None  # 5 * 1024 * 1024 5MB (5% of 100MB limit)
-    enable_compression: bool = True  # Enable gzip compression for large messages
-    compression_threshold: int = 1024  # Compress messages larger than 1KB
+    max_message_size_bytes: int | None = None
+    enable_compression: bool = True
+    compression_threshold: int = 1024
 
     _last_call: datetime.datetime = dataclasses.field(
         default_factory=datetime.datetime.now, init=False
@@ -321,10 +349,6 @@ class Client:
         message_bytes = self._serialize_message(args, kwargs)
         is_compressed = message_bytes.startswith(b"\x01")
 
-        # Ensure max_message_size_bytes is set (should be set in __post_init__)
-        if self.max_message_size_bytes is None:
-            self.max_message_size_bytes = 1000000  # 1MB default
-
         if len(message_bytes) > self.max_message_size_bytes:
             # Use chunked transmission
             log.debug(
@@ -357,7 +381,7 @@ class Client:
                 # Send compressed message as a single chunk-like message
                 return self.sio.call(
                     "compressed_message",
-                    {"event": event, "data": message_bytes, "single_message": True},
+                    {"event": event, "data": message_bytes},
                     namespace=self.namespace,
                 )
             except socketio.exceptions.TimeoutError:
@@ -368,9 +392,6 @@ class Client:
 
     def _call_chunked(self, event: str, message_bytes: bytes) -> t.Any:
         """Send a chunked message to the server with optimized encoding."""
-        # Ensure max_message_size_bytes is set
-        if self.max_message_size_bytes is None:
-            self.max_message_size_bytes = 1000000  # 1MB default
         # Reserve space for chunk metadata (approximately 150 bytes for base64 encoding)
         chunk_size = self.max_message_size_bytes - 150  # subtract metadata overhead
         chunks = self._split_message_bytes(message_bytes, chunk_size)
@@ -552,5 +573,4 @@ class Pipeline:
         >>> results = pipe.execute()
         >>> print(results)  # [1, 'value1']
         """
-        # Send all commands at once - chunking is handled automatically by client.call()
         return self._send_message(self.pipeline)

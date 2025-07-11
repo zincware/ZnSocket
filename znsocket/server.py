@@ -5,6 +5,7 @@ import logging
 import time
 import typing as t
 from copy import deepcopy
+import threading
 
 import eventlet.wsgi
 import socketio
@@ -320,23 +321,52 @@ class Server:
     """znsocket server implementation.
 
     The Server class provides a websocket-based server that implements Redis-compatible
-    operations. It uses eventlet for async operations and socket.io for websocket communication.
+    operations with automatic support for large message handling through chunking and compression.
+    It uses eventlet for async operations and socket.io for websocket communication.
+
+    Large Message Handling:
+    - Automatically receives and reassembles chunked messages from clients
+    - Supports compressed message decompression using gzip
+    - Handles both single compressed messages and multi-chunk transmissions
+    - Provides automatic cleanup of expired chunk storage
+
+    The server automatically handles three types of message transmission:
+    1. Normal messages: Small messages sent directly
+    2. Compressed messages: Large messages compressed and sent as single units
+    3. Chunked messages: Very large messages split into multiple chunks
 
     Parameters
     ----------
     port : int, optional
         The port number to bind the server to. Default is 5000.
     max_http_buffer_size : int, optional
-        Maximum size of HTTP buffer. Default is None (uses socket.io default).
+        Maximum size of HTTP buffer in bytes. This determines the largest single message
+        the server can receive. Default is None (uses socket.io default of ~1MB).
+        Messages larger than this limit must be chunked by clients.
     async_mode : str, optional
         Async mode to use ('eventlet', 'gevent', etc.). Default is None.
     logger : bool, optional
         Whether to enable logging. Default is False.
+    storage : str, optional
+        Storage backend to use ('memory' or 'redis'). Default is 'memory'.
 
     Examples
     --------
+    Basic server with default settings:
     >>> server = Server(port=5000)
     >>> server.run()  # This will block and run the server
+
+    Server with larger buffer for handling big messages:
+    >>> server = Server(
+    ...     port=5000,
+    ...     max_http_buffer_size=10 * 1024 * 1024,  # 10MB buffer
+    ...     logger=True
+    ... )
+    >>> server.run()
+
+    Server with Redis backend:
+    >>> server = Server(port=5000, storage='redis')
+    >>> server.run()
     """
 
     port: int = 5000
@@ -597,8 +627,7 @@ def attach_events(  # noqa: C901
             print(f"Cleaned up {len(expired_chunks)} expired chunks")
 
     # Run cleanup every 60 seconds
-    import threading
-
+    # TODO: look into this and maybe cleanup?
     cleanup_timer = threading.Timer(60.0, cleanup_expired_chunks)
     cleanup_timer.daemon = True
     cleanup_timer.start()
@@ -767,6 +796,7 @@ def attach_events(  # noqa: C901
     @sio.event(namespace=namespace)
     def compressed_message(sid, data):
         """Handle compressed single messages."""
+        # TODO: might be possible to unify this with chunked_message
         event = data["event"]
         message_bytes = data["data"]
 
