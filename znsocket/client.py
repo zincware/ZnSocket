@@ -1,4 +1,3 @@
-import base64
 import dataclasses
 import datetime
 import functools
@@ -79,7 +78,7 @@ class Client:
     delay_between_calls: datetime.timedelta | None = None
     retry: int = 1
     connect_wait_timeout: int = 1
-    max_message_size_bytes: int|None = None   # 5 * 1024 * 1024 5MB (5% of 100MB limit)
+    max_message_size_bytes: int | None = None  # 5 * 1024 * 1024 5MB (5% of 100MB limit)
     enable_compression: bool = True  # Enable gzip compression for large messages
     compression_threshold: int = 1024  # Compress messages larger than 1KB
 
@@ -266,14 +265,14 @@ class Client:
 
         if not self.decode_responses:
             raise NotImplementedError("decode_responses=False is not supported yet")
-        
-        server_config = self.sio.call(
-            "server_config", namespace=self.namespace
-        )
+
+        server_config = self.sio.call("server_config", namespace=self.namespace)
         if server_config is None:
             raise exceptions.ZnSocketError("No response from server")
         if self.max_message_size_bytes is None:
-            self.max_message_size_bytes = int(server_config.get("max_http_buffer_size", 1000000))  # Default to 1MB if not set
+            self.max_message_size_bytes = int(
+                server_config.get("max_http_buffer_size", 1000000)
+            )  # Default to 1MB if not set
         if server_config["max_http_buffer_size"] < self.max_message_size_bytes:
             log.warning(
                 f"Server max_http_buffer_size ({server_config['max_http_buffer_size']:,} bytes) "

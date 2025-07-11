@@ -1,6 +1,6 @@
 import datetime
-import typing as t
 import logging
+import typing as t
 
 import typer
 
@@ -44,4 +44,6 @@ def server(
     )
     server.run()
     log.info(f"Stopped znsocket server on port {port}")
-    log.info(f"{datetime.datetime.now().isoformat()}: Stopped znsocket server on port {port}")
+    log.info(
+        f"{datetime.datetime.now().isoformat()}: Stopped znsocket server on port {port}"
+    )

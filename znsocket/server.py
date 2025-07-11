@@ -1,11 +1,10 @@
-import base64
 import dataclasses
 import gzip
 import json
+import logging
 import time
 import typing as t
 from copy import deepcopy
-import logging
 
 import eventlet.wsgi
 import socketio
@@ -490,9 +489,9 @@ def attach_events(  # noqa: C901
     def server_config(sid) -> dict:
         """Get the server configuration."""
         return {
-                "max_http_buffer_size": sio.eio.max_http_buffer_size,
-                "async_mode": sio.eio.async_mode,
-            }
+            "max_http_buffer_size": sio.eio.max_http_buffer_size,
+            "async_mode": sio.eio.async_mode,
+        }
 
     @sio.event(namespace=namespace)
     def check_adapter(sid, data: tuple[list, dict]) -> bool:
