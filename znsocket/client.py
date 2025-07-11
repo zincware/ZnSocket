@@ -406,49 +406,51 @@ class Client:
             f"(original: {len(message_bytes)} bytes)"
         )
 
-        # Send all chunks
-        chunk_iter = enumerate(chunks)
-        for chunk_index, chunk_data in chunk_iter:
+        self._send_all_chunks(chunks, chunk_id, event)
+        return self._get_chunked_result(chunk_id)
+
+    def _send_all_chunks(self, chunks: list, chunk_id: str, event: str) -> None:
+        """Send all chunks with retry logic."""
+        for chunk_index, chunk_data in enumerate(chunks):
             chunk_metadata = {
                 "chunk_id": chunk_id,
                 "chunk_index": chunk_index,
                 "total_chunks": len(chunks),
                 "event": event,
-                "data": chunk_data,  # send bytes directly
-                "size": len(chunk_data),  # Original chunk size for verification
+                "data": chunk_data,
+                "size": len(chunk_data),
             }
+            self._send_single_chunk(chunk_metadata, chunk_index, len(chunks))
 
-            for idx in reversed(range(self.retry + 1)):
-                try:
-                    log.debug(
-                        f"Sending chunk {chunk_index + 1}/{len(chunks)} "
-                        f"({len(chunk_data):,} bytes)"
+    def _send_single_chunk(
+        self, chunk_metadata: dict, chunk_index: int, total_chunks: int
+    ) -> None:
+        """Send a single chunk with retry logic."""
+        for idx in reversed(range(self.retry + 1)):
+            try:
+                log.debug(
+                    f"Sending chunk {chunk_index + 1}/{total_chunks} "
+                    f"({len(chunk_metadata['data']):,} bytes)"
+                )
+                response = self.sio.call(
+                    "chunked_message", chunk_metadata, namespace=self.namespace
+                )
+                if response and response.get("error"):
+                    raise exceptions.ZnSocketError(
+                        f"Chunked message failed: {response['error']}"
                     )
+                log.debug(f"Chunk {chunk_index + 1}/{total_chunks} sent successfully")
+                break
+            except socketio.exceptions.TimeoutError:
+                if idx == 0:
+                    raise
+                log.warning(
+                    f"Connection error on chunk {chunk_index}. Retrying... {idx} attempts left"
+                )
+                self.sio.sleep(1)
 
-                    # call is safer, emit is faster.
-                    # self.sio.emit(
-                    #     "chunked_message", chunk_metadata, namespace=self.namespace
-                    # )
-                    response = self.sio.call(
-                        "chunked_message", chunk_metadata, namespace=self.namespace
-                    )
-                    if response and response.get("error"):
-                        raise exceptions.ZnSocketError(
-                            f"Chunked message failed: {response['error']}"
-                        )
-                    log.debug(
-                        f"Chunk {chunk_index + 1}/{len(chunks)} sent successfully"
-                    )
-                    break
-                except socketio.exceptions.TimeoutError:
-                    if idx == 0:
-                        raise
-                    log.warning(
-                        f"Connection error on chunk {chunk_index}. Retrying... {idx} attempts left"
-                    )
-                    self.sio.sleep(1)
-
-        # Wait for final response with assembled result
+    def _get_chunked_result(self, chunk_id: str) -> t.Any:
+        """Wait for final response with assembled result."""
         for idx in reversed(range(self.retry + 1)):
             try:
                 final_response = self.sio.call(

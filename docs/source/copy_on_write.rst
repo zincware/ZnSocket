@@ -202,7 +202,7 @@ Copy-on-write operations work seamlessly with the JavaScript client:
     console.log('First two items:', subset);
 
 Cross-Language Copy-on-Write Example
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This example demonstrates copy-on-write behavior across Python and JavaScript:
 
@@ -282,7 +282,7 @@ This example demonstrates copy-on-write behavior across Python and JavaScript:
     // while maintaining independent modifications
 
 ListAdapter + Segments Integration
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This example demonstrates copy-on-write with ListAdapter and Segments across languages:
 
@@ -449,21 +449,21 @@ Performance Considerations
 --------------------------
 
 Storage Efficiency
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~
 
 - **Segments**: Only modified elements consume additional storage
 - **List Fallbacks**: Modified elements stored in new key, rest referenced
 - **Memory Usage**: Minimal overhead for unchanged data
 
 Access Patterns
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 
 - **Read Operations**: Efficient fallback to original data
 - **Write Operations**: Copy-on-write triggers only for modified elements
 - **Slice Operations**: Supported across both original and modified data
 
 Network Efficiency
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~
 
 - **Large Datasets**: Only deltas transmitted over network
 - **Batch Operations**: Modifications can be batched for efficiency
