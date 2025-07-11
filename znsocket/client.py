@@ -424,18 +424,18 @@ class Client:
                         f"Sending chunk {chunk_index + 1}/{len(chunks)} "
                         f"({len(chunk_data):,} bytes)"
                     )
-                    # emit is faster than call.
-                    self.sio.emit(
-                        "chunked_message", chunk_metadata, namespace=self.namespace
-                    )
-                    # call would be safer, emit is faster.
-                    # response = self.sio.call(
+
+                    # call is safer, emit is faster.
+                    # self.sio.emit(
                     #     "chunked_message", chunk_metadata, namespace=self.namespace
                     # )
-                    # if response and response.get("error"):
-                    #     raise exceptions.ZnSocketError(
-                    #         f"Chunked message failed: {response['error']}"
-                    #     )
+                    response = self.sio.call(
+                        "chunked_message", chunk_metadata, namespace=self.namespace
+                    )
+                    if response and response.get("error"):
+                        raise exceptions.ZnSocketError(
+                            f"Chunked message failed: {response['error']}"
+                        )
                     log.debug(
                         f"Chunk {chunk_index + 1}/{len(chunks)} sent successfully"
                     )
