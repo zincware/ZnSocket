@@ -5,11 +5,11 @@ import json
 import logging
 import typing as t
 import uuid
-from rich.progress import track
 
 import socketio.exceptions
 import typing_extensions as tyex
 from redis import Redis
+from rich.progress import track
 
 from znsocket import exceptions
 from znsocket.abc import RefreshDataTypeDict
@@ -111,32 +111,34 @@ class Client:
 
     def _serialize_message(self, args: tuple, kwargs: dict) -> bytes:
         """Serialize message arguments to bytes.
-        
+
         Parameters
         ----------
         args : tuple
             Positional arguments.
         kwargs : dict
             Keyword arguments.
-            
+
         Returns
         -------
         bytes
             Serialized message as bytes.
         """
         payload = [args, kwargs]
-        return json.dumps(payload, separators=(',', ':'), default=str).encode('utf-8')
+        return json.dumps(payload, separators=(",", ":"), default=str).encode("utf-8")
 
-    def _split_message_bytes(self, message_bytes: bytes, max_chunk_size: int) -> list[bytes]:
+    def _split_message_bytes(
+        self, message_bytes: bytes, max_chunk_size: int
+    ) -> list[bytes]:
         """Split message bytes into chunks.
-        
+
         Parameters
         ----------
         message_bytes : bytes
             The message to split.
         max_chunk_size : int
             Maximum size per chunk in bytes.
-            
+
         Returns
         -------
         list[bytes]
@@ -144,23 +146,23 @@ class Client:
         """
         chunks = []
         for i in range(0, len(message_bytes), max_chunk_size):
-            chunks.append(message_bytes[i:i + max_chunk_size])
+            chunks.append(message_bytes[i : i + max_chunk_size])
         return chunks
 
     def _deserialize_message(self, message_bytes: bytes) -> tuple[tuple, dict]:
         """Deserialize message bytes back to args and kwargs.
-        
+
         Parameters
         ----------
         message_bytes : bytes
             The serialized message.
-            
+
         Returns
         -------
         tuple[tuple, dict]
             The original args and kwargs.
         """
-        payload = json.loads(message_bytes.decode('utf-8'))
+        payload = json.loads(message_bytes.decode("utf-8"))
         return tuple(payload[0]), payload[1]
 
     @classmethod
@@ -253,11 +255,13 @@ class Client:
 
         # Check if message needs chunking
         message_bytes = self._serialize_message(args, kwargs)
-        
+
         if len(message_bytes) > self.max_message_size_bytes:
             # Use chunked transmission
-            log.debug(f"Message size ({len(message_bytes):,} bytes) exceeds limit "
-                     f"({self.max_message_size_bytes:,} bytes). Using chunked transmission.")
+            log.debug(
+                f"Message size ({len(message_bytes):,} bytes) exceeds limit "
+                f"({self.max_message_size_bytes:,} bytes). Using chunked transmission."
+            )
             return self._call_chunked(event, message_bytes)
         else:
             # Use normal transmission
@@ -280,9 +284,9 @@ class Client:
         chunk_size = self.max_message_size_bytes - 200
         chunks = self._split_message_bytes(message_bytes, chunk_size)
         chunk_id = str(uuid.uuid4())
-        
+
         log.debug(f"Splitting message into {len(chunks)} chunks with ID {chunk_id}")
-        
+
         # Send all chunks
         chunk_iter = enumerate(chunks)
         if log.isEnabledFor(logging.DEBUG):
@@ -293,32 +297,46 @@ class Client:
                 "chunk_index": chunk_index,
                 "total_chunks": len(chunks),
                 "event": event,
-                "data": chunk_data.decode('utf-8')  # Convert bytes to string for JSON
+                "data": chunk_data.decode("utf-8"),  # Convert bytes to string for JSON
             }
-            
+
             for idx in reversed(range(self.retry + 1)):
                 try:
-                    response = self.sio.call("chunked_message", chunk_metadata, namespace=self.namespace)
+                    response = self.sio.call(
+                        "chunked_message", chunk_metadata, namespace=self.namespace
+                    )
                     if response and response.get("error"):
-                        raise exceptions.ZnSocketError(f"Chunk {chunk_index} failed: {response['error']}")
+                        raise exceptions.ZnSocketError(
+                            f"Chunk {chunk_index} failed: {response['error']}"
+                        )
                     break
                 except socketio.exceptions.TimeoutError:
                     if idx == 0:
                         raise
-                    log.warning(f"Connection error on chunk {chunk_index}. Retrying... {idx} attempts left")
+                    log.warning(
+                        f"Connection error on chunk {chunk_index}. Retrying... {idx} attempts left"
+                    )
                     self.sio.sleep(1)
-        
+
         # Wait for final response with assembled result
         for idx in reversed(range(self.retry + 1)):
             try:
-                final_response = self.sio.call("get_chunked_result", {"chunk_id": chunk_id}, namespace=self.namespace)
+                final_response = self.sio.call(
+                    "get_chunked_result",
+                    {"chunk_id": chunk_id},
+                    namespace=self.namespace,
+                )
                 if final_response and final_response.get("error"):
-                    raise exceptions.ZnSocketError(f"Chunked message failed: {final_response['error']}")
+                    raise exceptions.ZnSocketError(
+                        f"Chunked message failed: {final_response['error']}"
+                    )
                 return final_response
             except socketio.exceptions.TimeoutError:
                 if idx == 0:
                     raise
-                log.warning(f"Connection error getting chunked result. Retrying... {idx} attempts left")
+                log.warning(
+                    f"Connection error getting chunked result. Retrying... {idx} attempts left"
+                )
                 self.sio.sleep(1)
 
     def _redis_command(self, command, *args, **kwargs):

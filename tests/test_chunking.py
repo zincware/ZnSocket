@@ -1,9 +1,11 @@
 """Tests for chunking functionality in znsocket."""
-import pytest
-import znsocket
+
 import numpy as np
-from znjson.converter import NumpyConverter
 import numpy.testing as npt
+import pytest
+from znjson.converter import NumpyConverter
+
+import znsocket
 
 
 @pytest.mark.parametrize(
@@ -14,11 +16,7 @@ def test_chunking_large_dict_set(client, request, caplog):
     """Test that large dictionary updates are chunked automatically."""
     c = request.getfixturevalue(client)
 
-    dct = znsocket.Dict(
-        r=c,
-        key="test_large_dict",
-        converter=[NumpyConverter]
-    )
+    dct = znsocket.Dict(r=c, key="test_large_dict", converter=[NumpyConverter])
 
     # Create a large numpy array
     large_array = np.random.rand(1000, 1000)
@@ -41,11 +39,7 @@ def test_chunking_large_list_append(client, request, caplog):
     """Test that large list appends are chunked automatically."""
     c = request.getfixturevalue(client)
 
-    lst = znsocket.List(
-        r=c,
-        key="test_large_list",
-        converter=[NumpyConverter]
-    )
+    lst = znsocket.List(r=c, key="test_large_list", converter=[NumpyConverter])
 
     # Create a large numpy array
     large_array = np.random.rand(1000, 1000)

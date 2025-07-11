@@ -3,22 +3,15 @@ import eventlet.wsgi
 eventlet.monkey_patch()  # MUST BE THERE FOR THE TESTS TO WORK
 
 import random
+import socket
+import subprocess
+import time
 
 import pytest
 import redis
-import socketio
-import socketio.exceptions
 
-from znsocket import Client, Server, attach_events
+from znsocket import Client
 
-
-import pytest
-import subprocess
-import random
-import time
-import socket
-import os
-import signal
 
 @pytest.fixture
 def eventlet_memory_server():
@@ -28,7 +21,7 @@ def eventlet_memory_server():
     proc = subprocess.Popen(
         ["znsocket", "--port", str(port)],
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
+        stderr=subprocess.PIPE,
     )
 
     # Wait for the server to be ready
