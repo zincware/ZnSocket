@@ -7,6 +7,7 @@ from znjson.converter import NumpyConverter
 
 import znsocket
 
+
 @pytest.mark.slow
 @pytest.mark.parametrize(
     "client",
@@ -30,6 +31,7 @@ def test_chunking_large_dict_set(client, request, caplog):
     if client in ["znsclient", "znsclient_w_redis"]:
         assert "Splitting message" in caplog.text
 
+
 @pytest.mark.slow
 @pytest.mark.parametrize(
     "client",
@@ -52,6 +54,7 @@ def test_chunking_large_list_append(client, request, caplog):
     npt.assert_array_equal(retrieved_data, [large_array])
     if client in ["znsclient", "znsclient_w_redis"]:
         assert "Splitting message" in caplog.text
+
 
 @pytest.mark.slow
 @pytest.mark.parametrize(
