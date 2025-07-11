@@ -600,6 +600,110 @@ def attach_events(  # noqa: C901
     cleanup_timer.daemon = True
     cleanup_timer.start()
 
+    def _initialize_chunk_storage(chunk_id, event, total_chunks):
+        """Initialize storage for a new chunk ID."""
+        chunked_messages[chunk_id] = {
+            "event": event,
+            "total_chunks": total_chunks,
+            "received_chunks": {},
+            "complete": False,
+            "created_at": time.time(),
+        }
+
+    def _validate_and_store_chunk(chunk_id, chunk_index, chunk_bytes, chunk_size):
+        """Validate chunk size and store the chunk data."""
+        if chunk_size > 0 and len(chunk_bytes) != chunk_size:
+            return {
+                "error": {
+                    "msg": f"Chunk {chunk_index} size mismatch",
+                    "type": "ChunkSizeError",
+                }
+            }
+        chunked_messages[chunk_id]["received_chunks"][chunk_index] = chunk_bytes
+        return None
+
+    def _reassemble_message(chunk_id, total_chunks):
+        """Reassemble chunks into complete message."""
+        assembled_bytes = b""
+        for i in range(total_chunks):
+            if i not in chunked_messages[chunk_id]["received_chunks"]:
+                return None, {
+                    "error": {"msg": f"Missing chunk {i}", "type": "ChunkError"}
+                }
+            assembled_bytes += chunked_messages[chunk_id]["received_chunks"][i]
+        return assembled_bytes, None
+
+    def _decompress_message(assembled_bytes):
+        """Decompress and parse the assembled message."""
+        if len(assembled_bytes) == 0:
+            raise ValueError("Empty assembled message")
+
+        compression_flag = assembled_bytes[0:1]
+
+        if compression_flag == b"\x01":
+            if len(assembled_bytes) < 5:
+                raise ValueError("Invalid compressed message format")
+            original_size = int.from_bytes(assembled_bytes[1:5], "big")
+            compressed_data = assembled_bytes[5:]
+            json_bytes = gzip.decompress(compressed_data)
+            if len(json_bytes) != original_size:
+                raise ValueError("Decompressed size mismatch")
+        elif compression_flag == b"\x00":
+            json_bytes = assembled_bytes[1:]
+        else:
+            json_bytes = assembled_bytes
+
+        complete_message = json.loads(json_bytes.decode("utf-8"))
+        return complete_message[0], complete_message[1]
+
+    def _execute_event(chunk_id, original_event, args, kwargs, sid):
+        """Execute the event and store the result."""
+        if original_event == "pipeline":
+            try:
+                result = pipeline(sid, (args, kwargs))
+                chunked_messages[chunk_id]["result"] = result
+                chunked_messages[chunk_id]["complete"] = True
+                return {"status": "complete"}
+            except Exception as e:
+                error_result = {"error": {"msg": str(e), "type": type(e).__name__}}
+                chunked_messages[chunk_id]["result"] = error_result
+                chunked_messages[chunk_id]["complete"] = True
+                return {"status": "complete"}
+        elif hasattr(storage, original_event):
+            try:
+                result = {"data": getattr(storage, original_event)(*args, **kwargs)}
+                if isinstance(result["data"], set):
+                    result["data"] = list(result["data"])
+                    result["type"] = "set"
+                chunked_messages[chunk_id]["result"] = result
+                chunked_messages[chunk_id]["complete"] = True
+                return {"status": "complete"}
+            except TypeError as e:
+                error_result = {
+                    "error": {
+                        "msg": f"Invalid arguments for {original_event}: {str(e)}",
+                        "type": "TypeError",
+                    }
+                }
+                chunked_messages[chunk_id]["result"] = error_result
+                chunked_messages[chunk_id]["complete"] = True
+                return {"status": "complete"}
+            except Exception as e:
+                error_result = {"error": {"msg": str(e), "type": type(e).__name__}}
+                chunked_messages[chunk_id]["result"] = error_result
+                chunked_messages[chunk_id]["complete"] = True
+                return {"status": "complete"}
+        else:
+            error_result = {
+                "error": {
+                    "msg": f"Unknown event: {original_event}",
+                    "type": "UnknownEventError",
+                }
+            }
+            chunked_messages[chunk_id]["result"] = error_result
+            chunked_messages[chunk_id]["complete"] = True
+            return {"status": "complete"}
+
     @sio.event(namespace=namespace)
     def chunked_message(sid, data):
         """Handle chunked message fragments with optimized processing."""
@@ -614,27 +718,15 @@ def attach_events(  # noqa: C901
             f"Received chunk {chunk_index + 1}/{total_chunks} for chunk ID: {chunk_id}, event: {event}"
         )
 
-        # Initialize storage for this chunk ID if not exists
         if chunk_id not in chunked_messages:
-            chunked_messages[chunk_id] = {
-                "event": event,
-                "total_chunks": total_chunks,
-                "received_chunks": {},
-                "complete": False,
-                "created_at": time.time(),  # For cleanup
-            }
+            _initialize_chunk_storage(chunk_id, event, total_chunks)
 
-        # Decode and store the chunk data
         try:
-            # Verify chunk size if provided
-            if chunk_size > 0 and len(chunk_bytes) != chunk_size:
-                return {
-                    "error": {
-                        "msg": f"Chunk {chunk_index} size mismatch",
-                        "type": "ChunkSizeError",
-                    }
-                }
-            chunked_messages[chunk_id]["received_chunks"][chunk_index] = chunk_bytes
+            error = _validate_and_store_chunk(
+                chunk_id, chunk_index, chunk_bytes, chunk_size
+            )
+            if error:
+                return error
         except Exception as e:
             return {
                 "error": {
@@ -643,107 +735,15 @@ def attach_events(  # noqa: C901
                 }
             }
 
-        # Check if all chunks are received
         if len(chunked_messages[chunk_id]["received_chunks"]) == total_chunks:
-            # Reassemble the message
-            assembled_bytes = b""
-            for i in range(total_chunks):
-                if i not in chunked_messages[chunk_id]["received_chunks"]:
-                    return {
-                        "error": {"msg": f"Missing chunk {i}", "type": "ChunkError"}
-                    }
-                assembled_bytes += chunked_messages[chunk_id]["received_chunks"][i]
+            assembled_bytes, error = _reassemble_message(chunk_id, total_chunks)
+            if error:
+                return error
 
-            # Deserialize the complete message with compression support
             try:
-                # Check for compression flag
-                if len(assembled_bytes) > 0:
-                    compression_flag = assembled_bytes[0:1]
-
-                    if compression_flag == b"\x01":
-                        # Compressed message: flag (1) + original_size (4) + compressed_data
-                        if len(assembled_bytes) < 5:
-                            raise ValueError("Invalid compressed message format")
-                        original_size = int.from_bytes(assembled_bytes[1:5], "big")
-                        compressed_data = assembled_bytes[5:]
-                        json_bytes = gzip.decompress(compressed_data)
-                        if len(json_bytes) != original_size:
-                            raise ValueError("Decompressed size mismatch")
-                    elif compression_flag == b"\x00":
-                        # Uncompressed message: flag (1) + json_data
-                        json_bytes = assembled_bytes[1:]
-                    else:
-                        # Legacy format (no compression flag) - assume uncompressed
-                        json_bytes = assembled_bytes
-
-                    complete_message = json.loads(json_bytes.decode("utf-8"))
-                    args, kwargs = complete_message[0], complete_message[1]
-                else:
-                    raise ValueError("Empty assembled message")
-
-                # Process the complete message
+                args, kwargs = _decompress_message(assembled_bytes)
                 original_event = chunked_messages[chunk_id]["event"]
-
-                # Handle special events like "pipeline"
-                if original_event == "pipeline":
-                    try:
-                        # Call the pipeline handler directly
-                        result = pipeline(sid, (args, kwargs))
-
-                        # Store the result for later retrieval
-                        chunked_messages[chunk_id]["result"] = result
-                        chunked_messages[chunk_id]["complete"] = True
-
-                        return {"status": "complete"}
-                    except Exception as e:
-                        error_result = {
-                            "error": {"msg": str(e), "type": type(e).__name__}
-                        }
-                        chunked_messages[chunk_id]["result"] = error_result
-                        chunked_messages[chunk_id]["complete"] = True
-                        return {"status": "complete"}
-                elif hasattr(storage, original_event):
-                    try:
-                        result = {
-                            "data": getattr(storage, original_event)(*args, **kwargs)
-                        }
-                        if isinstance(result["data"], set):
-                            result["data"] = list(result["data"])
-                            result["type"] = "set"
-
-                        # Store the result for later retrieval
-                        chunked_messages[chunk_id]["result"] = result
-                        chunked_messages[chunk_id]["complete"] = True
-
-                        return {"status": "complete"}
-                    except TypeError as e:
-                        error_result = {
-                            "error": {
-                                "msg": f"Invalid arguments for {original_event}: {str(e)}",
-                                "type": "TypeError",
-                            }
-                        }
-                        chunked_messages[chunk_id]["result"] = error_result
-                        chunked_messages[chunk_id]["complete"] = True
-                        return {"status": "complete"}
-                    except Exception as e:
-                        error_result = {
-                            "error": {"msg": str(e), "type": type(e).__name__}
-                        }
-                        chunked_messages[chunk_id]["result"] = error_result
-                        chunked_messages[chunk_id]["complete"] = True
-                        return {"status": "complete"}
-                else:
-                    error_result = {
-                        "error": {
-                            "msg": f"Unknown event: {original_event}",
-                            "type": "UnknownEventError",
-                        }
-                    }
-                    chunked_messages[chunk_id]["result"] = error_result
-                    chunked_messages[chunk_id]["complete"] = True
-                    return {"status": "complete"}
-
+                return _execute_event(chunk_id, original_event, args, kwargs, sid)
             except (json.JSONDecodeError, ValueError, gzip.BadGzipFile) as e:
                 error_result = {
                     "error": {
@@ -755,7 +755,6 @@ def attach_events(  # noqa: C901
                 chunked_messages[chunk_id]["complete"] = True
                 return {"status": "complete"}
         else:
-            # Still waiting for more chunks
             return {
                 "status": "waiting",
                 "received": len(chunked_messages[chunk_id]["received_chunks"]),

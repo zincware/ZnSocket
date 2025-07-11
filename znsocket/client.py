@@ -238,6 +238,11 @@ class Client:
         )
 
     def __post_init__(self):
+        self._setup_event_handlers()
+        self._establish_connection()
+        self._configure_message_size()
+
+    def _setup_event_handlers(self):
         @self.sio.on("refresh", namespace=self.namespace)
         def refresh(data: RefreshDataTypeDict):
             for key in self.refresh_callbacks:
@@ -250,6 +255,7 @@ class Client:
                 raise exceptions.ZnSocketError("No adapter callback set")
             return self.adapter_callback(data)
 
+    def _establish_connection(self):
         _url, _path = parse_url(self.address)
         try:
             self.sio.connect(
@@ -259,13 +265,13 @@ class Client:
                 wait_timeout=self.connect_wait_timeout,
                 socketio_path=f"{_path}/socket.io" if _path else "socket.io",
             )
-
         except socketio.exceptions.ConnectionError as err:
             raise exceptions.ConnectionError(self.address) from err
 
         if not self.decode_responses:
             raise NotImplementedError("decode_responses=False is not supported yet")
 
+    def _configure_message_size(self):
         server_config = self.sio.call("server_config", namespace=self.namespace)
         if server_config is None:
             raise exceptions.ZnSocketError("No response from server")

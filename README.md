@@ -9,9 +9,9 @@
 ZnSocket provides a [Redis](https://redis.io/)-compatible API using [python-socketio](https://python-socketio.readthedocs.io/en/stable/) and Python objects for storage. It is designed for testing and applications requiring key-value storage while being easily installable via `pip`. For production, consider using [redis-py](https://redis-py.readthedocs.io/) and a Redis instance.
 
 > [!IMPORTANT]
-> ZnSocket is not designed for large data.
-> The maximum size for a single communication is 100 MB.
-> Although this value can be adapted, you will notice slow data transfers for large files.
+> ZnSocket automatically handles large data transfers through message chunking.
+> Messages larger than the configured size limit (default: 1MB or server limit) are automatically split into smaller chunks and transmitted seamlessly.
+> For extremely large data transfers, consider using dedicated file transfer mechanisms or databases.
 
 ## Installation
 
@@ -186,3 +186,58 @@ console.log(await sharedList.length());     // Real-time length
 console.log(await sharedList.slice(1, 3));  // Efficient slicing
 console.log(await sharedDict.get('name'));  // Access dict values
 ```
+
+## Automatic Message Chunking
+
+ZnSocket automatically handles large data transfers by splitting messages into smaller chunks when they exceed the configured size limit. This feature is transparent to users and works seamlessly with all ZnSocket operations.
+
+### How It Works
+
+- **Automatic Detection**: When a message exceeds the size limit, ZnSocket automatically splits it into chunks
+- **Transparent Transmission**: Chunks are sent sequentially and reassembled on the server
+- **Compression Support**: Large messages are automatically compressed using gzip to reduce transfer size
+- **Error Handling**: If any chunk fails to transmit, the entire message transmission is retried
+
+### Configuration
+
+The chunking behavior can be configured when creating a client:
+
+```python
+from znsocket import Client
+
+# Configure chunking parameters
+client = Client.from_url(
+    "znsocket://127.0.0.1:5000",
+    max_message_size_bytes=500000,  # 500KB limit (default: 1MB or server limit)
+    enable_compression=True,        # Enable gzip compression (default: True)
+    compression_threshold=1024      # Compress messages larger than 1KB (default: 1KB)
+)
+```
+
+### Example with Large Data
+
+```python
+import numpy as np
+from znsocket import Client, Dict
+
+# Connect with chunking enabled
+client = Client.from_url("znsocket://127.0.0.1:5000")
+
+# Create a large dataset
+large_data = np.random.rand(1000, 1000)  # ~8MB array
+
+# Store the data - chunking happens automatically
+data_dict = Dict(r=client, key="large_dataset")
+data_dict["array"] = large_data  # Automatically chunked and compressed
+
+# Retrieve the data - chunks are automatically reassembled
+retrieved_data = data_dict["array"]
+```
+
+### Key Features
+
+- **Seamless Operation**: No changes needed to existing code
+- **Automatic Compression**: Large messages are compressed to reduce bandwidth
+- **Configurable Limits**: Customize chunk size based on your network conditions
+- **Error Recovery**: Built-in retry mechanism for failed transmissions
+- **Performance Optimization**: Efficient binary serialization and compression
