@@ -3,68 +3,79 @@ import eventlet.wsgi
 eventlet.monkey_patch()  # MUST BE THERE FOR THE TESTS TO WORK
 
 import random
+import socket
+import subprocess
+import time
 
 import pytest
 import redis
-import socketio
-import socketio.exceptions
 
-from znsocket import Client, Server, attach_events
+from znsocket import Client
 
 
 @pytest.fixture
 def eventlet_memory_server():
     port = random.randint(10000, 20000)
 
-    def start_server():
-        server = Server(port=port)
-        server.run()
+    # Start znsocket subprocess
+    proc = subprocess.Popen(
+        ["znsocket", "--port", str(port)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
 
-    thread = eventlet.spawn(start_server)
-
-    # wait for the server to be ready
+    # Wait for the server to be ready
     for _ in range(100):
         try:
-            with socketio.SimpleClient() as client:
-                client.connect(f"http://localhost:{port}")
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.settimeout(0.2)
+                sock.connect(("127.0.0.1", port))
                 break
-        except socketio.exceptions.ConnectionError:
-            eventlet.sleep(0.1)
+        except (ConnectionRefusedError, OSError):
+            time.sleep(0.1)
     else:
+        proc.kill()
         raise TimeoutError("Server did not start in time")
 
     yield f"znsocket://127.0.0.1:{port}"
 
-    thread.kill()
+    # Clean up: kill the subprocess
+    proc.terminate()
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        proc.kill()
 
 
 @pytest.fixture
 def eventlet_memory_server_redis():
     port = random.randint(10000, 20000)
 
-    def start_server():
-        sio = socketio.Server()
-        r = redis.Redis.from_url("redis://localhost:6379/0", decode_responses=True)
-        attach_events(sio, storage=r)
-        server_app = socketio.WSGIApp(sio)
-        eventlet.wsgi.server(eventlet.listen(("localhost", port)), server_app)
+    proc = subprocess.Popen(
+        ["znsocket", "--port", str(port), "--storage", "redis://localhost:6379/0"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
 
-    thread = eventlet.spawn(start_server)
-
-    # wait for the server to be ready
     for _ in range(100):
         try:
-            with socketio.SimpleClient() as client:
-                client.connect(f"http://localhost:{port}")
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.settimeout(0.2)
+                sock.connect(("127.0.0.1", port))
                 break
-        except socketio.exceptions.ConnectionError:
-            eventlet.sleep(0.1)
+        except (ConnectionRefusedError, OSError):
+            time.sleep(0.1)
     else:
+        proc.kill()
         raise TimeoutError("Server did not start in time")
 
     yield f"znsocket://127.0.0.1:{port}"
 
-    thread.kill()
+    proc.terminate()
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        proc.kill()
 
 
 @pytest.fixture
