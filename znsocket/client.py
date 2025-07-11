@@ -317,8 +317,13 @@ class Client:
                 self.sio.sleep(delay_needed.total_seconds())
             self._last_call = datetime.datetime.now()
 
-        # Check if message needs chunking
+        # Check if message needs chunking or compression
         message_bytes = self._serialize_message(args, kwargs)
+        is_compressed = message_bytes.startswith(b"\x01")
+
+        # Ensure max_message_size_bytes is set (should be set in __post_init__)
+        if self.max_message_size_bytes is None:
+            self.max_message_size_bytes = 1000000  # 1MB default
 
         if len(message_bytes) > self.max_message_size_bytes:
             # Use chunked transmission
@@ -327,8 +332,11 @@ class Client:
                 f"({self.max_message_size_bytes:,} bytes). Using chunked transmission."
             )
             return self._call_chunked(event, message_bytes)
+        elif is_compressed:
+            # Message was compressed but fits in single transmission
+            return self._call_normal_bytes(event, message_bytes)
         else:
-            # Use normal transmission
+            # Small uncompressed message - use original path
             return self._call_normal(event, args, kwargs)
 
     def _call_normal(self, event: str, args: tuple, kwargs: dict) -> t.Any:
@@ -342,8 +350,27 @@ class Client:
                 log.warning(f"Connection error. Retrying... {idx} attempts left")
                 self.sio.sleep(1)
 
+    def _call_normal_bytes(self, event: str, message_bytes: bytes) -> t.Any:
+        """Send a normal (non-chunked) message using pre-serialized bytes."""
+        for idx in reversed(range(self.retry + 1)):
+            try:
+                # Send compressed message as a single chunk-like message
+                return self.sio.call(
+                    "compressed_message",
+                    {"event": event, "data": message_bytes, "single_message": True},
+                    namespace=self.namespace,
+                )
+            except socketio.exceptions.TimeoutError:
+                if idx == 0:
+                    raise
+                log.warning(f"Connection error. Retrying... {idx} attempts left")
+                self.sio.sleep(1)
+
     def _call_chunked(self, event: str, message_bytes: bytes) -> t.Any:
         """Send a chunked message to the server with optimized encoding."""
+        # Ensure max_message_size_bytes is set
+        if self.max_message_size_bytes is None:
+            self.max_message_size_bytes = 1000000  # 1MB default
         # Reserve space for chunk metadata (approximately 150 bytes for base64 encoding)
         chunk_size = self.max_message_size_bytes - 150  # subtract metadata overhead
         chunks = self._split_message_bytes(message_bytes, chunk_size)

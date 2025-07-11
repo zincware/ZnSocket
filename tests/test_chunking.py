@@ -86,3 +86,39 @@ def test_chunking_dict_pipeline(client, request, caplog):
         dct = znsocket.Dict(r=c, key=key, converter=[NumpyConverter])
         retrieved_data = dct["data"]
         npt.assert_array_equal(retrieved_data, data)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize(
+    "client",
+    ["znsclient", "znsclient_w_redis"],
+)
+def test_compression_without_chunking(client, request, caplog):
+    """Test that large data compresses well enough to avoid chunking.
+    
+    This tests the scenario where raw data exceeds server limits but 
+    compression makes it small enough for single transmission.
+    """
+    c = request.getfixturevalue(client)
+    # Set a very small limit to force compression decision
+    c.max_message_size_bytes = 500000  # 500KB limit (server is 5MB)
+
+    dct = znsocket.Dict(r=c, key="test_compression_dict", converter=[NumpyConverter])
+
+    # Create highly compressible data - repeated patterns compress very well
+    # This will be ~8MB raw but compress to much less than 500KB
+    large_array = np.zeros((1000, 1000))  # Array of all zeros compresses extremely well
+    large_array[::100, ::100] = 1  # Add some sparse non-zero values for realism
+
+    caplog.set_level("DEBUG", logger="znsocket.client")
+    dct["data"] = large_array
+    
+    # Retrieve the data
+    retrieved_data = dct["data"]
+
+    npt.assert_array_equal(retrieved_data, large_array)
+    
+    # Should see compression message but NOT chunking message
+    assert "Compressed message from" in caplog.text
+    assert "Splitting message" not in caplog.text  # Should not be chunked
+    assert "Using chunked transmission" not in caplog.text
