@@ -10,6 +10,7 @@ def test_chunked_large_dict_python_to_js(znsclient, run_npm_test, request, caplo
     """Test that large chunked data from Python can be read by JavaScript."""
     # Create very large data that will definitely trigger chunking (>5MB)
     large_array = np.random.rand(1000, 1000).astype(np.float64)  # ~8MB
+    znsclient.max_message_size_bytes = 100000  # Set a smaller max size for testing
 
     # Store using Python client with chunking
     dct = znsocket.Dict(
@@ -32,6 +33,7 @@ def test_chunked_large_dict_python_to_js(znsclient, run_npm_test, request, caplo
 def test_chunked_large_list_python_to_js(znsclient, run_npm_test, request, caplog):
     """Test that large chunked list data from Python can be read by JavaScript."""
     # Create a large list with many items to trigger chunking
+    znsclient.max_message_size_bytes = 100000  # Set a smaller max size for testing
     large_list = []
     for i in range(800):
         # Each item is a large string to ensure we exceed the 5MB limit
@@ -60,6 +62,7 @@ def test_chunked_large_list_python_to_js(znsclient, run_npm_test, request, caplo
 def test_chunked_large_list_python_to_js_2(znsclient, run_npm_test, request, caplog):
     """Test that large chunked list data from Python can be read by JavaScript."""
     # Create a large list with many items to trigger chunking
+    znsclient.max_message_size_bytes = 100000  # Set a smaller max size for testing
     large_list = []
     for i in range(800):
         # Each item is a large random string to ensure we exceed the 5MB limit

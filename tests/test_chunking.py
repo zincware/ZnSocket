@@ -16,6 +16,8 @@ import znsocket
 def test_chunking_large_dict_set(client, request, caplog):
     """Test that large dictionary updates are chunked automatically."""
     c = request.getfixturevalue(client)
+    if client in ["znsclient", "znsclient_w_redis"]:
+        c.max_message_size_bytes = 10000  # Set a smaller max size for testing
 
     dct = znsocket.Dict(r=c, key="test_large_dict", converter=[NumpyConverter])
 
@@ -40,6 +42,8 @@ def test_chunking_large_dict_set(client, request, caplog):
 def test_chunking_large_list_append(client, request, caplog):
     """Test that large list appends are chunked automatically."""
     c = request.getfixturevalue(client)
+    if client in ["znsclient", "znsclient_w_redis"]:
+        c.max_message_size_bytes = 10000  # Set a smaller max size for testing
 
     lst = znsocket.List(r=c, key="test_large_list", converter=[NumpyConverter])
 
@@ -64,6 +68,8 @@ def test_chunking_large_list_append(client, request, caplog):
 def test_chunking_dict_pipeline(client, request, caplog):
     """Test that large dictionary updates are chunked automatically."""
     c = request.getfixturevalue(client)
+    if client in ["znsclient", "znsclient_w_redis"]:
+        c.max_message_size_bytes = 10000  # Set a smaller max size for testing
 
     pipeline = c.pipeline()
     data = np.random.rand(1000, 1000)
