@@ -121,7 +121,8 @@ class ListAdapter:
 
     def _handle_transform_callback(self, value: Any, index: int):
         """Handle item transformation callback with pre-check for existing adapters."""
-        from znsocket import Dict, List
+        from znsocket import Dict, List, Segments, DictAdapter
+        # TODO: use a znsocket base class mixin
 
         suggested_key = f"{self.key}:{index}"
 
@@ -146,7 +147,7 @@ class ListAdapter:
         )
 
         # Check if result is an adapter (has a .key attribute)
-        if isinstance(result, (Dict, List)):
+        if isinstance(result, (Dict, List, ListAdapter, DictAdapter, Segments)):
             return json.dumps(result.key)
         else:
             return encode(self, result)
