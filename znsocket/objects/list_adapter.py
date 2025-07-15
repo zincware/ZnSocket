@@ -121,7 +121,8 @@ class ListAdapter:
 
     def _handle_transform_callback(self, value: Any, index: int):
         """Handle item transformation callback with pre-check for existing adapters."""
-        # Generate the suggested key for the adapter
+        from znsocket import Dict, List
+
         suggested_key = f"{self.key}:{index}"
 
         # Check if an adapter with this key already exists
@@ -145,11 +146,9 @@ class ListAdapter:
         )
 
         # Check if result is an adapter (has a .key attribute)
-        if hasattr(result, "key"):
-            print(f"Returning new adapter with key: {result.key}")
+        if isinstance(result, (Dict, List)):
             return json.dumps(result.key)
         else:
-            # Return the raw value directly
             return encode(self, result)
 
     def map_callback(self, data):
