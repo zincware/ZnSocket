@@ -101,9 +101,9 @@ class Client:
         default_factory=socketio.Client, repr=False, init=False
     )
     namespace: str = "/znsocket"
-    refresh_callbacks: dict = dataclasses.field(default_factory=dict)
+    refresh_callbacks: dict[str, t.Callable[[t.Any], None]] = dataclasses.field(default_factory=dict)
     adapter_callback: t.Callable | None = None
-    _adapter_callbacks: dict = dataclasses.field(default_factory=dict, init=False)
+    _adapter_callbacks: dict[str, t.Callable[[tuple[list, dict]], t.Any]] = dataclasses.field(default_factory=dict, init=False)
     delay_between_calls: datetime.timedelta | None = None
     retry: int = 1
     connect_wait_timeout: int = 1
@@ -115,14 +115,14 @@ class Client:
         default_factory=datetime.datetime.now, init=False
     )
 
-    def register_adapter_callback(self, key: str, callback: t.Callable) -> None:
+    def register_adapter_callback(self, key: str, callback: t.Callable[[tuple[list, dict]], t.Any]) -> None:
         """Register an adapter callback for a specific key.
 
         Parameters
         ----------
         key : str
             The adapter key to register the callback for.
-        callback : Callable
+        callback : Callable[[tuple[list, dict]], Any]
             The callback function to handle adapter requests for this key.
         """
         self._adapter_callbacks[key] = callback

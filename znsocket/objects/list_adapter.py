@@ -1,10 +1,13 @@
 import json
+import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Optional, Protocol
+from typing import Any, Optional, Protocol, Union
 
 from znsocket.client import Client
 from znsocket.utils import encode, handle_error
+
+log = logging.getLogger(__name__)
 
 
 class ItemTransformCallback(Protocol):
@@ -128,7 +131,7 @@ class ListAdapter:
         if self.r is None:
             self.r = self.socket
 
-    def _handle_transform_callback(self, value: Any, index: int):
+    def _handle_transform_callback(self, value: Any, index: int) -> str:
         """Handle item transformation callback with pre-check for existing adapters."""
         from znsocket import Dict, DictAdapter, List, Segments
         # TODO: use a znsocket base class mixin
@@ -147,13 +150,18 @@ class ListAdapter:
 
         # Assert that callback is not None (this method is only called when callback is not None)
         assert self.item_transform_callback is not None
-        result = self.item_transform_callback(
-            item=value,
-            key=suggested_key,
-            socket=self.socket,
-            converter=self.converter,
-            convert_nan=self.convert_nan,
-        )
+        
+        try:
+            result = self.item_transform_callback(
+                item=value,
+                key=suggested_key,
+                socket=self.socket,
+                converter=self.converter,
+                convert_nan=self.convert_nan,
+            )
+        except Exception as e:
+            log.error(f"Error in item transform callback for key {suggested_key}: {e}")
+            raise RuntimeError(f"Failed to transform item at index {index}: {e}") from e
 
         # Check if result is an adapter (has a .key attribute)
         if isinstance(result, (Dict, List, ListAdapter, DictAdapter, Segments)):
@@ -161,7 +169,7 @@ class ListAdapter:
         else:
             return encode(self, result)
 
-    def map_callback(self, data):
+    def map_callback(self, data: tuple[list, dict]) -> Any:
         """Map a callback to the object.
 
         This method handles incoming requests from clients and routes them to the
@@ -190,7 +198,7 @@ class ListAdapter:
             return len(self.object)
         elif method == "__getitem__":
             index = kwargs["index"]
-            print(f"Getting item at index: {index} from {self.key}")
+            log.debug(f"Getting item at index: {index} from {self.key}")
             try:
                 value = self.object[index]
 
