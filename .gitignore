@@ -163,3 +163,4 @@ cython_debug/
 tmp/
 TODO.md
 node_modules/
+*.local.md

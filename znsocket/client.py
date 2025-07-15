@@ -6,6 +6,7 @@ import json
 import logging
 import typing as t
 import uuid
+import weakref
 
 import socketio.exceptions
 import typing_extensions as tyex
@@ -16,6 +17,18 @@ from znsocket.abc import RefreshDataTypeDict
 from znsocket.utils import handle_error, parse_url
 
 log = logging.getLogger(__name__)
+
+# Global registry to track all client instances
+_all_clients: weakref.WeakSet["Client"] = weakref.WeakSet()
+
+
+def get_clients_with_nested_refresh(key: str) -> list["Client"]:
+    """Get all client instances that have nested refresh enabled for the given key."""
+    return [
+        client
+        for client in _all_clients
+        if key in client.nested_refresh_keys and key in client.refresh_callbacks
+    ]
 
 
 def _handle_data(data: dict):
@@ -102,6 +115,7 @@ class Client:
     )
     namespace: str = "/znsocket"
     refresh_callbacks: dict = dataclasses.field(default_factory=dict)
+    nested_refresh_keys: set[str] = dataclasses.field(default_factory=set)
     adapter_callback: t.Callable | None = None
     delay_between_calls: datetime.timedelta | None = None
     retry: int = 1
@@ -113,6 +127,12 @@ class Client:
     _last_call: datetime.datetime = dataclasses.field(
         default_factory=datetime.datetime.now, init=False
     )
+
+    def __hash__(self):
+        return id(self)
+
+    def __eq__(self, other):
+        return id(self) == id(other)
 
     def pipeline(self, *args, **kwargs) -> "Pipeline":
         """Create a pipeline for batching Redis commands.
@@ -269,6 +289,9 @@ class Client:
         self._setup_event_handlers()
         self._establish_connection()
         self._configure_message_size()
+
+        # Register this client instance globally
+        _all_clients.add(self)
 
     def _setup_event_handlers(self):
         @self.sio.on("refresh", namespace=self.namespace)
