@@ -542,7 +542,6 @@ def attach_events(  # noqa: C901
     @sio.event(namespace=namespace)
     def register_adapter(sid, data: tuple[list, dict]):
         """Register the adapter."""
-        # TODO: if the client disconnects, remove the adapter
         key = data[1]["key"]
         if key in rooms:
             return {
@@ -553,6 +552,26 @@ def attach_events(  # noqa: C901
             }
         adapter[key] = sid
         return True
+
+    @sio.event(namespace=namespace)
+    def disconnect(sid):
+        """Handle client disconnection and cleanup adapters."""
+        # Find all adapters registered by this session ID and remove them
+        adapters_to_remove = [
+            key for key, adapter_sid in adapter.items() if adapter_sid == sid
+        ]
+        for key in adapters_to_remove:
+            del adapter[key]
+            # Also remove from rooms if it exists there
+            if key in rooms:
+                rooms.remove(key)
+
+        if adapters_to_remove:
+            print(
+                f"Cleaned up {len(adapters_to_remove)} adapters for disconnected client {sid}: {adapters_to_remove}"
+            )
+        else:
+            print(f"Client {sid} disconnected with no adapters to clean up")
 
     @sio.on("adapter:get", namespace=namespace)
     def adapter_get(sid, data: tuple[list, dict]):

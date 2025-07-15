@@ -32,9 +32,7 @@ def list_data():
 def test_nested_list_adapter(client, request, list_data):
     c = request.getfixturevalue(client)
 
-    def transform_callback(
-        item, key, socket, converter=None, convert_nan=False
-    ):
+    def transform_callback(item, key, socket, converter=None, convert_nan=False):
         return znsocket.DictAdapter(key, socket, item, converter, convert_nan)
 
     _ = znsocket.ListAdapter(

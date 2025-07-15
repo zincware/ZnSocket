@@ -93,12 +93,21 @@ class ListAdapter:
     >>> adapter = znsocket.ListAdapter("my_adapter", client, my_data)
     >>> # Now clients can access my_data as znsocket.List(client, "my_adapter")
 
-    >>> # With custom transformation
-    >>> def ase_transform(item, index, list_key, socket, converter=None, convert_nan=False):
+    >>> # With custom transformation callback
+    >>> def ase_transform(item, key, socket, converter=None, convert_nan=False):
     ...     from zndraw.converter import ASEConverter
-    ...     return ASEConverter().encode(item), "Dict"
+    ...     import znsocket
+    ...     transformed = ASEConverter().encode(item)
+    ...     return znsocket.DictAdapter(key, socket, transformed, converter, convert_nan)
     >>> ase_data = [atoms1, atoms2, atoms3]  # ASE Atoms objects
     >>> adapter = znsocket.ListAdapter("ase_adapter", client, ase_data, ase_transform)
+
+    >>> # Accessing items creates adapters automatically
+    >>> client_list = znsocket.List(client, "ase_adapter")
+    >>> dict_item = client_list[0]  # Creates DictAdapter with key "ase_adapter:0"
+    >>> isinstance(dict_item, znsocket.Dict)
+    True
+    >>> dict_item["some_key"]  # Access the transformed data
     """
 
     key: str
@@ -121,7 +130,7 @@ class ListAdapter:
 
     def _handle_transform_callback(self, value: Any, index: int):
         """Handle item transformation callback with pre-check for existing adapters."""
-        from znsocket import Dict, List, Segments, DictAdapter
+        from znsocket import Dict, DictAdapter, List, Segments
         # TODO: use a znsocket base class mixin
 
         suggested_key = f"{self.key}:{index}"
