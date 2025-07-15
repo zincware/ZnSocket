@@ -11,7 +11,7 @@ from znsocket.abc import (
     RefreshTypeDict,
     ZnSocketObject,
 )
-from znsocket.client import Client, _get_clients_with_nested_refresh
+from znsocket.client import Client, get_clients_with_nested_refresh
 from znsocket.utils import decode, encode, handle_error
 
 
@@ -401,7 +401,7 @@ class Dict(MutableMapping, ZnSocketObject):
             if parent is not None:
                 parent_key = parent.key
                 # Find all clients with nested refresh enabled for this parent key
-                clients = _get_clients_with_nested_refresh(parent_key)
+                clients = get_clients_with_nested_refresh(parent_key)
 
                 for client in clients:
                     try:

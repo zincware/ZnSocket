@@ -12,22 +12,9 @@ from znsocket.abc import (
     RefreshTypeDict,
     ZnSocketObject,
 )
-from znsocket.client import Client, _get_clients_with_nested_refresh
+from znsocket.client import Client, get_clients_with_nested_refresh
 from znsocket.exceptions import FrozenStorageError
 from znsocket.utils import decode, encode, handle_error
-
-
-# TODO: cache for self.key
-def _used_fallback(self: "List") -> bool:
-    result = int(self.redis.llen(self.key))
-    # I don't know
-    # if result == 0 and self._adapter_available:
-    #     result = int(
-    #         self.socket.call("adapter:get", key=self.key, method="__len__")
-    #     )
-    if result == 0 and self.fallback is not None:
-        return True
-    return False
 
 
 class List(MutableSequence, ZnSocketObject):
@@ -608,7 +595,7 @@ class List(MutableSequence, ZnSocketObject):
             if parent is not None:
                 parent_key = parent.key
                 # Find all clients with nested refresh enabled for this parent key
-                clients = _get_clients_with_nested_refresh(parent_key)
+                clients = get_clients_with_nested_refresh(parent_key)
 
                 for client in clients:
                     try:
