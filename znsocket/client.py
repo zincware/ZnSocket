@@ -50,8 +50,6 @@ class Client:
         The namespace to connect to. Default is "/znsocket".
     refresh_callbacks : dict, optional
         A dictionary of callbacks to call when a refresh event is received.
-    adapter_callback : callable, optional
-        Callback function for adapter events. Default is None.
     delay_between_calls : datetime.timedelta, optional
         The time to wait between calls. Default is None.
     retry : int, optional
@@ -101,8 +99,12 @@ class Client:
         default_factory=socketio.Client, repr=False, init=False
     )
     namespace: str = "/znsocket"
-    refresh_callbacks: dict = dataclasses.field(default_factory=dict)
-    adapter_callback: t.Callable | None = None
+    refresh_callbacks: dict[str, t.Callable[[t.Any], None]] = dataclasses.field(
+        default_factory=dict
+    )
+    _adapter_callbacks: dict[str, t.Callable[[tuple[list, dict]], t.Any]] = (
+        dataclasses.field(default_factory=dict, init=False)
+    )
     delay_between_calls: datetime.timedelta | None = None
     retry: int = 1
     connect_wait_timeout: int = 1
@@ -113,6 +115,20 @@ class Client:
     _last_call: datetime.datetime = dataclasses.field(
         default_factory=datetime.datetime.now, init=False
     )
+
+    def register_adapter_callback(
+        self, key: str, callback: t.Callable[[tuple[list, dict]], t.Any]
+    ) -> None:
+        """Register an adapter callback for a specific key.
+
+        Parameters
+        ----------
+        key : str
+            The adapter key to register the callback for.
+        callback : Callable[[tuple[list, dict]], Any]
+            The callback function to handle adapter requests for this key.
+        """
+        self._adapter_callbacks[key] = callback
 
     def pipeline(self, *args, **kwargs) -> "Pipeline":
         """Create a pipeline for batching Redis commands.
@@ -278,10 +294,12 @@ class Client:
                     self.refresh_callbacks[key](data["data"])
 
         @self.sio.on("adapter:get", namespace=self.namespace)
-        def adapter(data: RefreshDataTypeDict):
-            if self.adapter_callback is None:
+        def adapter(data: tuple[list, dict]):
+            key = data[1]["key"]
+            if key in self._adapter_callbacks:
+                return self._adapter_callbacks[key](data)
+            else:
                 raise exceptions.ZnSocketError("No adapter callback set")
-            return self.adapter_callback(data)
 
     def _establish_connection(self):
         _url, _path = parse_url(self.address)
