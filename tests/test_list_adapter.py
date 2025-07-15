@@ -722,7 +722,7 @@ def test_list_fallback_nested_structures(client, request):
     assert inner_dict["b"] == "world"
 
     with pytest.raises(FrozenStorageError):
-        lst.append("new_item")  # Should raise FrozenStorageError if adapter is frozen
+        lst.append("new_item")
 
     with pytest.raises(FrozenStorageError):
         lst[0].update({"new_key": "new_value"})

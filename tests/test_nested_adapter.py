@@ -1,6 +1,7 @@
 import pytest
 
 import znsocket
+from znsocket.exceptions import FrozenStorageError
 
 
 @pytest.fixture
@@ -48,3 +49,9 @@ def test_nested_list_adapter(client, request, list_data):
     assert isinstance(lst[1], znsocket.Dict)
     assert lst[0]["name"] == "John Doe"
     assert lst[1]["name"] == "Jane Smith"
+
+    with pytest.raises(FrozenStorageError):
+        lst.append("new_item")
+
+    with pytest.raises(FrozenStorageError):
+        lst[0].update({"new_key": "new_value"})
