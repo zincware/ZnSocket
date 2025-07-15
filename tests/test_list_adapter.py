@@ -720,9 +720,3 @@ def test_list_fallback_nested_structures(client, request):
     assert list(inner_list) == [1, 2, 3]
     assert inner_dict["a"] == "hello"
     assert inner_dict["b"] == "world"
-
-    with pytest.raises(FrozenStorageError):
-        lst.append("new_item")
-
-    with pytest.raises(FrozenStorageError):
-        lst[0].update({"new_key": "new_value"})

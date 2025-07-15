@@ -50,8 +50,6 @@ class Client:
         The namespace to connect to. Default is "/znsocket".
     refresh_callbacks : dict, optional
         A dictionary of callbacks to call when a refresh event is received.
-    adapter_callback : callable, optional
-        Callback function for adapter events. Default is None.
     delay_between_calls : datetime.timedelta, optional
         The time to wait between calls. Default is None.
     retry : int, optional
@@ -104,7 +102,6 @@ class Client:
     refresh_callbacks: dict[str, t.Callable[[t.Any], None]] = dataclasses.field(
         default_factory=dict
     )
-    adapter_callback: t.Callable | None = None
     _adapter_callbacks: dict[str, t.Callable[[tuple[list, dict]], t.Any]] = (
         dataclasses.field(default_factory=dict, init=False)
     )
@@ -301,8 +298,6 @@ class Client:
             key = data[1]["key"]
             if key in self._adapter_callbacks:
                 return self._adapter_callbacks[key](data)
-            elif self.adapter_callback is not None:
-                return self.adapter_callback(data)
             else:
                 raise exceptions.ZnSocketError("No adapter callback set")
 
