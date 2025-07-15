@@ -17,8 +17,6 @@ class ItemTransformCallback(Protocol):
     def __call__(
         self,
         item: Any,
-        index: int,
-        list_key: str,
         key: str,
         socket: Client,
         converter: list[type] | None = None,
@@ -30,12 +28,9 @@ class ItemTransformCallback(Protocol):
         ----------
         item : Any
             The original item from the sequence.
-        index : int
-            The index of the item in the sequence.
-        list_key : str
-            The key of the parent ListAdapter.
         key : str
             The suggested key to use for adapter creation (format: "{list_key}:{index}").
+            Using other keys will cause conflicts.
         socket : Client
             The socket client connection.
         converter : list[type] | None
@@ -51,13 +46,13 @@ class ItemTransformCallback(Protocol):
 
         Examples
         --------
-        >>> def ase_transform(item, index, list_key, key, socket, converter=None, convert_nan=False):
+        >>> def ase_transform(item, key, socket, converter=None, convert_nan=False):
         ...     from zndraw.converter import ASEConverter
         ...     import znsocket
         ...     transformed = ASEConverter().encode(item)
         ...     return znsocket.DictAdapter(key, socket, transformed, converter, convert_nan)
 
-        >>> def simple_transform(item, index, list_key, key, socket, converter=None, convert_nan=False):
+        >>> def simple_transform(item, key, socket, converter=None, convert_nan=False):
         ...     return item * 2  # Return raw value directly
         """
         ...
@@ -134,29 +129,15 @@ class ListAdapter:
         dict_key = f"znsocket.Dict:{suggested_key}"
         list_key = f"znsocket.List:{suggested_key}"
 
-        dict_exists = self.socket.call("adapter_exists", key=dict_key)
-        list_exists = self.socket.call("adapter_exists", key=list_key)
-
-        print(f"Checking for existing adapters with key {suggested_key}")
-        print(f"Dict adapter exists: {dict_exists}, List adapter exists: {list_exists}")
-
-        if dict_exists:
-            print(f"Returning existing Dict adapter: {dict_key}")
+        if self.socket.call("adapter_exists", key=dict_key):
             return json.dumps(dict_key)
-        elif list_exists:
-            print(f"Returning existing List adapter: {list_key}")
+        elif self.socket.call("adapter_exists", key=list_key):
             return json.dumps(list_key)
 
-        # No existing adapter found, call the callback to create one
-        print(
-            f"No existing adapter found, calling callback to create one with key: {suggested_key}"
-        )
         # Assert that callback is not None (this method is only called when callback is not None)
         assert self.item_transform_callback is not None
         result = self.item_transform_callback(
             item=value,
-            index=index,
-            list_key=self.key,
             key=suggested_key,
             socket=self.socket,
             converter=self.converter,

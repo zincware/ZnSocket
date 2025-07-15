@@ -33,7 +33,7 @@ def test_nested_list_adapter(client, request, list_data):
     c = request.getfixturevalue(client)
 
     def transform_callback(
-        item, index, list_key, key, socket, converter=None, convert_nan=False
+        item, key, socket, converter=None, convert_nan=False
     ):
         return znsocket.DictAdapter(key, socket, item, converter, convert_nan)
 
