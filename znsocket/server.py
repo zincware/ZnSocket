@@ -140,6 +140,7 @@ class Storage:
             return 0
 
     def exists(self, name):
+        print(f"content contains: {self.content.keys()}")
         return 1 if name in self.content else 0
 
     def llen(self, name):
@@ -531,6 +532,13 @@ def attach_events(  # noqa: C901
         """Check if the adapter is available."""
         key = data[1]["key"]
         rooms.add(key)
+        return key in adapter
+
+    @sio.event(namespace=namespace)
+    def adapter_exists(sid, data: tuple[list, dict]) -> bool:
+        """Check if the adapter exists."""
+        key = data[1]["key"]
+        print(f"Checking if adapter exists for key: {key} in {adapter.keys()}")
         return key in adapter
 
     @sio.event(namespace=namespace)

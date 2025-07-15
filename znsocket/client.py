@@ -103,6 +103,7 @@ class Client:
     namespace: str = "/znsocket"
     refresh_callbacks: dict = dataclasses.field(default_factory=dict)
     adapter_callback: t.Callable | None = None
+    _adapter_callbacks: dict = dataclasses.field(default_factory=dict, init=False)
     delay_between_calls: datetime.timedelta | None = None
     retry: int = 1
     connect_wait_timeout: int = 1
@@ -113,6 +114,18 @@ class Client:
     _last_call: datetime.datetime = dataclasses.field(
         default_factory=datetime.datetime.now, init=False
     )
+
+    def register_adapter_callback(self, key: str, callback: t.Callable) -> None:
+        """Register an adapter callback for a specific key.
+
+        Parameters
+        ----------
+        key : str
+            The adapter key to register the callback for.
+        callback : Callable
+            The callback function to handle adapter requests for this key.
+        """
+        self._adapter_callbacks[key] = callback
 
     def pipeline(self, *args, **kwargs) -> "Pipeline":
         """Create a pipeline for batching Redis commands.
@@ -278,10 +291,14 @@ class Client:
                     self.refresh_callbacks[key](data["data"])
 
         @self.sio.on("adapter:get", namespace=self.namespace)
-        def adapter(data: RefreshDataTypeDict):
-            if self.adapter_callback is None:
+        def adapter(data: tuple[list, dict]):
+            key = data[1]["key"]
+            if key in self._adapter_callbacks:
+                return self._adapter_callbacks[key](data)
+            elif self.adapter_callback is not None:
+                return self.adapter_callback(data)
+            else:
                 raise exceptions.ZnSocketError("No adapter callback set")
-            return self.adapter_callback(data)
 
     def _establish_connection(self):
         _url, _path = parse_url(self.address)

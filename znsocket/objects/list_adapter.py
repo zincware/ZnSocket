@@ -51,7 +51,7 @@ class ListAdapter:
         result = self.socket.call("register_adapter", key=self.key)
         handle_error(result)
 
-        self.socket.adapter_callback = self.map_callback
+        self.socket.register_adapter_callback(self.key, self.map_callback)
         if self.r is None:
             self.r = self.socket
 
@@ -84,8 +84,36 @@ class ListAdapter:
             return len(self.object)
         elif method == "__getitem__":
             index = kwargs["index"]
+            print(f"Getting item at index: {index} from {self.key}")
             try:
                 value = self.object[index]
+                # now value is ase atoms and we want to convert it to znsocket.Dict
+                from zndraw.converter import ASEConverter
+
+                value: dict = ASEConverter().encode(value)
+                # # check if the dict exits
+                exists = self.socket.call(
+                    "adapter_exists", key=f"znsocket.Dict:{self.key}:{index}"
+                )
+                print(f"Checking if znsocket.Dict exists for {self.key}:{index}")
+                print(f"Exists: {exists}")
+                if exists:
+                    # if it exists, return the key
+                    print(f"Returning existing znsocket.Dict for {self.key}:{index}")
+                    return json.dumps(f"znsocket.Dict:{self.key}:{index}")
+                import znsocket
+
+                dct = znsocket.DictAdapter(
+                    key=f"{self.key}:{index}",
+                    socket=self.socket,
+                    object=value,
+                    converter=self.converter,
+                    convert_nan=self.convert_nan,
+                )
+                print(f"Returning znsocket.Dict for {self.key}:{index}")
+                print(f"Adapter key: {dct.key}")
+                return json.dumps(dct.key)
+
             except Exception as e:
                 value = {"error": {"msg": str(e), "type": type(e).__name__}}
             return encode(self, value)

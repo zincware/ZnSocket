@@ -51,7 +51,7 @@ class DictAdapter:
         result = self.socket.call("register_adapter", key=self.key)
         handle_error(result)
 
-        self.socket.adapter_callback = self.map_callback
+        self.socket.register_adapter_callback(self.key, self.map_callback)
         if self.r is None:
             self.r = self.socket
 
