@@ -1,9 +1,63 @@
 import json
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Any, Literal, Optional, Protocol
 
 from znsocket.client import Client
 from znsocket.utils import encode, handle_error
+
+
+class ItemTransformCallback(Protocol):
+    """Protocol for item transformation callbacks.
+
+    This callback is called when a list item is accessed and can return either
+    a raw value or construct and return an adapter directly.
+    """
+
+    def __call__(
+        self,
+        item: Any,
+        index: int,
+        list_key: str,
+        socket: Client,
+        converter: list[type] | None = None,
+        convert_nan: bool = False,
+    ) -> Any:
+        """Transform a list item.
+
+        Parameters
+        ----------
+        item : Any
+            The original item from the sequence.
+        index : int
+            The index of the item in the sequence.
+        list_key : str
+            The key of the parent ListAdapter.
+        socket : Client
+            The socket client connection.
+        converter : list[type] | None
+            Optional converters to pass to the created adapter.
+        convert_nan : bool
+            Whether to convert NaN values.
+
+        Returns
+        -------
+        Any
+            Either a raw value (which will be encoded directly) or an adapter
+            instance (which will have its key returned).
+
+        Examples
+        --------
+        >>> def ase_transform(item, index, list_key, socket, converter=None, convert_nan=False):
+        ...     from zndraw.converter import ASEConverter
+        ...     import znsocket
+        ...     transformed = ASEConverter().encode(item)
+        ...     return znsocket.DictAdapter(f"{list_key}:{index}", socket, transformed, converter, convert_nan)
+        
+        >>> def simple_transform(item, index, list_key, socket, converter=None, convert_nan=False):
+        ...     return item * 2  # Return raw value directly
+        """
+        ...
 
 
 @dataclass
@@ -22,6 +76,10 @@ class ListAdapter:
         The znsocket client connection to use for communication.
     object : Sequence
         The sequence object to expose through the adapter.
+    item_transform_callback : ItemTransformCallback, optional
+        Optional callback to transform list items when accessed. If provided,
+        the callback will be called for each item access and can return transformed
+        data along with the adapter type to create ("Dict", "List", or None).
     converter : list[type], optional
         Optional list of znjson converters to use for encoding/decoding the data.
     convert_nan : bool, optional
@@ -36,11 +94,19 @@ class ListAdapter:
     >>> my_data = [1, 2, 3, 4, 5]
     >>> adapter = znsocket.ListAdapter("my_adapter", client, my_data)
     >>> # Now clients can access my_data as znsocket.List(client, "my_adapter")
+
+    >>> # With custom transformation
+    >>> def ase_transform(item, index, list_key, socket, converter=None, convert_nan=False):
+    ...     from zndraw.converter import ASEConverter
+    ...     return ASEConverter().encode(item), "Dict"
+    >>> ase_data = [atoms1, atoms2, atoms3]  # ASE Atoms objects
+    >>> adapter = znsocket.ListAdapter("ase_adapter", client, ase_data, ase_transform)
     """
 
     key: str
     socket: Client
     object: Sequence
+    item_transform_callback: Optional[ItemTransformCallback] = None
     converter: list[type] | None = None
     convert_nan: bool = False
     r: Client | None = None
@@ -54,6 +120,7 @@ class ListAdapter:
         self.socket.register_adapter_callback(self.key, self.map_callback)
         if self.r is None:
             self.r = self.socket
+
 
     def map_callback(self, data):
         """Map a callback to the object.
@@ -84,39 +151,19 @@ class ListAdapter:
             return len(self.object)
         elif method == "__getitem__":
             index = kwargs["index"]
-            print(f"Getting item at index: {index} from {self.key}")
             try:
                 value = self.object[index]
-                # now value is ase atoms and we want to convert it to znsocket.Dict
-                from zndraw.converter import ASEConverter
 
-                value: dict = ASEConverter().encode(value)
-                # # check if the dict exits
-                exists = self.socket.call(
-                    "adapter_exists", key=f"znsocket.Dict:{self.key}:{index}"
-                )
-                print(f"Checking if znsocket.Dict exists for {self.key}:{index}")
-                print(f"Exists: {exists}")
-                if exists:
-                    # if it exists, return the key
-                    print(f"Returning existing znsocket.Dict for {self.key}:{index}")
-                    return json.dumps(f"znsocket.Dict:{self.key}:{index}")
-                import znsocket
+                # If transform callback is provided, use it
+                if self.item_transform_callback is not None:
+                    return self._handle_getitem_with_transform(value, index)
 
-                dct = znsocket.DictAdapter(
-                    key=f"{self.key}:{index}",
-                    socket=self.socket,
-                    object=value,
-                    converter=self.converter,
-                    convert_nan=self.convert_nan,
-                )
-                print(f"Returning znsocket.Dict for {self.key}:{index}")
-                print(f"Adapter key: {dct.key}")
-                return json.dumps(dct.key)
+                # If no transform callback, return the value directly
+                return encode(self, value)
 
             except Exception as e:
                 value = {"error": {"msg": str(e), "type": type(e).__name__}}
-            return encode(self, value)
+                return encode(self, value)
         elif method == "slice":
             start: int = kwargs.get("start", 0)
             stop: int = kwargs.get("stop", len(self.object))
