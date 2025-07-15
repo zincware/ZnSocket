@@ -1,7 +1,7 @@
 import json
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Literal, Optional, Protocol
+from typing import Any, Optional, Protocol
 
 from znsocket.client import Client
 from znsocket.utils import encode, handle_error
@@ -19,6 +19,7 @@ class ItemTransformCallback(Protocol):
         item: Any,
         index: int,
         list_key: str,
+        key: str,
         socket: Client,
         converter: list[type] | None = None,
         convert_nan: bool = False,
@@ -33,6 +34,8 @@ class ItemTransformCallback(Protocol):
             The index of the item in the sequence.
         list_key : str
             The key of the parent ListAdapter.
+        key : str
+            The suggested key to use for adapter creation (format: "{list_key}:{index}").
         socket : Client
             The socket client connection.
         converter : list[type] | None
@@ -48,13 +51,13 @@ class ItemTransformCallback(Protocol):
 
         Examples
         --------
-        >>> def ase_transform(item, index, list_key, socket, converter=None, convert_nan=False):
+        >>> def ase_transform(item, index, list_key, key, socket, converter=None, convert_nan=False):
         ...     from zndraw.converter import ASEConverter
         ...     import znsocket
         ...     transformed = ASEConverter().encode(item)
-        ...     return znsocket.DictAdapter(f"{list_key}:{index}", socket, transformed, converter, convert_nan)
-        
-        >>> def simple_transform(item, index, list_key, socket, converter=None, convert_nan=False):
+        ...     return znsocket.DictAdapter(key, socket, transformed, converter, convert_nan)
+
+        >>> def simple_transform(item, index, list_key, key, socket, converter=None, convert_nan=False):
         ...     return item * 2  # Return raw value directly
         """
         ...
@@ -121,6 +124,52 @@ class ListAdapter:
         if self.r is None:
             self.r = self.socket
 
+    def _handle_transform_callback(self, value: Any, index: int):
+        """Handle item transformation callback with pre-check for existing adapters."""
+        # Generate the suggested key for the adapter
+        suggested_key = f"{self.key}:{index}"
+
+        # Check if an adapter with this key already exists
+        # We need to check both Dict and List adapter patterns
+        dict_key = f"znsocket.Dict:{suggested_key}"
+        list_key = f"znsocket.List:{suggested_key}"
+
+        dict_exists = self.socket.call("adapter_exists", key=dict_key)
+        list_exists = self.socket.call("adapter_exists", key=list_key)
+
+        print(f"Checking for existing adapters with key {suggested_key}")
+        print(f"Dict adapter exists: {dict_exists}, List adapter exists: {list_exists}")
+
+        if dict_exists:
+            print(f"Returning existing Dict adapter: {dict_key}")
+            return json.dumps(dict_key)
+        elif list_exists:
+            print(f"Returning existing List adapter: {list_key}")
+            return json.dumps(list_key)
+
+        # No existing adapter found, call the callback to create one
+        print(
+            f"No existing adapter found, calling callback to create one with key: {suggested_key}"
+        )
+        # Assert that callback is not None (this method is only called when callback is not None)
+        assert self.item_transform_callback is not None
+        result = self.item_transform_callback(
+            item=value,
+            index=index,
+            list_key=self.key,
+            key=suggested_key,
+            socket=self.socket,
+            converter=self.converter,
+            convert_nan=self.convert_nan,
+        )
+
+        # Check if result is an adapter (has a .key attribute)
+        if hasattr(result, "key"):
+            print(f"Returning new adapter with key: {result.key}")
+            return json.dumps(result.key)
+        else:
+            # Return the raw value directly
+            return encode(self, result)
 
     def map_callback(self, data):
         """Map a callback to the object.
@@ -151,12 +200,13 @@ class ListAdapter:
             return len(self.object)
         elif method == "__getitem__":
             index = kwargs["index"]
+            print(f"Getting item at index: {index} from {self.key}")
             try:
                 value = self.object[index]
 
                 # If transform callback is provided, use it
                 if self.item_transform_callback is not None:
-                    return self._handle_getitem_with_transform(value, index)
+                    return self._handle_transform_callback(value, index)
 
                 # If no transform callback, return the value directly
                 return encode(self, value)
