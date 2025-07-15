@@ -1,4 +1,5 @@
 import typing as t
+import weakref
 from collections.abc import MutableMapping
 
 import znjson
@@ -10,7 +11,7 @@ from znsocket.abc import (
     RefreshTypeDict,
     ZnSocketObject,
 )
-from znsocket.client import Client
+from znsocket.client import Client, _get_clients_with_nested_refresh
 from znsocket.utils import decode, encode, handle_error
 
 
@@ -81,6 +82,11 @@ class Dict(MutableMapping, ZnSocketObject):
         self.converter = converter
         self._key = key
         self.repr_type = repr_type
+        self._nested_refresh = False
+        self._on_refresh = lambda x: None
+        self._parent_watchers: list[
+            tuple[weakref.ReferenceType, t.Union[int, str]]
+        ] = []
         self.convert_nan = convert_nan
         self.fallback = fallback
         self.fallback_policy = fallback_policy
@@ -157,10 +163,12 @@ class Dict(MutableMapping, ZnSocketObject):
             raise FrozenStorageError(key=self.key)
 
         if isinstance(value, List):
+            value._add_parent_watcher(self, key)
             value = value.key
         if isinstance(value, Dict):
             if value.key == self.key:
                 raise ValueError("Can not set circular reference to self")
+            value._add_parent_watcher(self, key)
             value = value.key
         self.redis.hset(self.key, key, encode(self, value))
         if callback := self._callbacks["setitem"]:
@@ -169,6 +177,7 @@ class Dict(MutableMapping, ZnSocketObject):
             refresh: RefreshTypeDict = {"keys": [key]}
             refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
             self.socket.sio.emit("refresh", refresh_data, namespace="/znsocket")
+            self._notify_parent_watchers(refresh)
 
     def __delitem__(self, key: str) -> None:
         if self._adapter_available:
@@ -185,6 +194,7 @@ class Dict(MutableMapping, ZnSocketObject):
             refresh: RefreshTypeDict = {"keys": [key]}
             refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
             self.socket.sio.emit("refresh", refresh_data, namespace="/znsocket")
+            self._notify_parent_watchers(refresh)
 
     def __iter__(self):
         return iter(self.keys())
@@ -343,11 +353,72 @@ class Dict(MutableMapping, ZnSocketObject):
                 convert_nan=self.convert_nan,
             )
 
-    def on_refresh(self, callback: t.Callable[[RefreshDataTypeDict], None]) -> None:
+    def on_refresh(
+        self, callback: t.Callable[[RefreshDataTypeDict], None], nested: bool = False
+    ) -> None:
         if self.socket is None:
             raise ValueError("No socket connection available")
 
+        self._nested_refresh = nested
+        self._on_refresh = callback
         self.socket.refresh_callbacks[self.key] = callback
+
+        # Register nested refresh state globally for this key
+        if nested:
+            self.socket.nested_refresh_keys.add(self.key)
+        else:
+            self.socket.nested_refresh_keys.discard(self.key)
+
+    @property
+    def nested_refresh(self) -> bool:
+        """Whether nested refresh is enabled for this object."""
+        return self._nested_refresh
+
+    def _add_parent_watcher(
+        self, parent_obj: t.Union["Dict", t.Any], location: t.Union[int, str]
+    ) -> None:
+        """Add a parent object as a watcher for nested refresh events."""
+        parent_ref = weakref.ref(parent_obj)
+        self._parent_watchers.append((parent_ref, location))
+
+    def _remove_parent_watcher(self, parent_obj: t.Union["Dict", t.Any]) -> None:
+        """Remove a parent object from nested refresh watchers."""
+        self._parent_watchers = [
+            (ref, loc)
+            for ref, loc in self._parent_watchers
+            if ref() is not None and ref() is not parent_obj
+        ]
+
+    def _notify_parent_watchers(self, refresh_data: RefreshTypeDict) -> None:
+        """Notify parent objects that this nested object has changed."""
+        # Clean up dead references
+        self._parent_watchers = [
+            (ref, loc) for ref, loc in self._parent_watchers if ref() is not None
+        ]
+
+        for parent_ref, location in self._parent_watchers:
+            parent = parent_ref()
+            if parent is not None:
+                parent_key = parent.key
+                # Find all clients with nested refresh enabled for this parent key
+                clients = _get_clients_with_nested_refresh(parent_key)
+
+                for client in clients:
+                    try:
+                        if isinstance(location, int):
+                            # Parent is a List, use indices
+                            parent_refresh = {"indices": [location]}
+                        else:
+                            # Parent is a Dict, use keys
+                            parent_refresh = {"keys": [location]}
+
+                        # Call the refresh callback directly
+                        callback = client.refresh_callbacks.get(parent_key)
+                        if callback:
+                            callback(parent_refresh)
+                    except Exception:
+                        # Ignore errors in parent callbacks to avoid breaking child operations
+                        pass
 
     def update(self, *args, **kwargs):  # noqa: C901
         """Update the dict with another dict or iterable."""
@@ -378,8 +449,10 @@ class Dict(MutableMapping, ZnSocketObject):
             if isinstance(value, Dict):
                 if value.key == self.key:
                     raise ValueError("Can not set circular reference to self")
+                value._add_parent_watcher(self, key)
                 value = value.key
             if isinstance(value, List):
+                value._add_parent_watcher(self, key)
                 value = value.key
             pipeline.hset(self.key, key, encode(self, value))
         pipeline.execute()
@@ -388,6 +461,7 @@ class Dict(MutableMapping, ZnSocketObject):
             refresh: RefreshTypeDict = {"keys": list(other.keys())}
             refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
             self.socket.sio.emit("refresh", refresh_data, namespace="/znsocket")
+            self._notify_parent_watchers(refresh)
 
     def __or__(self, value: "dict|Dict") -> dict:
         if isinstance(value, Dict):

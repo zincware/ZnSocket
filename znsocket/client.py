@@ -6,6 +6,7 @@ import json
 import logging
 import typing as t
 import uuid
+import weakref
 
 import socketio.exceptions
 import typing_extensions as tyex
@@ -16,6 +17,28 @@ from znsocket.abc import RefreshDataTypeDict
 from znsocket.utils import handle_error, parse_url
 
 log = logging.getLogger(__name__)
+
+# Global registry to track all client instances
+_all_clients: list[weakref.ref] = []
+
+
+def _get_clients_with_nested_refresh(key: str) -> list["Client"]:
+    """Get all client instances that have nested refresh enabled for the given key."""
+    clients = []
+    # Clean up dead references
+    global _all_clients
+    _all_clients = [ref for ref in _all_clients if ref() is not None]
+
+    for client_ref in _all_clients:
+        client = client_ref()
+        if (
+            client
+            and key in client.nested_refresh_keys
+            and key in client.refresh_callbacks
+        ):
+            clients.append(client)
+
+    return clients
 
 
 def _handle_data(data: dict):
@@ -102,6 +125,7 @@ class Client:
     )
     namespace: str = "/znsocket"
     refresh_callbacks: dict = dataclasses.field(default_factory=dict)
+    nested_refresh_keys: set[str] = dataclasses.field(default_factory=set)
     adapter_callback: t.Callable | None = None
     delay_between_calls: datetime.timedelta | None = None
     retry: int = 1
@@ -269,6 +293,9 @@ class Client:
         self._setup_event_handlers()
         self._establish_connection()
         self._configure_message_size()
+
+        # Register this client instance globally
+        _all_clients.append(weakref.ref(self))
 
     def _setup_event_handlers(self):
         @self.sio.on("refresh", namespace=self.namespace)

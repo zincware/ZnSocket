@@ -1,4 +1,5 @@
 import typing as t
+import weakref
 from collections.abc import MutableSequence
 
 import redis.exceptions
@@ -11,7 +12,7 @@ from znsocket.abc import (
     RefreshTypeDict,
     ZnSocketObject,
 )
-from znsocket.client import Client
+from znsocket.client import Client, _get_clients_with_nested_refresh
 from znsocket.exceptions import FrozenStorageError
 from znsocket.utils import decode, encode, handle_error
 
@@ -91,6 +92,10 @@ class List(MutableSequence, ZnSocketObject):
         self.socket = socket if socket else (r if isinstance(r, Client) else None)
         self.converter = converter
         self._on_refresh = lambda x: None
+        self._nested_refresh = False
+        self._parent_watchers: list[
+            tuple[weakref.ReferenceType, t.Union[int, str]]
+        ] = []
         self.convert_nan = convert_nan
         self.fallback = fallback
         self.fallback_policy = fallback_policy
@@ -282,10 +287,12 @@ class List(MutableSequence, ZnSocketObject):
             if i >= LENGTH or i < -LENGTH:
                 raise IndexError("list index out of range")
             if isinstance(v, Dict):
+                v._add_parent_watcher(self, i)
                 v = v.key
             if isinstance(v, List):
-                if value.key == self.key:
+                if v.key == self.key:
                     raise ValueError("Can not set circular reference to self")
+                v._add_parent_watcher(self, i)
                 v = v.key
             pipeline.lset(self.key, i, encode(self, v))
         pipeline.execute()
@@ -296,6 +303,7 @@ class List(MutableSequence, ZnSocketObject):
             refresh: RefreshTypeDict = {"indices": index}
             refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
             self.socket.sio.emit("refresh", refresh_data, namespace="/znsocket")
+            self._notify_parent_watchers(refresh)
 
     def __delitem__(self, index: int | list | slice) -> None:
         if self._adapter_available:
@@ -325,6 +333,7 @@ class List(MutableSequence, ZnSocketObject):
             refresh: RefreshTypeDict = {"start": min(index), "stop": None}
             refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
             self.socket.sio.emit("refresh", refresh_data, namespace="/znsocket")
+            self._notify_parent_watchers(refresh)
 
     def insert(self, index: int, value: t.Any) -> None:
         from znsocket.objects.dict_obj import Dict
@@ -333,10 +342,12 @@ class List(MutableSequence, ZnSocketObject):
             raise FrozenStorageError(key=self.key)
 
         if isinstance(value, Dict):
+            value._add_parent_watcher(self, index)
             value = value.key
         if isinstance(value, List):
             if value.key == self.key:
                 raise ValueError("Can not set circular reference to self")
+            value._add_parent_watcher(self, index)
             value = value.key
 
         if index >= len(self):
@@ -354,6 +365,7 @@ class List(MutableSequence, ZnSocketObject):
             refresh: RefreshTypeDict = {"start": index, "stop": None}
             refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
             self.socket.sio.emit("refresh", refresh_data, namespace="/znsocket")
+            self._notify_parent_watchers(refresh)
 
     def __eq__(self, value: object) -> bool:
         if isinstance(value, List):
@@ -422,17 +434,21 @@ class List(MutableSequence, ZnSocketObject):
 
         if callback := self._callbacks["append"]:
             callback(value)
+        current_length = len(self)
         if isinstance(value, Dict):
+            value._add_parent_watcher(self, current_length)
             value = value.key
         if isinstance(value, List):
             if value.key == self.key:
                 raise ValueError("Can not set circular reference to self")
+            value._add_parent_watcher(self, current_length)
             value = value.key
         self.redis.rpush(self.key, encode(self, value))
         if self.socket is not None:
             refresh: RefreshTypeDict = {"indices": [len(self) - 1]}
             refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
             self.socket.sio.emit("refresh", refresh_data, namespace="/znsocket")
+            self._notify_parent_watchers(refresh)
 
     def extend(self, values: t.Iterable) -> None:
         """Extend the list with an iterable using redis pipelines."""
@@ -444,19 +460,28 @@ class List(MutableSequence, ZnSocketObject):
         if self.socket is not None:
             refresh: RefreshTypeDict = {"start": len(self), "stop": None}
         pipe = self.redis.pipeline(**self._pipeline_kwargs)
-        for value in values:
+        current_length = len(self)
+        watchers_to_add = []
+        for idx, value in enumerate(values):
             if isinstance(value, Dict):
+                watchers_to_add.append((value, current_length + idx))
                 value = value.key
             if isinstance(value, List):
                 if value.key == self.key:
                     raise ValueError("Can not set circular reference to self")
+                watchers_to_add.append((value, current_length + idx))
                 value = value.key
             pipe.rpush(self.key, encode(self, value))
+
+        # Register parent watchers after all items are added
+        for obj, location in watchers_to_add:
+            obj._add_parent_watcher(self, location)
         pipe.execute()
 
         if self.socket is not None:
             refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
             self.socket.sio.emit("refresh", refresh_data, namespace="/znsocket")
+            self._notify_parent_watchers(refresh)
 
     def pop(self, index: int = -1) -> t.Any:
         """Pop an item from the list."""
@@ -480,6 +505,7 @@ class List(MutableSequence, ZnSocketObject):
             refresh: RefreshTypeDict = {"start": index, "stop": None}
             refresh_data: RefreshDataTypeDict = {"target": self.key, "data": refresh}
             self.socket.sio.emit("refresh", refresh_data, namespace="/znsocket")
+            self._notify_parent_watchers(refresh)
         return decode(self, value)
 
     def copy(self, key: str) -> "List":
@@ -535,8 +561,68 @@ class List(MutableSequence, ZnSocketObject):
             convert_nan=self.convert_nan,
         )
 
-    def on_refresh(self, callback: t.Callable[[RefreshDataTypeDict], None]) -> None:
+    def on_refresh(
+        self, callback: t.Callable[[RefreshDataTypeDict], None], nested: bool = False
+    ) -> None:
         if self.socket is None:
             raise ValueError("No socket connection available")
 
+        self._nested_refresh = nested
+        self._on_refresh = callback
         self.socket.refresh_callbacks[self.key] = callback
+
+        # Register nested refresh state globally for this key
+        if nested:
+            self.socket.nested_refresh_keys.add(self.key)
+        else:
+            self.socket.nested_refresh_keys.discard(self.key)
+
+    @property
+    def nested_refresh(self) -> bool:
+        """Whether nested refresh is enabled for this object."""
+        return self._nested_refresh
+
+    def _add_parent_watcher(
+        self, parent_obj: "List", location: t.Union[int, str]
+    ) -> None:
+        """Add a parent object as a watcher for nested refresh events."""
+        parent_ref = weakref.ref(parent_obj)
+        self._parent_watchers.append((parent_ref, location))
+
+    def _remove_parent_watcher(self, parent_obj: "List") -> None:
+        """Remove a parent object from nested refresh watchers."""
+        self._parent_watchers = [
+            (ref, loc)
+            for ref, loc in self._parent_watchers
+            if ref() is not None and ref() is not parent_obj
+        ]
+
+    def _notify_parent_watchers(self, refresh_data: RefreshTypeDict) -> None:
+        """Notify parent objects that this nested object has changed."""
+        # Clean up dead references
+        self._parent_watchers = [
+            (ref, loc) for ref, loc in self._parent_watchers if ref() is not None
+        ]
+        for parent_ref, location in self._parent_watchers:
+            parent = parent_ref()
+            if parent is not None:
+                parent_key = parent.key
+                # Find all clients with nested refresh enabled for this parent key
+                clients = _get_clients_with_nested_refresh(parent_key)
+
+                for client in clients:
+                    try:
+                        if isinstance(location, int):
+                            # Parent is a List, use indices
+                            parent_refresh = {"indices": [location]}
+                        else:
+                            # Parent is a Dict, use keys
+                            parent_refresh = {"keys": [location]}
+
+                        # Call the refresh callback directly
+                        callback = client.refresh_callbacks.get(parent_key)
+                        if callback:
+                            callback(parent_refresh)
+                    except Exception:
+                        # Ignore errors in parent callbacks to avoid breaking child operations
+                        pass
