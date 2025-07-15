@@ -24,7 +24,7 @@ def test_adapter_disconnect_cleanup(server, request, list_data):
         return znsocket.DictAdapter(key, socket, item, converter, convert_nan)
 
     # Create the ListAdapter
-    list_adapter = znsocket.ListAdapter(
+    _ = znsocket.ListAdapter(
         key="disconnect_test",
         socket=c1,
         object=list_data,
