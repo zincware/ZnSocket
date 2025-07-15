@@ -2,7 +2,7 @@ import json
 import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Optional, Protocol, Union
+from typing import Any, Optional, Protocol
 
 from znsocket.client import Client
 from znsocket.utils import encode, handle_error
@@ -150,7 +150,7 @@ class ListAdapter:
 
         # Assert that callback is not None (this method is only called when callback is not None)
         assert self.item_transform_callback is not None
-        
+
         try:
             result = self.item_transform_callback(
                 item=value,
