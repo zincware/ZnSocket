@@ -15,7 +15,7 @@ def empty() -> None:
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],  # , "empty" TODO
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],  # , "empty" TODO
 )
 def test_list_adapter_len(client, request):
     c = request.getfixturevalue(client)
@@ -33,7 +33,11 @@ def test_list_adapter_len(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],  # , "redisclient", "empty" TODO
+    [
+        "znsclient",
+        "znsclient_w_redis",
+        "znsclient_w_mongodb",
+    ],  # , "redisclient", "empty" TODO
 )
 def test_list_adapter_index_error(client, request):
     c = request.getfixturevalue(client)
@@ -46,7 +50,11 @@ def test_list_adapter_index_error(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],  # , "redisclient", "empty" TODO
+    [
+        "znsclient",
+        "znsclient_w_redis",
+        "znsclient_w_mongodb",
+    ],  # , "redisclient", "empty" TODO
 )
 def test_list_adapter_index_iter(client, request):
     c = request.getfixturevalue(client)
@@ -60,7 +68,11 @@ def test_list_adapter_index_iter(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],  # , "redisclient", "empty" TODO
+    [
+        "znsclient",
+        "znsclient_w_redis",
+        "znsclient_w_mongodb",
+    ],  # , "redisclient", "empty" TODO
 )
 def test_register_adapter_after_list_exists(client, request):
     c = request.getfixturevalue(client)
@@ -75,7 +87,11 @@ def test_register_adapter_after_list_exists(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],  # , "redisclient", "empty" TODO
+    [
+        "znsclient",
+        "znsclient_w_redis",
+        "znsclient_w_mongodb",
+    ],  # , "redisclient", "empty" TODO
 )
 def test_list_adapter_modify(client, request):
     c = request.getfixturevalue(client)
@@ -101,7 +117,11 @@ def test_list_adapter_modify(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],  # , "redisclient", "empty" TODO
+    [
+        "znsclient",
+        "znsclient_w_redis",
+        "znsclient_w_mongodb",
+    ],  # , "redisclient", "empty" TODO
 )
 def test_list_adapter_copy(client, request):
     """Test copying a list adapter"""
@@ -116,7 +136,11 @@ def test_list_adapter_copy(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],  # , "redisclient", "empty" TODO
+    [
+        "znsclient",
+        "znsclient_w_redis",
+        "znsclient_w_mongodb",
+    ],  # , "redisclient", "empty" TODO
 )
 def test_list_adapter_w_converter(client, request):
     """Test copying a list adapter"""
@@ -139,7 +163,11 @@ def test_list_adapter_w_converter(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],  # , "redisclient", "empty" TODO
+    [
+        "znsclient",
+        "znsclient_w_redis",
+        "znsclient_w_mongodb",
+    ],  # , "redisclient", "empty" TODO
 )
 def test_list_adapter_w_converter_iter(client, request):
     """Test copying a list adapter"""
@@ -161,7 +189,11 @@ def test_list_adapter_w_converter_iter(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],  # , "redisclient", "empty" TODO
+    [
+        "znsclient",
+        "znsclient_w_redis",
+        "znsclient_w_mongodb",
+    ],  # , "redisclient", "empty" TODO
 )
 def test_list_adapter_w_converter_copy(client, request):
     """Test copying a list adapter"""
@@ -183,7 +215,7 @@ def test_list_adapter_w_converter_copy(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_list_adapter_slice_basic(client, request):
     """Test basic slicing with list adapter"""
@@ -202,7 +234,7 @@ def test_list_adapter_slice_basic(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_list_adapter_slice_with_step(client, request):
     """Test slicing with step with list adapter"""
@@ -220,7 +252,7 @@ def test_list_adapter_slice_with_step(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_list_adapter_slice_negative_indices(client, request):
     """Test slicing with negative indices with list adapter"""
@@ -238,7 +270,7 @@ def test_list_adapter_slice_negative_indices(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_list_adapter_slice_empty(client, request):
     """Test slicing that returns empty list"""
@@ -255,7 +287,7 @@ def test_list_adapter_slice_empty(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_list_adapter_slice_with_converter(client, request):
     """Test slicing with converter"""
@@ -279,7 +311,7 @@ def test_list_adapter_slice_with_converter(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_list_adapter_object_update(client, request):
     """Test what happens when the adapter object is updated"""
@@ -328,7 +360,7 @@ def test_list_adapter_object_update(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_list_adapter_object_clear_and_extend(client, request):
     """Test what happens when the adapter object is cleared and extended"""
@@ -370,7 +402,11 @@ def test_list_adapter_object_clear_and_extend(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],  # , "redisclient", "empty" TODO
+    [
+        "znsclient",
+        "znsclient_w_redis",
+        "znsclient_w_mongodb",
+    ],  # , "redisclient", "empty" TODO
 )
 def test_list_adapter_fallback(client, request):
     """Test copying a list adapter"""
@@ -422,7 +458,7 @@ def test_list_adapter_fallback(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_list_adapter_fallback_operations(client, request):
     """Test various list operations with fallback copy policy"""
@@ -485,7 +521,7 @@ def test_list_adapter_fallback_operations(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_list_fallback_regular_list(client, request):
     """Test fallback pointing to a regular list (not adapter)"""
@@ -521,7 +557,7 @@ def test_list_fallback_regular_list(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_list_fallback_frozen_policy(client, request):
     """Test fallback with frozen policy vs copy policy"""
@@ -573,7 +609,7 @@ def test_list_fallback_frozen_policy(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_list_fallback_edge_cases(client, request):
     """Test edge cases and error conditions with fallback"""
@@ -630,7 +666,7 @@ def test_list_fallback_edge_cases(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_list_fallback_with_complex_data(client, request):
     """Test fallback with complex data types and converters"""
@@ -676,7 +712,7 @@ def test_list_fallback_with_complex_data(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_list_fallback_nested_structures(client, request):
     """Test fallback with nested list and dict structures"""

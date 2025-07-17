@@ -36,6 +36,11 @@ docs = [
     "sphinx-js>=5.0.0",
 ]
 
+[project.optional-dependencies]
+pymongo = [
+   "pymongo>=4.13.2",
+]
+
 [project.scripts]
 znsocket = "znsocket.cli:app"
 

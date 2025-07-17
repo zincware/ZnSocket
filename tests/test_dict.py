@@ -10,7 +10,8 @@ from znsocket.abc import ZnSocketObject
 
 
 @pytest.mark.parametrize(
-    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+    "client",
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb", "redisclient", "empty"],
 )
 def test_dct_set_get_item(client, request):
     c = request.getfixturevalue(client)
@@ -34,7 +35,8 @@ def test_dct_set_get_item(client, request):
 
 
 @pytest.mark.parametrize(
-    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+    "client",
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb", "redisclient", "empty"],
 )
 def test_dct_del_item(client, request):
     c = request.getfixturevalue(client)
@@ -52,7 +54,8 @@ def test_dct_del_item(client, request):
 
 
 @pytest.mark.parametrize(
-    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+    "client",
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb", "redisclient", "empty"],
 )
 def test_dct_update(client, request):
     c = request.getfixturevalue(client)
@@ -72,7 +75,8 @@ def test_dct_update(client, request):
 
 
 @pytest.mark.parametrize(
-    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+    "client",
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb", "redisclient", "empty"],
 )
 def test_dct_iter(client, request):
     c = request.getfixturevalue(client)
@@ -90,7 +94,8 @@ def test_dct_iter(client, request):
 
 
 @pytest.mark.parametrize(
-    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+    "client",
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb", "redisclient", "empty"],
 )
 def test_dct_contains(client, request):
     c = request.getfixturevalue(client)
@@ -180,7 +185,8 @@ def test_dict_equal(a, b, request):
 
 
 @pytest.mark.parametrize(
-    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+    "client",
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb", "redisclient", "empty"],
 )
 def test_dct_numpy(client, request):
     c = request.getfixturevalue(client)
@@ -196,7 +202,8 @@ def test_dct_numpy(client, request):
 
 
 @pytest.mark.parametrize(
-    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+    "client",
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb", "redisclient", "empty"],
 )
 def test_dct_get(client, request):
     c = request.getfixturevalue(client)
@@ -312,7 +319,8 @@ def test_dict_refresh_delitem_self(client, request, znsclient):
 
 
 @pytest.mark.parametrize(
-    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+    "client",
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb", "redisclient", "empty"],
 )
 def test_dct_clear(client, request):
     c = request.getfixturevalue(client)
@@ -369,7 +377,8 @@ def test_dct_pop(client, request):
 
 
 @pytest.mark.parametrize(
-    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+    "client",
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb", "redisclient", "empty"],
 )
 def test_dct_merge(client, request):
     c = request.getfixturevalue(client)
