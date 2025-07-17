@@ -100,6 +100,64 @@ def redisclient():
 
 
 @pytest.fixture
+def eventlet_memory_server_mongodb():
+    port = random.randint(10000, 20000)
+
+    proc = subprocess.Popen(
+        [
+            "znsocket",
+            "--port",
+            str(port),
+            "--storage",
+            "mongodb://localhost:27017/znsocket_test",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    for _ in range(100):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.settimeout(0.2)
+                sock.connect(("127.0.0.1", port))
+                break
+        except (ConnectionRefusedError, OSError):
+            time.sleep(0.1)
+    else:
+        proc.kill()
+        raise TimeoutError("Server did not start in time")
+
+    yield f"znsocket://127.0.0.1:{port}"
+
+    proc.terminate()
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+
+
+@pytest.fixture
+def znsclient_w_mongodb(eventlet_memory_server_mongodb):
+    r = Client.from_url(eventlet_memory_server_mongodb)
+    yield r
+    r.flushall()
+
+
+@pytest.fixture
+def mongoclient():
+    try:
+        import pymongo
+
+        client = pymongo.MongoClient("mongodb://localhost:27017/")
+        db = client.znsocket_test
+        yield db
+        # Clean up: drop the test database
+        client.drop_database("znsocket_test")
+    except ImportError:
+        pytest.skip("pymongo not installed")
+
+
+@pytest.fixture
 def empty() -> None:
     """Test against Python list implementation"""
     return None

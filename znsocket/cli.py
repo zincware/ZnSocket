@@ -17,7 +17,7 @@ def server(
         show_default=True,
     ),
     storage: str = typer.Option(
-        "memory", help="The storage backend to use (memory or redis)."
+        "memory", help="The storage backend to use (memory, redis, or mongodb)."
     ),
     log_level: str = typer.Option(
         "INFO",
