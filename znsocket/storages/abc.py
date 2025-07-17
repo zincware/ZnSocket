@@ -6,7 +6,7 @@ import typing as t
 
 class StorageBackend(abc.ABC):
     """Abstract base class for storage backends.
-    
+
     This class defines the interface that all storage backends must implement
     to be compatible with znsocket. It provides Redis-compatible operations
     for hash tables, lists, sets, and simple key-value storage.
