@@ -2924,11 +2924,15 @@ version = "0.2.13"
 source = { editable = "." }
 dependencies = [
     { name = "eventlet" },
-    { name = "pymongo" },
     { name = "python-socketio", extra = ["client"] },
     { name = "redis" },
     { name = "typer" },
     { name = "znjson" },
+]
+
+[package.optional-dependencies]
+pymongo = [
+    { name = "pymongo" },
 ]
 
 [package.dev-dependencies]
@@ -2954,12 +2958,13 @@ docs = [
 [package.metadata]
 requires-dist = [
     { name = "eventlet", specifier = ">=0.39.0" },
-    { name = "pymongo", specifier = ">=4.13.2" },
+    { name = "pymongo", marker = "extra == 'pymongo'", specifier = ">=4.13.2" },
     { name = "python-socketio", extras = ["client"], specifier = ">=5.12.1" },
     { name = "redis", specifier = ">=5.2.1" },
     { name = "typer", specifier = ">=0.13" },
     { name = "znjson", specifier = ">=0.2.6" },
 ]
+provides-extras = ["pymongo"]
 
 [package.metadata.requires-dev]
 dev = [
