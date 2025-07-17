@@ -4,7 +4,8 @@ import znsocket
 
 
 @pytest.mark.parametrize(
-    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+    "client",
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb", "redisclient", "empty"],
 )
 def test_dct_in_list(client, request):
     c = request.getfixturevalue(client)
@@ -25,7 +26,8 @@ def test_dct_in_list(client, request):
 
 
 @pytest.mark.parametrize(
-    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+    "client",
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb", "redisclient", "empty"],
 )
 def test_lst_in_dct(client, request):
     c = request.getfixturevalue(client)
@@ -46,7 +48,8 @@ def test_lst_in_dct(client, request):
 
 
 @pytest.mark.parametrize(
-    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+    "client",
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb", "redisclient", "empty"],
 )
 def test_lst_in_lst(client, request):
     c = request.getfixturevalue(client)
@@ -69,7 +72,8 @@ def test_lst_in_lst(client, request):
 
 
 @pytest.mark.parametrize(
-    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+    "client",
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb", "redisclient", "empty"],
 )
 def test_dct_in_dct(client, request):
     c = request.getfixturevalue(client)
@@ -92,7 +96,8 @@ def test_dct_in_dct(client, request):
 
 
 @pytest.mark.parametrize(
-    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+    "client",
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb", "redisclient", "empty"],
 )
 def test_lst_clear(client, request):
     c = request.getfixturevalue(client)
@@ -109,7 +114,8 @@ def test_lst_clear(client, request):
 
 
 @pytest.mark.parametrize(
-    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+    "client",
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb", "redisclient", "empty"],
 )
 def test_deep_nesting_in_dct(client, request):
     c = request.getfixturevalue(client)
@@ -131,7 +137,8 @@ def test_deep_nesting_in_dct(client, request):
 
 
 @pytest.mark.parametrize(
-    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+    "client",
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb", "redisclient", "empty"],
 )
 def test_deep_nesting_in_lst(client, request):
     c = request.getfixturevalue(client)
@@ -154,7 +161,8 @@ def test_deep_nesting_in_lst(client, request):
 
 
 @pytest.mark.parametrize(
-    "client", ["znsclient", "znsclient_w_redis", "redisclient", "empty"]
+    "client",
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb", "redisclient", "empty"],
 )
 def test_deep_nesting_in_lst2(client, request):
     c = request.getfixturevalue(client)
@@ -177,7 +185,9 @@ def test_deep_nesting_in_lst2(client, request):
     assert lst3[0][0][0] == "1"
 
 
-@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "redisclient"])
+@pytest.mark.parametrize(
+    "client", ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb", "redisclient"]
+)
 def test_circular_reference(client, request):
     c = request.getfixturevalue(client)
     dct = znsocket.Dict(r=c, key="dict:test", repr_type="full")

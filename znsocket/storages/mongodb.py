@@ -195,6 +195,13 @@ class MongoStorage(StorageBackend):
         if index is None:
             raise DataError("Invalid input of type None")
 
+        # Handle negative indices
+        if index < 0:
+            length = self.llen(name)
+            index = length + index
+            if index < 0:
+                return None
+
         doc = self.lists.find_one({"name": name, "index": index})
         return doc["value"] if doc else None
 
@@ -215,6 +222,13 @@ class MongoStorage(StorageBackend):
 
     def lset(self, name: str, index: int, value: str):
         """Set a list element by index in MongoDB."""
+        # Handle negative indices
+        if index < 0:
+            length = self.llen(name)
+            index = length + index
+            if index < 0:
+                raise ResponseError("index out of range")
+
         result = self.lists.update_one(
             {"name": name, "index": index}, {"$set": {"value": value}}
         )
