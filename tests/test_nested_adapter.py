@@ -29,7 +29,7 @@ def list_data():
     return data
 
 
-@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis"])
+@pytest.mark.parametrize("client", ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"])
 def test_nested_list_adapter(client, request, list_data):
     c = request.getfixturevalue(client)
 

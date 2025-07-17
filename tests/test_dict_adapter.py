@@ -15,7 +15,7 @@ def empty() -> None:
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_dict_adapter_len(client, request):
     c = request.getfixturevalue(client)
@@ -33,7 +33,7 @@ def test_dict_adapter_len(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_dict_adapter_key_error(client, request):
     c = request.getfixturevalue(client)
@@ -46,7 +46,7 @@ def test_dict_adapter_key_error(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_dict_adapter_keys_values_items(client, request):
     c = request.getfixturevalue(client)
@@ -62,7 +62,7 @@ def test_dict_adapter_keys_values_items(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_dict_adapter_contains(client, request):
     c = request.getfixturevalue(client)
@@ -79,7 +79,7 @@ def test_dict_adapter_contains(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_dict_adapter_get(client, request):
     c = request.getfixturevalue(client)
@@ -95,7 +95,7 @@ def test_dict_adapter_get(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_register_adapter_after_dict_exists(client, request):
     c = request.getfixturevalue(client)
@@ -107,7 +107,7 @@ def test_register_adapter_after_dict_exists(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_dict_adapter_modify(client, request):
     c = request.getfixturevalue(client)
@@ -129,7 +129,7 @@ def test_dict_adapter_modify(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_dict_adapter_copy(client, request):
     """Test copying a dict adapter"""
@@ -145,7 +145,7 @@ def test_dict_adapter_copy(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_dict_adapter_w_converter(client, request):
     """Test dict adapter with converter"""
@@ -169,7 +169,7 @@ def test_dict_adapter_w_converter(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_dict_adapter_w_converter_copy(client, request):
     """Test copying a dict adapter with converter"""
@@ -194,7 +194,7 @@ def test_dict_adapter_w_converter_copy(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_dict_adapter_complex_data(client, request):
     """Test dict adapter with complex nested data"""
@@ -222,7 +222,7 @@ def test_dict_adapter_complex_data(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_dict_adapter_iteration(client, request):
     """Test iteration over dict adapter"""
@@ -242,7 +242,7 @@ def test_dict_adapter_iteration(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_dict_adapter_empty_dict(client, request):
     """Test dict adapter with empty dict"""
@@ -260,7 +260,7 @@ def test_dict_adapter_empty_dict(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_dict_adapter_convert_nan(client, request):
     """Test dict adapter with convert_nan option"""
@@ -277,7 +277,7 @@ def test_dict_adapter_convert_nan(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_dict_adapter_object_update(client, request):
     """Test what happens when the adapter object is updated"""
@@ -340,7 +340,7 @@ def test_dict_adapter_object_update(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_dict_adapter_object_clear_and_update(client, request):
     """Test what happens when the adapter object is cleared and updated"""
@@ -389,7 +389,7 @@ def test_dict_adapter_object_clear_and_update(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_dict_adapter_object_nested_update(client, request):
     """Test what happens when nested objects in the adapter are updated"""
@@ -430,7 +430,7 @@ def test_dict_adapter_object_nested_update(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_dict_adapter_fallback_get(client, request):
     """Test what happens when nested objects in the adapter are updated"""
@@ -456,7 +456,7 @@ def test_dict_adapter_fallback_get(client, request):
 
 @pytest.mark.parametrize(
     "client",
-    ["znsclient", "znsclient_w_redis"],
+    ["znsclient", "znsclient_w_redis", "znsclient_w_mongodb"],
 )
 def test_dict_adapter_fallback_set(client, request):
     """Test what happens when nested objects in the adapter are updated"""
