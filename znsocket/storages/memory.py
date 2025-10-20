@@ -115,6 +115,32 @@ class MemoryStorage:
     )
     _expiry: dict = dataclasses.field(init=False, repr=False, default_factory=dict)
 
+    def _encode_value(self, value):
+        """Encode a value to match Redis behavior.
+
+        Redis accepts: bytes, str, int, float (but NOT bool or dict/list/etc)
+        """
+        if isinstance(value, bytes):
+            return value.decode('utf-8')
+        elif isinstance(value, bool):
+            # Redis specifically rejects bool
+            raise DataError(
+                "Invalid input of type: 'bool'. Convert to a "
+                "bytes, string, int or float first."
+            )
+        elif isinstance(value, (int, float)):
+            # Convert numbers to their string representation
+            return str(value)
+        elif isinstance(value, str):
+            return value
+        else:
+            # Reject any other type (dict, list, etc.)
+            typename = type(value).__name__
+            raise DataError(
+                f"Invalid input of type: '{typename}'. "
+                f"Convert to a bytes, string, int or float first."
+            )
+
     def hset(
         self,
         name: str,
@@ -165,7 +191,8 @@ class MemoryStorage:
             if name not in self.content:
                 self.content[name] = {}
             for i in range(0, len(pieces), 2):
-                self.content[name][pieces[i]] = pieces[i + 1]
+                # Encode value to match Redis behavior (validates type)
+                self.content[name][pieces[i]] = self._encode_value(pieces[i + 1])
             return len(pieces) // 2
 
     def hget(self, name, key):
@@ -266,11 +293,55 @@ class MemoryStorage:
             except TypeError:  # index is not an integer
                 return None
 
-    def set(self, name, value):
+    def set(
+        self, name, value, nx: bool = False, xx: bool = False, ex: t.Optional[int] = None
+    ):
+        """Set the value of a key.
+
+        Parameters
+        ----------
+        name : str
+            The key name.
+        value : str, int, float, or bytes
+            The value to set.
+        nx : bool, optional
+            Only set if the key does not exist (default: False).
+        xx : bool, optional
+            Only set if the key already exists (default: False).
+        ex : int, optional
+            Expiration time in seconds (default: None).
+
+        Returns
+        -------
+        bool or None
+            True if the set was successful, None if the condition (nx/xx) was not met.
+
+        Raises
+        ------
+        DataError
+            If value or name is None, or if value is of invalid type.
+        """
         with self._lock:
             if value is None or name is None:
                 raise DataError("Invalid input of type None")
-            self.content[name] = value
+
+            exists = name in self.content
+
+            # Handle nx (set only if not exists)
+            if nx and exists:
+                return None
+
+            # Handle xx (set only if exists)
+            if xx and not exists:
+                return None
+
+            # Encode value to match Redis behavior (validates type)
+            self.content[name] = self._encode_value(value)
+
+            # Handle expiration
+            if ex is not None:
+                self._expiry[name] = time_module.time() + ex
+
             return True
 
     def get(self, name, default=None):
@@ -278,6 +349,68 @@ class MemoryStorage:
             if self._is_expired(name):
                 return default
             return self.content.get(name, default)
+
+    def incr(self, name: str, amount: int = 1) -> int:
+        """Increment the integer value of a key by the given amount.
+
+        Parameters
+        ----------
+        name : str
+            The key name.
+        amount : int, optional
+            The amount to increment by (default: 1).
+
+        Returns
+        -------
+        int
+            The value after incrementing.
+
+        Raises
+        ------
+        ResponseError
+            If the value is not an integer or cannot be represented as an integer.
+        """
+        with self._lock:
+            if self._is_expired(name):
+                # Expired key is treated as non-existent
+                self.content[name] = str(amount)
+                return amount
+
+            if name not in self.content:
+                self.content[name] = str(amount)
+                return amount
+
+            try:
+                current_value = int(self.content[name])
+                new_value = current_value + amount
+                self.content[name] = str(new_value)
+                return new_value
+            except (ValueError, TypeError):
+                raise ResponseError(
+                    "value is not an integer or out of range"
+                )
+
+    def decr(self, name: str, amount: int = 1) -> int:
+        """Decrement the integer value of a key by the given amount.
+
+        Parameters
+        ----------
+        name : str
+            The key name.
+        amount : int, optional
+            The amount to decrement by (default: 1).
+
+        Returns
+        -------
+        int
+            The value after decrementing.
+
+        Raises
+        ------
+        ResponseError
+            If the value is not an integer or cannot be represented as an integer.
+        """
+        return self.incr(name, -amount)
 
     def smembers(self, name):
         with self._lock:
@@ -414,11 +547,24 @@ class MemoryStorage:
                 return 0
 
     def hgetall(self, name):
+        """Get all fields and values in a hash.
+
+        Parameters
+        ----------
+        name : str
+            The name of the hash.
+
+        Returns
+        -------
+        dict
+            A copy of the hash dictionary. Returns empty dict if key doesn't exist.
+        """
         with self._lock:
             if self._is_expired(name):
                 return {}
             try:
-                return self.content[name]
+                # Return a copy to prevent external mutation of internal data
+                return dict(self.content[name])
             except KeyError:
                 return {}
 
@@ -934,7 +1080,9 @@ class MemoryStorage:
             self._expiry[name] = time_module.time() + time
             return 1
 
-    def scan_iter(self, match: t.Optional[str] = None) -> t.Iterator[str]:
+    def scan_iter(
+        self, match: t.Optional[str] = None, count: t.Optional[int] = None
+    ) -> t.Iterator[str]:
         """Iterate over keys matching a pattern.
 
         Parameters
@@ -942,6 +1090,9 @@ class MemoryStorage:
         match : str, optional
             Glob-style pattern to match keys (e.g., 'user:*', '*:lock:*').
             If None, all keys are returned.
+        count : int, optional
+            Maximum number of keys to return. If None, all matching keys are returned.
+            Note: In Redis, this is a hint for performance, but here it's a hard limit.
 
         Yields
         ------
@@ -955,17 +1106,23 @@ class MemoryStorage:
         >>> storage.set("user:2", "Bob")
         >>> list(storage.scan_iter("user:*"))
         ['user:1', 'user:2']
+        >>> list(storage.scan_iter("user:*", count=1))
+        ['user:1']
         """
         with self._lock:
             # Create a snapshot of keys to avoid issues with concurrent modification
             keys_snapshot = list(self.content.keys())
 
         # Iterate over snapshot without holding lock
+        yielded = 0
         for key in keys_snapshot:
             # Check expiry (this will acquire lock briefly)
             if not self._is_expired(key):
                 if match is None or fnmatch.fnmatch(key, match):
                     yield key
+                    yielded += 1
+                    if count is not None and yielded >= count:
+                        break
 
     def pipeline(self) -> MemoryStoragePipeline:
         """Create a pipeline for batching operations.

@@ -10,6 +10,377 @@ def test_storage_set(r, request):
     assert c.get("name") == "Alice"
 
 
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_set_json_string(r, request):
+    """Test that set stores values as strings, not as dicts."""
+    import json
+
+    c = request.getfixturevalue(r)
+    data = {"user": "alice", "age": 30, "active": True}
+    json_string = json.dumps(data)
+
+    # Store the JSON string
+    c.set("user_data", json_string)
+
+    # Get it back - should be a string, not a dict
+    result = c.get("user_data")
+    assert isinstance(result, str), f"Expected string, got {type(result)}"
+    assert result == json_string
+
+    # Should be able to parse it
+    parsed = json.loads(result)
+    assert parsed == data
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_hset_json_string(r, request):
+    """Test that hset stores values as strings, not as dicts."""
+    import json
+
+    c = request.getfixturevalue(r)
+    data = {"user": "alice", "age": 30, "active": True}
+    json_string = json.dumps(data)
+
+    # Store the JSON string in a hash field
+    c.hset("users", "user:1", json_string)
+
+    # Get it back - should be a string, not a dict
+    result = c.hget("users", "user:1")
+    assert isinstance(result, str), f"Expected string, got {type(result)}"
+    assert result == json_string
+
+    # Should be able to parse it
+    parsed = json.loads(result)
+    assert parsed == data
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_hset_mapping_json_string(r, request):
+    """Test that hset with mapping stores values as strings."""
+    import json
+
+    c = request.getfixturevalue(r)
+    data1 = {"name": "alice", "role": "admin"}
+    data2 = {"name": "bob", "role": "user"}
+
+    mapping = {
+        "user:1": json.dumps(data1),
+        "user:2": json.dumps(data2),
+    }
+
+    c.hset("users", mapping=mapping)
+
+    # Get values back - should be strings
+    result1 = c.hget("users", "user:1")
+    result2 = c.hget("users", "user:2")
+
+    assert isinstance(result1, str), f"Expected string, got {type(result1)}"
+    assert isinstance(result2, str), f"Expected string, got {type(result2)}"
+
+    # Should be able to parse them
+    assert json.loads(result1) == data1
+    assert json.loads(result2) == data2
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_set_dict_object_should_convert_to_string(r, request):
+    """Test that storing a dict object converts it to string representation."""
+    import json
+
+    c = request.getfixturevalue(r)
+    data = {"user": "alice", "age": 30}
+
+    # Try to store a dict directly (bad practice, but should not break)
+    # Redis would convert this to str(data)
+    c.set("data", str(data))
+
+    result = c.get("data")
+    # Should be a string representation
+    assert isinstance(result, str)
+
+    # Note: str(dict) is not valid JSON, so this will fail:
+    # json.loads(result) would raise an error
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_hset_dict_value_raises_error(r, request):
+    """Test that storing dict values raises DataError (matching Redis)."""
+    from redis.exceptions import DataError
+
+    c = request.getfixturevalue(r)
+    data = {"user": "alice", "age": 30}
+
+    # Try to store a dict directly - should raise DataError
+    with pytest.raises(DataError, match="Invalid input of type: 'dict'"):
+        c.hset("users", "user:1", data)
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_set_dict_value_raises_error(r, request):
+    """Test that storing dict values raises DataError (matching Redis)."""
+    from redis.exceptions import DataError
+
+    c = request.getfixturevalue(r)
+    data = {"user": "alice", "age": 30}
+
+    # Try to store a dict directly - should raise DataError
+    with pytest.raises(DataError, match="Invalid input of type: 'dict'"):
+        c.set("data", data)
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_set_list_value_raises_error(r, request):
+    """Test that storing list values raises DataError (matching Redis)."""
+    from redis.exceptions import DataError
+
+    c = request.getfixturevalue(r)
+    data = ["alice", "bob", "charlie"]
+
+    # Try to store a list directly - should raise DataError
+    with pytest.raises(DataError, match="Invalid input of type: 'list'"):
+        c.set("data", data)
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_set_bool_value_raises_error(r, request):
+    """Test that storing bool values raises DataError (matching Redis)."""
+    from redis.exceptions import DataError
+
+    c = request.getfixturevalue(r)
+
+    # Try to store a bool directly - should raise DataError
+    with pytest.raises(DataError, match="Invalid input of type: 'bool'"):
+        c.set("data", True)
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_set_int_value_works(r, request):
+    """Test that storing int values works (Redis converts to string)."""
+    c = request.getfixturevalue(r)
+
+    c.set("count", 42)
+    result = c.get("count")
+
+    # Should be stored as string
+    assert isinstance(result, str)
+    assert result == "42"
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_set_float_value_works(r, request):
+    """Test that storing float values works (Redis converts to string)."""
+    c = request.getfixturevalue(r)
+
+    c.set("pi", 3.14159)
+    result = c.get("pi")
+
+    # Should be stored as string
+    assert isinstance(result, str)
+    assert result == "3.14159"
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_hgetall_type_consistency(r, request):
+    """Test hgetall returns consistent types (all values should be strings)."""
+    c = request.getfixturevalue(r)
+    # Set some hash fields with different types
+    c.hset("user:1", "name", "Alice")
+    c.hset("user:1", "age", "30")
+    c.hset("user:1", "active", "true")
+
+    result = c.hgetall("user:1")
+
+    # All values should be strings
+    assert isinstance(result, dict)
+    assert isinstance(result["name"], str)
+    assert isinstance(result["age"], str)
+    assert isinstance(result["active"], str)
+    assert result["name"] == "Alice"
+    assert result["age"] == "30"
+    assert result["active"] == "true"
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_hgetall_returns_copy(r, request):
+    """Test that hgetall returns a copy, not a reference to internal data."""
+    c = request.getfixturevalue(r)
+    c.hset("user:1", "name", "Alice")
+    c.hset("user:1", "age", "30")
+
+    result1 = c.hgetall("user:1")
+    result2 = c.hgetall("user:1")
+
+    # Modifying result1 should not affect result2
+    result1["name"] = "Bob"
+    assert result2["name"] == "Alice"
+
+    # Modifying result should not affect stored data
+    result1["new_field"] = "value"
+    result3 = c.hgetall("user:1")
+    assert "new_field" not in result3
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_hgetall_empty(r, request):
+    """Test hgetall on non-existent key returns empty dict."""
+    c = request.getfixturevalue(r)
+    result = c.hgetall("nonexistent")
+    assert result == {}
+    assert isinstance(result, dict)
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_hgetall_with_mapping(r, request):
+    """Test hgetall after setting with mapping parameter."""
+    c = request.getfixturevalue(r)
+    mapping = {"field1": "value1", "field2": "value2", "field3": "value3"}
+    c.hset("hash1", mapping=mapping)
+
+    result = c.hgetall("hash1")
+    assert result == mapping
+    # Verify all values are strings
+    for key, value in result.items():
+        assert isinstance(key, str)
+        assert isinstance(value, str)
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_set_nx(r, request):
+    """Test set with nx (only set if not exists)."""
+    c = request.getfixturevalue(r)
+    # Should set successfully when key doesn't exist
+    assert c.set("key1", "value1", nx=True) is True
+    assert c.get("key1") == "value1"
+
+    # Should not set when key already exists
+    assert c.set("key1", "value2", nx=True) is None
+    assert c.get("key1") == "value1"  # Value unchanged
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_set_xx(r, request):
+    """Test set with xx (only set if exists)."""
+    c = request.getfixturevalue(r)
+    # Should not set when key doesn't exist
+    assert c.set("key1", "value1", xx=True) is None
+    assert c.get("key1") is None
+
+    # Create the key first
+    c.set("key1", "value1")
+
+    # Should set successfully when key exists
+    assert c.set("key1", "value2", xx=True) is True
+    assert c.get("key1") == "value2"
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_set_ex(r, request):
+    """Test set with ex (expiration in seconds)."""
+    c = request.getfixturevalue(r)
+    # Set with 1 second expiration
+    c.set("temp_key", "temp_value", ex=1)
+
+    # Key should exist immediately
+    assert c.get("temp_key") == "temp_value"
+
+    # Key should expire after 1 second
+    time.sleep(1.1)
+    assert c.get("temp_key") is None
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_set_nx_ex(r, request):
+    """Test set with both nx and ex parameters."""
+    c = request.getfixturevalue(r)
+    # Should set with expiration when key doesn't exist
+    assert c.set("key1", "value1", nx=True, ex=1) is True
+    assert c.get("key1") == "value1"
+
+    # Should not update when key exists
+    assert c.set("key1", "value2", nx=True, ex=1) is None
+    assert c.get("key1") == "value1"
+
+    # Wait for expiration
+    time.sleep(1.1)
+    assert c.get("key1") is None
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_incr_basic(r, request):
+    """Test incr increments value by 1."""
+    c = request.getfixturevalue(r)
+    # Increment non-existent key should set to 1
+    assert c.incr("counter") == 1
+    assert c.get("counter") == "1"
+
+    # Increment existing key
+    assert c.incr("counter") == 2
+    assert c.get("counter") == "2"
+
+    assert c.incr("counter") == 3
+    assert c.get("counter") == "3"
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_incr_by_amount(r, request):
+    """Test incr with custom amount."""
+    c = request.getfixturevalue(r)
+    # Increment by 5
+    assert c.incr("counter", 5) == 5
+    assert c.get("counter") == "5"
+
+    # Increment by 10
+    assert c.incr("counter", 10) == 15
+    assert c.get("counter") == "15"
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_incr_negative(r, request):
+    """Test incr with negative amount (decrement)."""
+    c = request.getfixturevalue(r)
+    c.set("counter", "10")
+
+    # Decrement using negative incr
+    assert c.incr("counter", -3) == 7
+    assert c.get("counter") == "7"
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_decr_basic(r, request):
+    """Test decr decrements value by 1."""
+    c = request.getfixturevalue(r)
+    c.set("counter", "10")
+
+    assert c.decr("counter") == 9
+    assert c.get("counter") == "9"
+
+    assert c.decr("counter") == 8
+    assert c.get("counter") == "8"
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_decr_by_amount(r, request):
+    """Test decr with custom amount."""
+    c = request.getfixturevalue(r)
+    c.set("counter", "100")
+
+    assert c.decr("counter", 30) == 70
+    assert c.get("counter") == "70"
+
+    assert c.decr("counter", 20) == 50
+    assert c.get("counter") == "50"
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_incr_non_integer(r, request):
+    """Test incr on non-integer value raises error."""
+    c = request.getfixturevalue(r)
+    c.set("key", "not_a_number")
+
+    with pytest.raises(Exception):  # ResponseError
+        c.incr("key")
+
+
 # ============================================================================
 # SORTED SET TESTS
 # ============================================================================
@@ -478,6 +849,63 @@ def test_storage_scan_iter_expired_keys(r, request):
     keys = list(c.scan_iter())
     assert "permanent" in keys
     assert "temp1" not in keys
+
+
+@pytest.mark.parametrize("r", ["memory_storage"])
+def test_storage_scan_iter_count(r, request):
+    """Test scan_iter with count parameter limits results (MemoryStorage only).
+
+    Note: In Redis, count is just a hint for performance, not a hard limit.
+    MemoryStorage implements it as a hard limit for simplicity.
+    """
+    c = request.getfixturevalue(r)
+    # Create multiple keys
+    for i in range(10):
+        c.set(f"key{i}", f"value{i}")
+
+    # Get only 3 keys
+    keys = list(c.scan_iter(count=3))
+    assert len(keys) == 3
+
+    # Get only 5 keys
+    keys = list(c.scan_iter(count=5))
+    assert len(keys) == 5
+
+
+@pytest.mark.parametrize("r", ["memory_storage"])
+def test_storage_scan_iter_count_with_pattern(r, request):
+    """Test scan_iter with both count and pattern (MemoryStorage only).
+
+    Note: In Redis, count is just a hint for performance, not a hard limit.
+    MemoryStorage implements it as a hard limit for simplicity.
+    """
+    c = request.getfixturevalue(r)
+    # Create multiple user and post keys
+    for i in range(10):
+        c.set(f"user:{i}", f"user{i}")
+        c.set(f"post:{i}", f"post{i}")
+
+    # Get only 3 user keys
+    user_keys = list(c.scan_iter("user:*", count=3))
+    assert len(user_keys) == 3
+    for key in user_keys:
+        assert key.startswith("user:")
+
+
+@pytest.mark.parametrize("r", ["memory_storage"])
+def test_storage_scan_iter_count_larger_than_available(r, request):
+    """Test scan_iter when count is larger than available keys (MemoryStorage only).
+
+    Note: In Redis, count is just a hint for performance, not a hard limit.
+    MemoryStorage implements it as a hard limit for simplicity.
+    """
+    c = request.getfixturevalue(r)
+    c.set("key1", "value1")
+    c.set("key2", "value2")
+
+    # Request more keys than available
+    keys = list(c.scan_iter(count=100))
+    assert len(keys) == 2  # Should only return what's available
 
 
 # ============================================================================
