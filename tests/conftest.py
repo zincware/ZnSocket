@@ -11,7 +11,7 @@ import pytest
 import redis
 import typing as t
 
-from znsocket import Client, Storage
+from znsocket import Client, MemoryStorage
 
 
 @pytest.fixture
@@ -100,9 +100,9 @@ def redisclient() -> t.Generator[redis.Redis, None, None]:
     r.flushdb()
 
 @pytest.fixture
-def memory_storage() -> t.Generator[Storage, None, None]:
+def memory_storage() -> t.Generator[MemoryStorage, None, None]:
     """Test against in-memory storage implementation"""
-    r = Storage()
+    r = MemoryStorage()
     yield r
     r.flushall()
 

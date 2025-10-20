@@ -10,7 +10,7 @@ import eventlet.wsgi
 import socketio
 
 from znsocket.abc import RefreshDataTypeDict
-from znsocket.storages import Storage
+from znsocket.storages import MemoryStorage
 
 log = logging.getLogger(__name__)
 
@@ -184,7 +184,7 @@ def attach_events(  # noqa: C901
     >>> # Now sio can handle znsocket events
     """
     if storage is None:
-        storage = Storage()
+        storage = MemoryStorage()
 
     adapter = {}
     rooms = set()

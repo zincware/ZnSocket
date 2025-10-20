@@ -1,3 +1,3 @@
-from znsocket.storages.memory import Storage
+from znsocket.storages.memory import MemoryStorage
 
-__all__ = ["Storage"]
+__all__ = ["MemoryStorage"]

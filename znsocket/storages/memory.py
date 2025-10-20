@@ -6,7 +6,7 @@ from znsocket.exceptions import DataError, ResponseError
 
 
 @dataclasses.dataclass
-class Storage:
+class MemoryStorage:
     """In-memory storage backend for znsocket server.
 
     The Storage class provides Redis-compatible data storage operations including
