@@ -1,8 +1,79 @@
 import dataclasses
+import fnmatch
+import threading
+import time as time_module
 import typing as t
 from copy import deepcopy
 
+from sortedcontainers import SortedList
+
 from znsocket.exceptions import DataError, ResponseError
+
+
+class MemoryStoragePipeline:
+    """Pipeline for batching MemoryStorage operations.
+
+    Allows queuing multiple commands to be executed together,
+    mimicking Redis pipeline behavior.
+
+    Parameters
+    ----------
+    storage : MemoryStorage
+        The MemoryStorage instance to execute commands on.
+
+    Examples
+    --------
+    >>> storage = MemoryStorage()
+    >>> pipe = storage.pipeline()
+    >>> pipe.set("key1", "value1")
+    >>> pipe.set("key2", "value2")
+    >>> results = pipe.execute()
+    """
+
+    def __init__(self, storage: "MemoryStorage") -> None:
+        """Initialize the pipeline."""
+        self.storage = storage
+        self.commands: list[tuple[str, tuple, dict]] = []
+
+    def __enter__(self) -> "MemoryStoragePipeline":
+        """Enter context manager."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Exit context manager without executing (matches redis-py behavior)."""
+        pass
+
+    def __getattr__(self, name: str) -> t.Callable:
+        """Dynamically add methods to the pipeline.
+
+        Any method call is queued and returns self for chaining.
+        """
+        if name.startswith("_"):
+            raise AttributeError(f"No attribute {name}")
+
+        def method(*args, **kwargs):
+            """Queue a command and return self for chaining."""
+            self.commands.append((name, args, kwargs))
+            return self
+
+        return method
+
+    def execute(self) -> list:
+        """Execute all queued commands and return results.
+
+        Returns
+        -------
+        list
+            List of results from each command in order.
+        """
+        results = []
+        for cmd_name, args, kwargs in self.commands:
+            if not hasattr(self.storage, cmd_name):
+                raise AttributeError(f"MemoryStorage has no method '{cmd_name}'")
+            result = getattr(self.storage, cmd_name)(*args, **kwargs)
+            results.append(result)
+        self.commands.clear()
+        return results
 
 
 @dataclasses.dataclass
@@ -13,6 +84,10 @@ class MemoryStorage:
     hash tables, lists, sets, and basic key-value operations. All data is stored
     in memory using Python data structures.
 
+    This implementation is thread-safe using a reentrant lock (RLock) to protect
+    all operations on the internal content dictionary. Multiple threads can safely
+    access and modify the storage concurrently.
+
     Parameters
     ----------
     content : dict, optional
@@ -22,10 +97,12 @@ class MemoryStorage:
     ----------
     content : dict
         The internal storage dictionary containing all data.
+    _lock : threading.RLock
+        Reentrant lock for thread-safe access to content (not serialized).
 
     Examples
     --------
-    >>> storage = Storage()
+    >>> storage = MemoryStorage()
     >>> storage.hset("users", "user1", "John")
     1
     >>> storage.hget("users", "user1")
@@ -33,6 +110,10 @@ class MemoryStorage:
     """
 
     content: dict = dataclasses.field(default_factory=dict)
+    _lock: threading.RLock = dataclasses.field(
+        init=False, repr=False, default_factory=threading.RLock
+    )
+    _expiry: dict = dataclasses.field(init=False, repr=False, default_factory=dict)
 
     def hset(
         self,
@@ -67,24 +148,25 @@ class MemoryStorage:
         DataError
             If no key-value pairs are provided or if value is None when key is provided.
         """
-        if key is None and not mapping and not items:
-            raise DataError("'hset' with no key value pairs")
-        if value is None and not mapping and not items:
-            raise DataError(f"Invalid input of type {type(value)}")
-        pieces = []
-        if items:
-            pieces.extend(items)
-        if key is not None:
-            pieces.extend((key, value))
-        if mapping:
-            for pair in mapping.items():
-                pieces.extend(pair)
+        with self._lock:
+            if key is None and not mapping and not items:
+                raise DataError("'hset' with no key value pairs")
+            if value is None and not mapping and not items:
+                raise DataError(f"Invalid input of type {type(value)}")
+            pieces = []
+            if items:
+                pieces.extend(items)
+            if key is not None:
+                pieces.extend((key, value))
+            if mapping:
+                for pair in mapping.items():
+                    pieces.extend(pair)
 
-        if name not in self.content:
-            self.content[name] = {}
-        for i in range(0, len(pieces), 2):
-            self.content[name][pieces[i]] = pieces[i + 1]
-        return len(pieces) // 2
+            if name not in self.content:
+                self.content[name] = {}
+            for i in range(0, len(pieces), 2):
+                self.content[name][pieces[i]] = pieces[i + 1]
+            return len(pieces) // 2
 
     def hget(self, name, key):
         """Get the value of a hash field.
@@ -101,205 +183,804 @@ class MemoryStorage:
         str or None
             The value of the field, or None if the field does not exist.
         """
-        try:
-            return self.content[name][key]
-        except KeyError:
-            return None
+        with self._lock:
+            if self._is_expired(name):
+                return None
+            try:
+                return self.content[name][key]
+            except KeyError:
+                return None
 
     def hmget(self, name, keys):
-        response = []
-        for key in keys:
-            try:
-                response.append(self.content[name][key])
-            except KeyError:
-                response.append(None)
-        return response
+        with self._lock:
+            if self._is_expired(name):
+                return [None] * len(keys)
+            response = []
+            for key in keys:
+                try:
+                    response.append(self.content[name][key])
+                except KeyError:
+                    response.append(None)
+            return response
 
     def hkeys(self, name):
-        try:
-            return list(self.content[name].keys())
-        except KeyError:
-            return []
+        with self._lock:
+            if self._is_expired(name):
+                return []
+            try:
+                return list(self.content[name].keys())
+            except KeyError:
+                return []
 
     def delete(self, name):
-        try:
-            del self.content[name]
-            return 1
-        except KeyError:
-            return 0
-
-    def exists(self, name):
-        return 1 if name in self.content else 0
-
-    def llen(self, name):
-        try:
-            return len(self.content[name])
-        except KeyError:
-            return 0
-
-    def rpush(self, name, value):
-        try:
-            self.content[name].append(value)
-        except KeyError:
-            self.content[name] = [value]
-
-        return len(self.content[name])
-
-    def lpush(self, name, value):
-        try:
-            self.content[name].insert(0, value)
-        except KeyError:
-            self.content[name] = [value]
-
-        return len(self.content[name])
-
-    def lindex(self, name, index):
-        if index is None:
-            raise DataError("Invalid input of type None")
-        try:
-            return self.content[name][index]
-        except KeyError:
-            return None
-        except IndexError:
-            return None
-        except TypeError:  # index is not an integer
-            return None
-
-    def set(self, name, value):
-        if value is None or name is None:
-            raise DataError("Invalid input of type None")
-        self.content[name] = value
-        return True
-
-    def get(self, name, default=None):
-        return self.content.get(name, default)
-
-    def smembers(self, name):
-        try:
-            response = self.content[name]
-        except KeyError:
-            response = set()
-
-        if not isinstance(response, set):
-            raise ResponseError(
-                "WRONGTYPE Operation against a key holding the wrong kind of value"
-            )
-        return response
-
-    def lrange(self, name, start, end):
-        if end == -1:
-            end = None
-        elif end >= 0:
-            end += 1
-        try:
-            return self.content[name][start:end]
-        except KeyError:
-            return []
-
-    def lset(self, name, index, value):
-        try:
-            self.content[name][index] = value
-        except KeyError:
-            raise ResponseError("no such key")
-        except IndexError:
-            raise ResponseError("index out of range")
-
-    def lrem(self, name, count, value):
-        if count is None or value is None or name is None:
-            raise DataError("Invalid input of type None")
-        if count == 0:
+        with self._lock:
             try:
-                self.content[name] = [x for x in self.content[name] if x != value]
+                del self.content[name]
+                return 1
             except KeyError:
                 return 0
-        else:
-            removed = 0
-            while removed < count:
+
+    def exists(self, name):
+        with self._lock:
+            if self._is_expired(name):
+                return 0
+            return 1 if name in self.content else 0
+
+    def llen(self, name):
+        with self._lock:
+            if self._is_expired(name):
+                return 0
+            try:
+                return len(self.content[name])
+            except KeyError:
+                return 0
+
+    def rpush(self, name, value):
+        with self._lock:
+            try:
+                self.content[name].append(value)
+            except KeyError:
+                self.content[name] = [value]
+
+            return len(self.content[name])
+
+    def lpush(self, name, value):
+        with self._lock:
+            try:
+                self.content[name].insert(0, value)
+            except KeyError:
+                self.content[name] = [value]
+
+            return len(self.content[name])
+
+    def lindex(self, name, index):
+        with self._lock:
+            if index is None:
+                raise DataError("Invalid input of type None")
+            try:
+                return self.content[name][index]
+            except KeyError:
+                return None
+            except IndexError:
+                return None
+            except TypeError:  # index is not an integer
+                return None
+
+    def set(self, name, value):
+        with self._lock:
+            if value is None or name is None:
+                raise DataError("Invalid input of type None")
+            self.content[name] = value
+            return True
+
+    def get(self, name, default=None):
+        with self._lock:
+            if self._is_expired(name):
+                return default
+            return self.content.get(name, default)
+
+    def smembers(self, name):
+        with self._lock:
+            try:
+                response = self.content[name]
+            except KeyError:
+                response = set()
+
+            if not isinstance(response, set):
+                raise ResponseError(
+                    "WRONGTYPE Operation against a key holding the wrong kind of value"
+                )
+            return response
+
+    def lrange(self, name, start, end):
+        with self._lock:
+            if end == -1:
+                end = None
+            elif end >= 0:
+                end += 1
+            try:
+                return self.content[name][start:end]
+            except KeyError:
+                return []
+
+    def lset(self, name, index, value):
+        with self._lock:
+            try:
+                self.content[name][index] = value
+            except KeyError:
+                raise ResponseError("no such key")
+            except IndexError:
+                raise ResponseError("index out of range")
+
+    def lrem(self, name, count, value):
+        with self._lock:
+            if count is None or value is None or name is None:
+                raise DataError("Invalid input of type None")
+            if count == 0:
                 try:
-                    self.content[name].remove(value)
-                    removed += 1
+                    self.content[name] = [x for x in self.content[name] if x != value]
                 except KeyError:
                     return 0
+            else:
+                removed = 0
+                while removed < count:
+                    try:
+                        self.content[name].remove(value)
+                        removed += 1
+                    except KeyError:
+                        return 0
 
     def sadd(self, name, value):
-        try:
-            self.content[name].add(value)
-        except KeyError:
-            self.content[name] = {value}
+        with self._lock:
+            try:
+                self.content[name].add(value)
+            except KeyError:
+                self.content[name] = {value}
 
     def flushall(self):
-        self.content.clear()
+        with self._lock:
+            self.content.clear()
 
     def srem(self, name, value):
-        try:
-            self.content[name].remove(value)
-            return 1
-        except KeyError:
-            return 0
+        with self._lock:
+            try:
+                self.content[name].remove(value)
+                return 1
+            except KeyError:
+                return 0
 
     def linsert(self, name, where, pivot, value):
-        try:
-            index = self.content[name].index(pivot)
-            if where == "BEFORE":
-                self.content[name].insert(index, value)
-            elif where == "AFTER":
-                self.content[name].insert(index + 1, value)
-        except KeyError:
-            return 0
-        except ValueError:
-            return -1
+        with self._lock:
+            try:
+                index = self.content[name].index(pivot)
+                if where == "BEFORE":
+                    self.content[name].insert(index, value)
+                elif where == "AFTER":
+                    self.content[name].insert(index + 1, value)
+            except KeyError:
+                return 0
+            except ValueError:
+                return -1
 
     def hexists(self, name, key):
-        try:
-            return 1 if key in self.content[name] else 0
-        except KeyError:
-            return 0
+        with self._lock:
+            try:
+                return 1 if key in self.content[name] else 0
+            except KeyError:
+                return 0
 
     def hdel(self, name, key):
-        try:
-            del self.content[name][key]
-            return 1
-        except KeyError:
-            return 0
+        with self._lock:
+            try:
+                del self.content[name][key]
+                return 1
+            except KeyError:
+                return 0
 
     def hlen(self, name):
-        try:
-            return len(self.content[name])
-        except KeyError:
-            return 0
+        with self._lock:
+            if self._is_expired(name):
+                return 0
+            try:
+                return len(self.content[name])
+            except KeyError:
+                return 0
 
     def hvals(self, name):
-        try:
-            return list(self.content[name].values())
-        except KeyError:
-            return []
+        with self._lock:
+            if self._is_expired(name):
+                return []
+            try:
+                return list(self.content[name].values())
+            except KeyError:
+                return []
 
     def lpop(self, name):
-        try:
-            return self.content[name].pop(0)
-        except KeyError:
-            return None
-        except IndexError:
-            return None
+        with self._lock:
+            try:
+                return self.content[name].pop(0)
+            except KeyError:
+                return None
+            except IndexError:
+                return None
 
     def scard(self, name):
-        try:
-            return len(self.content[name])
-        except KeyError:
-            return 0
+        with self._lock:
+            if self._is_expired(name):
+                return 0
+            try:
+                return len(self.content[name])
+            except KeyError:
+                return 0
 
     def hgetall(self, name):
-        try:
-            return self.content[name]
-        except KeyError:
-            return {}
+        with self._lock:
+            if self._is_expired(name):
+                return {}
+            try:
+                return self.content[name]
+            except KeyError:
+                return {}
 
     def copy(self, src, dst):
-        if src == dst:
-            return False
-        if src not in self.content:
-            return False
-        if dst in self.content:
-            return False
-        self.content[dst] = deepcopy(self.content[src])
-        return True
+        with self._lock:
+            if self._is_expired(src):
+                return False
+            if src == dst:
+                return False
+            if src not in self.content:
+                return False
+            if dst in self.content:
+                return False
+            self.content[dst] = deepcopy(self.content[src])
+            return True
+
+    def _is_expired(self, name: str) -> bool:
+        """Check if a key has expired and clean it up if so.
+
+        Parameters
+        ----------
+        name : str
+            The key name to check.
+
+        Returns
+        -------
+        bool
+            True if the key was expired and removed, False otherwise.
+        """
+        if name in self._expiry:
+            if time_module.time() >= self._expiry[name]:
+                # Key has expired, clean it up
+                del self._expiry[name]
+                if name in self.content:
+                    del self.content[name]
+                return True
+        return False
+
+    def _parse_score_boundary(
+        self, value: t.Union[str, float, int]
+    ) -> tuple[float, bool]:
+        """Parse a score boundary value like '5.0' or '(5.0' for exclusive.
+
+        Parameters
+        ----------
+        value : str, float, or int
+            The boundary value (e.g., '5.0', '(5.0', '-inf', '+inf')
+
+        Returns
+        -------
+        tuple[float, bool]
+            A tuple of (score, is_exclusive)
+        """
+        if isinstance(value, (int, float)):
+            return float(value), False
+
+        value_str = str(value)
+        if value_str == "-inf":
+            return float("-inf"), False
+        if value_str == "+inf":
+            return float("inf"), False
+
+        if value_str.startswith("("):
+            return float(value_str[1:]), True
+        return float(value_str), False
+
+    def zadd(self, name: str, mapping: t.Optional[dict] = None, **kwargs) -> int:
+        """Add members with scores to a sorted set.
+
+        Parameters
+        ----------
+        name : str
+            The name of the sorted set.
+        mapping : dict, optional
+            A dictionary of {member: score} pairs to add.
+        **kwargs
+            Additional member=score pairs to add.
+
+        Returns
+        -------
+        int
+            The number of new elements added (not including score updates).
+
+        Examples
+        --------
+        >>> storage = MemoryStorage()
+        >>> storage.zadd("leaderboard", {"player1": 100, "player2": 200})
+        2
+        >>> storage.zadd("leaderboard", player3=150)
+        1
+        """
+        with self._lock:
+            if not mapping and not kwargs:
+                raise DataError("zadd requires at least one member-score pair")
+
+            # Combine mapping and kwargs
+            all_pairs = {}
+            if mapping:
+                all_pairs.update(mapping)
+            all_pairs.update(kwargs)
+
+            # Initialize sorted set if it doesn't exist
+            if name not in self.content:
+                self.content[name] = {
+                    "scores": {},  # member -> score mapping
+                    "sorted": SortedList(),  # [(score, member), ...]
+                }
+            elif (
+                not isinstance(self.content[name], dict)
+                or "sorted" not in self.content[name]
+            ):
+                raise ResponseError(
+                    "WRONGTYPE Operation against a key holding the wrong kind of value"
+                )
+
+            zset = self.content[name]
+            added_count = 0
+
+            for member, score in all_pairs.items():
+                score = float(score)
+                is_new = member not in zset["scores"]
+
+                if is_new:
+                    # New member
+                    zset["scores"][member] = score
+                    zset["sorted"].add((score, member))
+                    added_count += 1
+                else:
+                    # Update existing member's score
+                    old_score = zset["scores"][member]
+                    if old_score != score:
+                        zset["sorted"].discard((old_score, member))
+                        zset["scores"][member] = score
+                        zset["sorted"].add((score, member))
+
+            return added_count
+
+    def zcard(self, name: str) -> int:
+        """Get the number of members in a sorted set.
+
+        Parameters
+        ----------
+        name : str
+            The name of the sorted set.
+
+        Returns
+        -------
+        int
+            The cardinality (number of elements) of the sorted set, or 0 if key doesn't exist.
+        """
+        with self._lock:
+            if self._is_expired(name):
+                return 0
+            if name not in self.content:
+                return 0
+            if (
+                not isinstance(self.content[name], dict)
+                or "sorted" not in self.content[name]
+            ):
+                return 0
+            return len(self.content[name]["sorted"])
+
+    def zrange(self, name: str, start: int, end: int, withscores: bool = False) -> list:
+        """Get a range of members from a sorted set by index.
+
+        Parameters
+        ----------
+        name : str
+            The name of the sorted set.
+        start : int
+            The starting index (0-based, supports negative indices).
+        end : int
+            The ending index (inclusive, supports negative indices).
+        withscores : bool, optional
+            If True, return members with their scores.
+
+        Returns
+        -------
+        list
+            List of members, or list of (member, score) tuples if withscores=True.
+        """
+        with self._lock:
+            if self._is_expired(name):
+                return []
+            if name not in self.content:
+                return []
+            if (
+                not isinstance(self.content[name], dict)
+                or "sorted" not in self.content[name]
+            ):
+                return []
+
+            sorted_list = self.content[name]["sorted"]
+            length = len(sorted_list)
+
+            if length == 0:
+                return []
+
+            # Handle negative indices
+            if start < 0:
+                start = max(0, length + start)
+            if end < 0:
+                end = length + end
+            else:
+                end = min(end, length - 1)
+
+            if start > end or start >= length:
+                return []
+
+            # Extract range
+            result = []
+            for i in range(start, end + 1):
+                if i >= length:
+                    break
+                score, member = sorted_list[i]
+                if withscores:
+                    result.append((member, score))
+                else:
+                    result.append(member)
+
+            return result
+
+    def zrangebyscore(
+        self,
+        name: str,
+        min_score: t.Union[str, float],
+        max_score: t.Union[str, float],
+        start: t.Optional[int] = None,
+        num: t.Optional[int] = None,
+        withscores: bool = False,
+    ) -> list:
+        """Get members in a sorted set within the given score range.
+
+        Parameters
+        ----------
+        name : str
+            The name of the sorted set.
+        min_score : str or float
+            Minimum score ('-inf', '5.0', or '(5.0' for exclusive).
+        max_score : str or float
+            Maximum score ('+inf', '10.0', or '(10.0' for exclusive).
+        start : int, optional
+            Offset to start returning results from.
+        num : int, optional
+            Maximum number of results to return.
+        withscores : bool, optional
+            If True, return members with their scores.
+
+        Returns
+        -------
+        list
+            List of members, or list of (member, score) tuples if withscores=True.
+        """
+        with self._lock:
+            # Validate start/num pairing (matching Redis behavior)
+            if (start is not None and num is None) or (
+                num is not None and start is None
+            ):
+                raise DataError("start and num must both be specified")
+
+            if self._is_expired(name):
+                return []
+            if name not in self.content:
+                return []
+            if (
+                not isinstance(self.content[name], dict)
+                or "sorted" not in self.content[name]
+            ):
+                return []
+
+            min_val, min_exclusive = self._parse_score_boundary(min_score)
+            max_val, max_exclusive = self._parse_score_boundary(max_score)
+
+            sorted_list = self.content[name]["sorted"]
+            result = []
+
+            for score, member in sorted_list:
+                # Check min boundary
+                if min_exclusive and score <= min_val:
+                    continue
+                if not min_exclusive and score < min_val:
+                    continue
+
+                # Check max boundary
+                if max_exclusive and score >= max_val:
+                    break
+                if not max_exclusive and score > max_val:
+                    break
+
+                result.append((member, score))
+
+            # Apply offset and limit
+            if start is not None and num is not None:
+                result = result[start : start + num]
+
+            # Format output
+            if withscores:
+                return result
+            else:
+                return [member for member, score in result]
+
+    def zrevrangebyscore(
+        self,
+        name: str,
+        max_score: t.Union[str, float],
+        min_score: t.Union[str, float],
+        start: t.Optional[int] = None,
+        num: t.Optional[int] = None,
+        withscores: bool = False,
+    ) -> list:
+        """Get members in a sorted set within score range, in reverse order.
+
+        Parameters
+        ----------
+        name : str
+            The name of the sorted set.
+        max_score : str or float
+            Maximum score ('+inf', '10.0', or '(10.0' for exclusive).
+        min_score : str or float
+            Minimum score ('-inf', '5.0', or '(5.0' for exclusive).
+        start : int, optional
+            Offset to start returning results from.
+        num : int, optional
+            Maximum number of results to return.
+        withscores : bool, optional
+            If True, return members with their scores.
+
+        Returns
+        -------
+        list
+            List of members in reverse order, or tuples if withscores=True.
+        """
+        with self._lock:
+            # Validate start/num pairing (matching Redis behavior)
+            if (start is not None and num is None) or (
+                num is not None and start is None
+            ):
+                raise DataError("start and num must both be specified")
+
+            if self._is_expired(name):
+                return []
+            if name not in self.content:
+                return []
+            if (
+                not isinstance(self.content[name], dict)
+                or "sorted" not in self.content[name]
+            ):
+                return []
+
+            min_val, min_exclusive = self._parse_score_boundary(min_score)
+            max_val, max_exclusive = self._parse_score_boundary(max_score)
+
+            sorted_list = self.content[name]["sorted"]
+            result = []
+
+            # Iterate in reverse
+            for score, member in reversed(sorted_list):
+                # Check max boundary
+                if max_exclusive and score >= max_val:
+                    continue
+                if not max_exclusive and score > max_val:
+                    continue
+
+                # Check min boundary
+                if min_exclusive and score <= min_val:
+                    break
+                if not min_exclusive and score < min_val:
+                    break
+
+                result.append((member, score))
+
+            # Apply offset and limit
+            if start is not None and num is not None:
+                result = result[start : start + num]
+
+            # Format output
+            if withscores:
+                return result
+            else:
+                return [member for member, score in result]
+
+    def zrem(self, name: str, *values) -> int:
+        """Remove one or more members from a sorted set.
+
+        Parameters
+        ----------
+        name : str
+            The name of the sorted set.
+        *values
+            Members to remove from the sorted set.
+
+        Returns
+        -------
+        int
+            The number of members removed from the sorted set.
+        """
+        with self._lock:
+            if self._is_expired(name):
+                return 0
+            if name not in self.content:
+                return 0
+            if (
+                not isinstance(self.content[name], dict)
+                or "sorted" not in self.content[name]
+            ):
+                return 0
+
+            zset = self.content[name]
+            removed_count = 0
+
+            for member in values:
+                if member in zset["scores"]:
+                    score = zset["scores"][member]
+                    del zset["scores"][member]
+                    zset["sorted"].discard((score, member))
+                    removed_count += 1
+
+            return removed_count
+
+    def zcount(
+        self, name: str, min_score: t.Union[str, float], max_score: t.Union[str, float]
+    ) -> int:
+        """Count members in a sorted set with scores within the given range.
+
+        Parameters
+        ----------
+        name : str
+            The name of the sorted set.
+        min_score : str or float
+            Minimum score ('-inf', '5.0', or '(5.0' for exclusive).
+        max_score : str or float
+            Maximum score ('+inf', '10.0', or '(10.0' for exclusive).
+
+        Returns
+        -------
+        int
+            The number of members within the score range.
+        """
+        with self._lock:
+            if self._is_expired(name):
+                return 0
+            if name not in self.content:
+                return 0
+            if (
+                not isinstance(self.content[name], dict)
+                or "sorted" not in self.content[name]
+            ):
+                return 0
+
+            min_val, min_exclusive = self._parse_score_boundary(min_score)
+            max_val, max_exclusive = self._parse_score_boundary(max_score)
+
+            sorted_list = self.content[name]["sorted"]
+            count = 0
+
+            for score, member in sorted_list:
+                # Check min boundary
+                if min_exclusive and score <= min_val:
+                    continue
+                if not min_exclusive and score < min_val:
+                    continue
+
+                # Check max boundary
+                if max_exclusive and score >= max_val:
+                    break
+                if not max_exclusive and score > max_val:
+                    break
+
+                count += 1
+
+            return count
+
+    def setex(self, name: str, time: int, value: str) -> bool:
+        """Set the value and expiration of a key.
+
+        Parameters
+        ----------
+        name : str
+            The key name.
+        time : int
+            Expiration time in seconds.
+        value : str
+            The value to set.
+
+        Returns
+        -------
+        bool
+            True if successful.
+        """
+        with self._lock:
+            self.set(name, value)
+            self._expiry[name] = time_module.time() + time
+            return True
+
+    def expire(self, name: str, time: int) -> int:
+        """Set a timeout on a key.
+
+        Parameters
+        ----------
+        name : str
+            The key name.
+        time : int
+            Expiration time in seconds.
+
+        Returns
+        -------
+        int
+            1 if the timeout was set, 0 if key does not exist.
+        """
+        with self._lock:
+            if name not in self.content:
+                return 0
+            self._expiry[name] = time_module.time() + time
+            return 1
+
+    def scan_iter(self, match: t.Optional[str] = None) -> t.Iterator[str]:
+        """Iterate over keys matching a pattern.
+
+        Parameters
+        ----------
+        match : str, optional
+            Glob-style pattern to match keys (e.g., 'user:*', '*:lock:*').
+            If None, all keys are returned.
+
+        Yields
+        ------
+        str
+            Keys matching the pattern.
+
+        Examples
+        --------
+        >>> storage = MemoryStorage()
+        >>> storage.set("user:1", "Alice")
+        >>> storage.set("user:2", "Bob")
+        >>> list(storage.scan_iter("user:*"))
+        ['user:1', 'user:2']
+        """
+        with self._lock:
+            # Create a snapshot of keys to avoid issues with concurrent modification
+            keys_snapshot = list(self.content.keys())
+
+        # Iterate over snapshot without holding lock
+        for key in keys_snapshot:
+            # Check expiry (this will acquire lock briefly)
+            if not self._is_expired(key):
+                if match is None or fnmatch.fnmatch(key, match):
+                    yield key
+
+    def pipeline(self) -> MemoryStoragePipeline:
+        """Create a pipeline for batching operations.
+
+        Returns
+        -------
+        MemoryStoragePipeline
+            A pipeline object for batching multiple commands.
+
+        Examples
+        --------
+        >>> storage = MemoryStorage()
+        >>> pipe = storage.pipeline()
+        >>> pipe.set("key1", "val1")
+        >>> pipe.set("key2", "val2")
+        >>> results = pipe.execute()
+        """
+        return MemoryStoragePipeline(self)

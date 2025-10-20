@@ -12,6 +12,7 @@ dependencies = [
     "eventlet>=0.39.0",
     "python-socketio[client]>=5.12.1",
     "redis>=5.2.1",
+    "sortedcontainers>=2.4.0",
     "typer>=0.13",
     "znjson>=0.2.6",
 ]

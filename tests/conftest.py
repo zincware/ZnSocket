@@ -6,10 +6,10 @@ import random
 import socket
 import subprocess
 import time
+import typing as t
 
 import pytest
 import redis
-import typing as t
 
 from znsocket import Client, MemoryStorage
 
@@ -99,12 +99,14 @@ def redisclient() -> t.Generator[redis.Redis, None, None]:
     yield r
     r.flushdb()
 
+
 @pytest.fixture
 def memory_storage() -> t.Generator[MemoryStorage, None, None]:
     """Test against in-memory storage implementation"""
     r = MemoryStorage()
     yield r
     r.flushall()
+
 
 @pytest.fixture
 def empty() -> None:
