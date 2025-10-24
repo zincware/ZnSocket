@@ -85,7 +85,6 @@ def test_storage_hset_mapping_json_string(r, request):
 @pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
 def test_storage_set_dict_object_should_convert_to_string(r, request):
     """Test that storing a dict object converts it to string representation."""
-    import json
 
     c = request.getfixturevalue(r)
     data = {"user": "alice", "age": 30}
@@ -1001,3 +1000,124 @@ def test_storage_pipeline_multiple_executions(r, request):
     # Verify both keys were set
     assert c.get("key1") == "value1"
     assert c.get("key2") == "value2"
+
+
+# ============================================================================
+# SMOVE TESTS
+# ============================================================================
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_smove_basic(r, request):
+    """Test basic smove operation."""
+    c = request.getfixturevalue(r)
+    c.sadd("set1", "member1")
+    c.sadd("set1", "member2")
+    c.sadd("set2", "member3")
+
+    # Move member1 from set1 to set2
+    assert c.smove("set1", "set2", "member1") == 1
+
+    # Verify member1 is now in set2 and not in set1
+    assert "member1" in c.smembers("set2")
+    assert "member1" not in c.smembers("set1")
+    assert "member2" in c.smembers("set1")
+    assert "member3" in c.smembers("set2")
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_smove_to_new_destination(r, request):
+    """Test smove to a non-existent destination creates it."""
+    c = request.getfixturevalue(r)
+    c.sadd("set1", "member1")
+
+    # Move to non-existent set
+    assert c.smove("set1", "set2", "member1") == 1
+
+    # Verify destination was created
+    assert "member1" in c.smembers("set2")
+    assert c.scard("set2") == 1
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_smove_nonexistent_member(r, request):
+    """Test smove with member that doesn't exist in source."""
+    c = request.getfixturevalue(r)
+    c.sadd("set1", "member1")
+    c.sadd("set2", "member2")
+
+    # Try to move non-existent member
+    assert c.smove("set1", "set2", "nonexistent") == 0
+
+    # Verify sets are unchanged
+    assert c.smembers("set1") == {"member1"}
+    assert c.smembers("set2") == {"member2"}
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_smove_nonexistent_source(r, request):
+    """Test smove from non-existent source."""
+    c = request.getfixturevalue(r)
+    c.sadd("set2", "member2")
+
+    # Try to move from non-existent set
+    assert c.smove("nonexistent", "set2", "member1") == 0
+
+    # Verify destination is unchanged
+    assert c.smembers("set2") == {"member2"}
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_smove_member_already_in_destination(r, request):
+    """Test smove when member already exists in destination."""
+    c = request.getfixturevalue(r)
+    c.sadd("set1", "member1")
+    c.sadd("set2", "member1")
+
+    # Move member that's already in destination
+    assert c.smove("set1", "set2", "member1") == 1
+
+    # Verify member is removed from source and exists in destination
+    assert "member1" not in c.smembers("set1")
+    assert "member1" in c.smembers("set2")
+    # Destination should still have only one copy (sets don't allow duplicates)
+    assert c.scard("set2") == 1
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_smove_wrong_type_source(r, request):
+    """Test smove when source is not a set."""
+    c = request.getfixturevalue(r)
+    c.set("not_a_set", "value")
+    c.sadd("set2", "member")
+
+    # Try to move from a non-set
+    with pytest.raises(Exception):  # ResponseError
+        c.smove("not_a_set", "set2", "member")
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_smove_wrong_type_destination(r, request):
+    """Test smove when destination is not a set."""
+    c = request.getfixturevalue(r)
+    c.sadd("set1", "member1")
+    c.set("not_a_set", "value")
+
+    # Try to move to a non-set
+    with pytest.raises(Exception):  # ResponseError
+        c.smove("set1", "not_a_set", "member1")
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_smove_same_source_and_destination(r, request):
+    """Test smove with same source and destination."""
+    c = request.getfixturevalue(r)
+    c.sadd("set1", "member1")
+    c.sadd("set1", "member2")
+
+    # Move within same set (should be a no-op but return 1)
+    assert c.smove("set1", "set1", "member1") == 1
+
+    # Verify set is unchanged
+    assert c.smembers("set1") == {"member1", "member2"}
+    assert c.scard("set1") == 2

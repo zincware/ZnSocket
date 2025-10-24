@@ -121,7 +121,7 @@ class MemoryStorage:
         Redis accepts: bytes, str, int, float (but NOT bool or dict/list/etc)
         """
         if isinstance(value, bytes):
-            return value.decode('utf-8')
+            return value.decode("utf-8")
         elif isinstance(value, bool):
             # Redis specifically rejects bool
             raise DataError(
@@ -294,7 +294,12 @@ class MemoryStorage:
                 return None
 
     def set(
-        self, name, value, nx: bool = False, xx: bool = False, ex: t.Optional[int] = None
+        self,
+        name,
+        value,
+        nx: bool = False,
+        xx: bool = False,
+        ex: t.Optional[int] = None,
     ):
         """Set the value of a key.
 
@@ -386,9 +391,7 @@ class MemoryStorage:
                 self.content[name] = str(new_value)
                 return new_value
             except (ValueError, TypeError):
-                raise ResponseError(
-                    "value is not an integer or out of range"
-                )
+                raise ResponseError("value is not an integer or out of range")
 
     def decr(self, name: str, amount: int = 1) -> int:
         """Decrement the integer value of a key by the given amount.
@@ -481,6 +484,61 @@ class MemoryStorage:
                 return 1
             except KeyError:
                 return 0
+
+    def smove(self, source, destination, member):
+        """Move a member from one set to another atomically.
+
+        Parameters
+        ----------
+        source : str
+            The name of the source set.
+        destination : str
+            The name of the destination set.
+        member : str
+            The member to move.
+
+        Returns
+        -------
+        int
+            1 if the element is moved, 0 if the element is not a member of source.
+
+        Raises
+        ------
+        ResponseError
+            If source or destination is not a set.
+        """
+        with self._lock:
+            # Check if source exists and is a set
+            if source not in self.content:
+                return 0
+
+            if not isinstance(self.content[source], set):
+                raise ResponseError(
+                    "WRONGTYPE Operation against a key holding the wrong kind of value"
+                )
+
+            # Check if member exists in source
+            if member not in self.content[source]:
+                return 0
+
+            # Check if destination exists and is a set (if it exists)
+            if destination in self.content and not isinstance(
+                self.content[destination], set
+            ):
+                raise ResponseError(
+                    "WRONGTYPE Operation against a key holding the wrong kind of value"
+                )
+
+            # Remove from source
+            self.content[source].remove(member)
+
+            # Add to destination
+            if destination not in self.content:
+                self.content[destination] = {member}
+            else:
+                self.content[destination].add(member)
+
+            return 1
 
     def linsert(self, name, where, pivot, value):
         with self._lock:
