@@ -738,6 +738,116 @@ def test_storage_expire_multiple_operations(r, request):
 
 
 @pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_ttl_nonexistent_key(r, request):
+    """Test ttl on nonexistent key returns -2."""
+    c = request.getfixturevalue(r)
+    assert c.ttl("nonexistent") == -2
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_ttl_no_expiration(r, request):
+    """Test ttl on key without expiration returns -1."""
+    c = request.getfixturevalue(r)
+    c.set("key", "value")
+    assert c.ttl("key") == -1
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_ttl_with_expiration(r, request):
+    """Test ttl returns correct remaining time."""
+    c = request.getfixturevalue(r)
+    c.setex("key", 10, "value")
+
+    # TTL should be approximately 10 seconds
+    ttl_value = c.ttl("key")
+    assert 9 <= ttl_value <= 10
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_ttl_expired_key(r, request):
+    """Test ttl on expired key returns -2."""
+    c = request.getfixturevalue(r)
+    c.setex("key", 1, "value")
+
+    # Wait for expiry
+    time.sleep(1.1)
+
+    # TTL should return -2 (key doesn't exist)
+    assert c.ttl("key") == -2
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_ttl_after_expire_command(r, request):
+    """Test ttl after using expire command."""
+    c = request.getfixturevalue(r)
+    c.set("key", "value")
+    c.expire("key", 5)
+
+    # TTL should be approximately 5 seconds
+    ttl_value = c.ttl("key")
+    assert 4 <= ttl_value <= 5
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_ttl_hash(r, request):
+    """Test ttl works with hash keys."""
+    c = request.getfixturevalue(r)
+    c.hset("user", "name", "Alice")
+    c.expire("user", 10)
+
+    ttl_value = c.ttl("user")
+    assert 9 <= ttl_value <= 10
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_ttl_list(r, request):
+    """Test ttl works with list keys."""
+    c = request.getfixturevalue(r)
+    c.rpush("mylist", "item")
+    c.expire("mylist", 10)
+
+    ttl_value = c.ttl("mylist")
+    assert 9 <= ttl_value <= 10
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_ttl_set(r, request):
+    """Test ttl works with set keys."""
+    c = request.getfixturevalue(r)
+    c.sadd("myset", "member")
+    c.expire("myset", 10)
+
+    ttl_value = c.ttl("myset")
+    assert 9 <= ttl_value <= 10
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_ttl_sorted_set(r, request):
+    """Test ttl works with sorted set keys."""
+    c = request.getfixturevalue(r)
+    c.zadd("scores", {"player": 100})
+    c.expire("scores", 10)
+
+    ttl_value = c.ttl("scores")
+    assert 9 <= ttl_value <= 10
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_ttl_countdown(r, request):
+    """Test ttl decreases over time."""
+    c = request.getfixturevalue(r)
+    c.setex("key", 5, "value")
+
+    ttl1 = c.ttl("key")
+    time.sleep(2)
+    ttl2 = c.ttl("key")
+
+    # TTL should have decreased
+    assert ttl2 < ttl1
+    assert ttl2 >= 0
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
 def test_storage_expire_hget(r, request):
     """Test hget returns None for expired hash."""
     c = request.getfixturevalue(r)

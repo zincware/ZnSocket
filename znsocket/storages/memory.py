@@ -1138,6 +1138,52 @@ class MemoryStorage:
             self._expiry[name] = time_module.time() + time
             return 1
 
+    def ttl(self, name: str) -> int:
+        """Get the remaining time to live of a key in seconds.
+
+        Parameters
+        ----------
+        name : str
+            The key name.
+
+        Returns
+        -------
+        int
+            - -2 if the key does not exist
+            - -1 if the key exists but has no associated expire
+            - Remaining time to live in seconds (rounded down) if the key has an expire
+
+        Examples
+        --------
+        >>> storage = MemoryStorage()
+        >>> storage.set("key", "value")
+        >>> storage.ttl("key")
+        -1
+        >>> storage.setex("temp", 10, "value")
+        >>> storage.ttl("temp")
+        10
+        >>> storage.ttl("nonexistent")
+        -2
+        """
+        with self._lock:
+            # Check if key exists
+            if name not in self.content:
+                return -2
+
+            # Check if key is expired (this will clean it up)
+            if self._is_expired(name):
+                return -2
+
+            # Check if key has an expiration
+            if name not in self._expiry:
+                return -1
+
+            # Calculate remaining time
+            remaining = self._expiry[name] - time_module.time()
+            # Return 0 if expired (shouldn't happen due to _is_expired check above)
+            # but match Redis behavior which can return 0 briefly before cleanup
+            return max(0, int(remaining))
+
     def scan_iter(
         self, match: t.Optional[str] = None, count: t.Optional[int] = None
     ) -> t.Iterator[str]:

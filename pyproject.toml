@@ -1,6 +1,6 @@
 [project]
 name = "znsocket"
-version = "0.2.13a2"
+version = "0.2.13a3"
 description = "Python implementation of a Redis-compatible API using websockets."
 authors = [
     { name = "Fabian Zills", email = "fzills@icp.uni-stuttgart.de" },
@@ -46,6 +46,9 @@ Releases = "https://github.com/zincware/ZnSocket/releases"
 
 [tool.ruff.lint]
 select = ["I", "F", "W", "C"]
+
+[tool.codespell]
+ignore-words-list = "smove"
 
 [tool.coverage.run]
 # omit the tests themselves
