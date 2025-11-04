@@ -616,15 +616,34 @@ class MemoryStorage:
         -------
         dict
             A copy of the hash dictionary. Returns empty dict if key doesn't exist.
+
+        Raises
+        ------
+        ResponseError
+            If the key exists but is not a hash.
         """
         with self._lock:
             if self._is_expired(name):
                 return {}
-            try:
-                # Return a copy to prevent external mutation of internal data
-                return dict(self.content[name])
-            except KeyError:
+            if name not in self.content:
                 return {}
+
+            value = self.content[name]
+
+            # Check if it's a hash (dict but not a sorted set)
+            if isinstance(value, dict):
+                # Check if it's a sorted set
+                if "sorted" in value and "scores" in value:
+                    raise ResponseError(
+                        "WRONGTYPE Operation against a key holding the wrong kind of value"
+                    )
+                # It's a hash
+                return dict(value)
+            else:
+                # It's some other type (string, list, set)
+                raise ResponseError(
+                    "WRONGTYPE Operation against a key holding the wrong kind of value"
+                )
 
     def copy(self, src, dst):
         with self._lock:
@@ -1245,3 +1264,67 @@ class MemoryStorage:
         >>> results = pipe.execute()
         """
         return MemoryStoragePipeline(self)
+
+    def type(self, name: str) -> str:
+        """Determine the type of value stored at a key.
+
+        Parameters
+        ----------
+        name : str
+            The key name to check.
+
+        Returns
+        -------
+        str
+            The type of the value stored at the key:
+            - "string" for string values
+            - "list" for list values
+            - "set" for set values
+            - "zset" for sorted set values
+            - "hash" for hash values
+            - "none" if the key does not exist
+
+        Examples
+        --------
+        >>> storage = MemoryStorage()
+        >>> storage.set("key1", "value")
+        >>> storage.type("key1")
+        'string'
+        >>> storage.hset("user", "name", "Alice")
+        >>> storage.type("user")
+        'hash'
+        >>> storage.rpush("mylist", "item")
+        >>> storage.type("mylist")
+        'list'
+        >>> storage.type("nonexistent")
+        'none'
+        """
+        with self._lock:
+            # Check if key is expired
+            if self._is_expired(name):
+                return "none"
+
+            # Check if key exists
+            if name not in self.content:
+                return "none"
+
+            value = self.content[name]
+
+            # Check for sorted set (dict with "scores" and "sorted" keys)
+            if isinstance(value, dict) and "sorted" in value and "scores" in value:
+                return "zset"
+
+            # Check for hash (dict without sorted set structure)
+            if isinstance(value, dict):
+                return "hash"
+
+            # Check for list
+            if isinstance(value, list):
+                return "list"
+
+            # Check for set
+            if isinstance(value, set):
+                return "set"
+
+            # Everything else is a string
+            return "string"

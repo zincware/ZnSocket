@@ -899,7 +899,7 @@ def test_storage_scan_iter_all(r, request):
     c.set("key2", "value2")
     c.set("other", "value3")
 
-    keys = sorted(list(c.scan_iter()))
+    keys = sorted(c.scan_iter())
     assert "key1" in keys
     assert "key2" in keys
     assert "other" in keys
@@ -913,7 +913,7 @@ def test_storage_scan_iter_pattern(r, request):
     c.set("user:2", "bob")
     c.set("post:1", "hello")
 
-    user_keys = sorted(list(c.scan_iter("user:*")))
+    user_keys = sorted(c.scan_iter("user:*"))
     assert user_keys == ["user:1", "user:2"]
 
 
@@ -926,7 +926,7 @@ def test_storage_scan_iter_wildcard(r, request):
     c.set("room:123:data", "value3")
 
     # Match all locks
-    lock_keys = sorted(list(c.scan_iter("*:lock:*")))
+    lock_keys = sorted(c.scan_iter("*:lock:*"))
     assert len(lock_keys) == 2
     assert "room:123:lock:frame" in lock_keys
     assert "room:456:lock:user" in lock_keys
@@ -1231,3 +1231,171 @@ def test_storage_smove_same_source_and_destination(r, request):
     # Verify set is unchanged
     assert c.smembers("set1") == {"member1", "member2"}
     assert c.scard("set1") == 2
+
+
+# ============================================================================
+# TYPE TESTS
+# ============================================================================
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_type_string(r, request):
+    """Test type returns 'string' for string values."""
+    c = request.getfixturevalue(r)
+    c.set("key1", "value1")
+    assert c.type("key1") == "string"
+
+    # Test with integer value (stored as string)
+    c.set("key2", 42)
+    assert c.type("key2") == "string"
+
+    # Test with float value (stored as string)
+    c.set("key3", 3.14)
+    assert c.type("key3") == "string"
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_type_hash(r, request):
+    """Test type returns 'hash' for hash values."""
+    c = request.getfixturevalue(r)
+    c.hset("user:1", "name", "Alice")
+    assert c.type("user:1") == "hash"
+
+    # Test with multiple fields
+    c.hset("user:2", mapping={"name": "Bob", "age": "30"})
+    assert c.type("user:2") == "hash"
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_type_list(r, request):
+    """Test type returns 'list' for list values."""
+    c = request.getfixturevalue(r)
+    c.rpush("mylist", "item1")
+    assert c.type("mylist") == "list"
+
+    # Test with lpush
+    c.lpush("mylist2", "item1")
+    assert c.type("mylist2") == "list"
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_type_set(r, request):
+    """Test type returns 'set' for set values."""
+    c = request.getfixturevalue(r)
+    c.sadd("myset", "member1")
+    assert c.type("myset") == "set"
+
+    # Test with multiple members
+    c.sadd("myset2", "member1")
+    c.sadd("myset2", "member2")
+    assert c.type("myset2") == "set"
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_type_zset(r, request):
+    """Test type returns 'zset' for sorted set values."""
+    c = request.getfixturevalue(r)
+    c.zadd("leaderboard", {"player1": 100})
+    assert c.type("leaderboard") == "zset"
+
+    # Test with multiple members
+    c.zadd("scores", {"alice": 100, "bob": 200, "charlie": 150})
+    assert c.type("scores") == "zset"
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_type_nonexistent(r, request):
+    """Test type returns 'none' for non-existent keys."""
+    c = request.getfixturevalue(r)
+    assert c.type("nonexistent") == "none"
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_type_expired(r, request):
+    """Test type returns 'none' for expired keys."""
+    c = request.getfixturevalue(r)
+    # Test with expired string
+    c.setex("temp_string", 1, "value")
+    assert c.type("temp_string") == "string"
+    time.sleep(1.1)
+    assert c.type("temp_string") == "none"
+
+    # Test with expired hash
+    c.hset("temp_hash", "field", "value")
+    c.expire("temp_hash", 1)
+    assert c.type("temp_hash") == "hash"
+    time.sleep(1.1)
+    assert c.type("temp_hash") == "none"
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_type_after_delete(r, request):
+    """Test type returns 'none' after deleting a key."""
+    c = request.getfixturevalue(r)
+    c.set("key", "value")
+    assert c.type("key") == "string"
+
+    c.delete("key")
+    assert c.type("key") == "none"
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_type_all_types(r, request):
+    """Test type correctly identifies all different types in storage."""
+    c = request.getfixturevalue(r)
+
+    # Create keys of all types
+    c.set("string_key", "value")
+    c.hset("hash_key", "field", "value")
+    c.rpush("list_key", "item")
+    c.sadd("set_key", "member")
+    c.zadd("zset_key", {"member": 1.0})
+
+    # Verify all types
+    assert c.type("string_key") == "string"
+    assert c.type("hash_key") == "hash"
+    assert c.type("list_key") == "list"
+    assert c.type("set_key") == "set"
+    assert c.type("zset_key") == "zset"
+    assert c.type("nonexistent_key") == "none"
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_type_with_hgetall(r, request):
+    """Test hgetall behavior with different key types using type command."""
+    c = request.getfixturevalue(r)
+
+    # Hash type - should work
+    c.hset("hash_key", "field1", "value1")
+    assert c.type("hash_key") == "hash"
+    assert c.hgetall("hash_key") == {"field1": "value1"}
+
+    # Non-existent key - should return empty dict
+    assert c.type("nonexistent") == "none"
+    assert c.hgetall("nonexistent") == {}
+
+    # String type - should raise error
+    c.set("string_key", "value")
+    assert c.type("string_key") == "string"
+    # In Redis, hgetall on wrong type raises WRONGTYPE error
+    # For now, verify the type is correct and that we can detect the difference
+    with pytest.raises(Exception):  # Should raise ResponseError in redis
+        c.hgetall("string_key")
+
+    # List type - should raise error
+    c.rpush("list_key", "item")
+    assert c.type("list_key") == "list"
+    with pytest.raises(Exception):
+        c.hgetall("list_key")
+
+    # Set type - should raise error
+    c.sadd("set_key", "member")
+    assert c.type("set_key") == "set"
+    with pytest.raises(Exception):
+        c.hgetall("set_key")
+
+    # Sorted set type - should raise error
+    c.zadd("zset_key", {"member": 1.0})
+    assert c.type("zset_key") == "zset"
+    with pytest.raises(Exception):
+        c.hgetall("zset_key")
