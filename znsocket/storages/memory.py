@@ -1,5 +1,6 @@
 import dataclasses
 import fnmatch
+import random
 import threading
 import time as time_module
 import typing as t
@@ -539,6 +540,73 @@ class MemoryStorage:
                 self.content[destination].add(member)
 
             return 1
+
+    def srandmember(
+        self, name: str, count: t.Optional[int] = None
+    ) -> t.Union[str, list, None]:
+        """Get one or more random members from a set.
+
+        Parameters
+        ----------
+        name : str
+            The name of the set.
+        count : int, optional
+            Number of members to return. If positive, returns distinct members.
+            If negative, returns members that may repeat.
+            If None, returns a single member.
+
+        Returns
+        -------
+        str or list or None
+            If count is None: returns a single random member or None if set doesn't exist.
+            If count is provided: returns a list of members (may be empty list).
+
+        Raises
+        ------
+        ResponseError
+            If the key exists but is not a set.
+
+        Examples
+        --------
+        >>> storage = MemoryStorage()
+        >>> storage.sadd("myset", "a")
+        >>> storage.sadd("myset", "b")
+        >>> storage.sadd("myset", "c")
+        >>> member = storage.srandmember("myset")  # Returns one of 'a', 'b', 'c'
+        >>> members = storage.srandmember("myset", 2)  # Returns 2 distinct members
+        >>> storage.srandmember("nonexistent")
+        None
+        """
+        with self._lock:
+            if self._is_expired(name):
+                return None if count is None else []
+
+            if name not in self.content:
+                return None if count is None else []
+
+            if not isinstance(self.content[name], set):
+                raise ResponseError(
+                    "WRONGTYPE Operation against a key holding the wrong kind of value"
+                )
+
+            members = list(self.content[name])
+
+            if not members:
+                return None if count is None else []
+
+            # No count provided: return single random member
+            if count is None:
+                return random.choice(members)
+
+            # Positive count: return up to count distinct members
+            if count > 0:
+                # Can't return more than available
+                actual_count = min(count, len(members))
+                return random.sample(members, actual_count)
+
+            # Negative count: return |count| members (may repeat)
+            else:
+                return [random.choice(members) for _ in range(abs(count))]
 
     def linsert(self, name, where, pivot, value):
         with self._lock:

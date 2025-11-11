@@ -1399,3 +1399,136 @@ def test_storage_type_with_hgetall(r, request):
     assert c.type("zset_key") == "zset"
     with pytest.raises(Exception):
         c.hgetall("zset_key")
+
+
+# ============================================================================
+# SRANDMEMBER TESTS
+# ============================================================================
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_srandmember_single(r, request):
+    """Test srandmember returns a single random member."""
+    c = request.getfixturevalue(r)
+    c.sadd("myset", "member1")
+    c.sadd("myset", "member2")
+    c.sadd("myset", "member3")
+
+    # Get one random member
+    member = c.srandmember("myset")
+    assert member in {"member1", "member2", "member3"}
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_srandmember_nonexistent(r, request):
+    """Test srandmember on non-existent set returns None."""
+    c = request.getfixturevalue(r)
+    assert c.srandmember("nonexistent") is None
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_srandmember_empty_set(r, request):
+    """Test srandmember on empty set returns None."""
+    c = request.getfixturevalue(r)
+    c.sadd("myset", "member1")
+    c.srem("myset", "member1")  # Remove the only member
+    assert c.srandmember("myset") is None
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_srandmember_positive_count(r, request):
+    """Test srandmember with positive count returns distinct members."""
+    c = request.getfixturevalue(r)
+    c.sadd("myset", "a")
+    c.sadd("myset", "b")
+    c.sadd("myset", "c")
+    c.sadd("myset", "d")
+    c.sadd("myset", "e")
+
+    # Get 3 random members
+    members = c.srandmember("myset", 3)
+    assert isinstance(members, list)
+    assert len(members) == 3
+    # Should all be distinct
+    assert len(set(members)) == 3
+    # Should all be from the set
+    for member in members:
+        assert member in {"a", "b", "c", "d", "e"}
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_srandmember_count_larger_than_set(r, request):
+    """Test srandmember with count larger than set size."""
+    c = request.getfixturevalue(r)
+    c.sadd("myset", "a")
+    c.sadd("myset", "b")
+    c.sadd("myset", "c")
+
+    # Request more members than available
+    members = c.srandmember("myset", 10)
+    assert isinstance(members, list)
+    assert len(members) == 3  # Should return all available members
+    assert set(members) == {"a", "b", "c"}
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_srandmember_negative_count(r, request):
+    """Test srandmember with negative count allows duplicates."""
+    c = request.getfixturevalue(r)
+    c.sadd("myset", "a")
+    c.sadd("myset", "b")
+
+    # Get 5 random members (may repeat since set only has 2 members)
+    members = c.srandmember("myset", -5)
+    assert isinstance(members, list)
+    assert len(members) == 5
+    # All should be from the set
+    for member in members:
+        assert member in {"a", "b"}
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_srandmember_count_zero(r, request):
+    """Test srandmember with count zero returns empty list."""
+    c = request.getfixturevalue(r)
+    c.sadd("myset", "a")
+    c.sadd("myset", "b")
+
+    members = c.srandmember("myset", 0)
+    assert members == []
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_srandmember_nonexistent_with_count(r, request):
+    """Test srandmember with count on non-existent set."""
+    c = request.getfixturevalue(r)
+    assert c.srandmember("nonexistent", 5) == []
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_srandmember_wrong_type(r, request):
+    """Test srandmember on non-set type raises error."""
+    c = request.getfixturevalue(r)
+    c.set("not_a_set", "value")
+
+    with pytest.raises(Exception):  # ResponseError
+        c.srandmember("not_a_set")
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_srandmember_with_expire(r, request):
+    """Test srandmember with expired set."""
+    c = request.getfixturevalue(r)
+    c.sadd("myset", "member1")
+    c.expire("myset", 1)
+
+    # Should work before expiry
+    member = c.srandmember("myset")
+    assert member == "member1"
+
+    # Wait for expiry
+    time.sleep(1.1)
+
+    # Should return None after expiry
+    assert c.srandmember("myset") is None
+    assert c.srandmember("myset", 5) == []
