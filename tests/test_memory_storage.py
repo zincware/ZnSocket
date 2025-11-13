@@ -1532,3 +1532,77 @@ def test_storage_srandmember_with_expire(r, request):
     # Should return None after expiry
     assert c.srandmember("myset") is None
     assert c.srandmember("myset", 5) == []
+
+
+# ============================================================================
+# SISMEMBER TESTS
+# ============================================================================
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_sismember_member_exists(r, request):
+    """Test sismember returns 1 when member exists in set."""
+    c = request.getfixturevalue(r)
+    c.sadd("myset", "member1")
+    c.sadd("myset", "member2")
+    c.sadd("myset", "member3")
+
+    assert c.sismember("myset", "member1") == 1
+    assert c.sismember("myset", "member2") == 1
+    assert c.sismember("myset", "member3") == 1
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_sismember_member_not_exists(r, request):
+    """Test sismember returns 0 when member does not exist in set."""
+    c = request.getfixturevalue(r)
+    c.sadd("myset", "member1")
+    c.sadd("myset", "member2")
+
+    assert c.sismember("myset", "member3") == 0
+    assert c.sismember("myset", "nonexistent") == 0
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_sismember_nonexistent_set(r, request):
+    """Test sismember returns 0 when set does not exist."""
+    c = request.getfixturevalue(r)
+    assert c.sismember("nonexistent", "member1") == 0
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_sismember_wrong_type(r, request):
+    """Test sismember raises error when key is not a set."""
+    c = request.getfixturevalue(r)
+    c.set("not_a_set", "value")
+
+    with pytest.raises(Exception):  # ResponseError
+        c.sismember("not_a_set", "member1")
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_sismember_with_expire(r, request):
+    """Test sismember with expired set."""
+    c = request.getfixturevalue(r)
+    c.sadd("myset", "member1")
+    c.expire("myset", 1)
+
+    # Should work before expiry
+    assert c.sismember("myset", "member1") == 1
+
+    # Wait for expiry
+    time.sleep(1.1)
+
+    # Should return 0 after expiry (key doesn't exist)
+    assert c.sismember("myset", "member1") == 0
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_sismember_empty_set(r, request):
+    """Test sismember on empty set."""
+    c = request.getfixturevalue(r)
+    c.sadd("myset", "member1")
+    c.srem("myset", "member1")  # Remove the only member
+
+    # Empty set still exists, so should return 0 for non-existent member
+    assert c.sismember("myset", "member1") == 0

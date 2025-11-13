@@ -608,6 +608,51 @@ class MemoryStorage:
             else:
                 return [random.choice(members) for _ in range(abs(count))]
 
+    def sismember(self, name: str, member: str) -> int:
+        """Check if a member exists in a set.
+
+        Parameters
+        ----------
+        name : str
+            The name of the set.
+        member : str
+            The member to check for.
+
+        Returns
+        -------
+        int
+            1 if the member exists in the set, 0 otherwise.
+
+        Raises
+        ------
+        ResponseError
+            If the key exists but is not a set.
+
+        Examples
+        --------
+        >>> storage = MemoryStorage()
+        >>> storage.sadd("myset", "member1")
+        >>> storage.sismember("myset", "member1")
+        1
+        >>> storage.sismember("myset", "member2")
+        0
+        >>> storage.sismember("nonexistent", "member1")
+        0
+        """
+        with self._lock:
+            if self._is_expired(name):
+                return 0
+
+            if name not in self.content:
+                return 0
+
+            if not isinstance(self.content[name], set):
+                raise ResponseError(
+                    "WRONGTYPE Operation against a key holding the wrong kind of value"
+                )
+
+            return 1 if member in self.content[name] else 0
+
     def linsert(self, name, where, pivot, value):
         with self._lock:
             try:
