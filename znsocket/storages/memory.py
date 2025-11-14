@@ -356,6 +356,42 @@ class MemoryStorage:
                 return default
             return self.content.get(name, default)
 
+    def mget(self, *keys):
+        """Get the values of all the given keys.
+
+        Parameters
+        ----------
+        *keys : str or list
+            Keys to retrieve. Can be passed as individual arguments or as a single list.
+
+        Returns
+        -------
+        list
+            A list of values for the requested keys. Returns None for keys that don't exist.
+
+        Examples
+        --------
+        >>> storage = MemoryStorage()
+        >>> storage.set("key1", "value1")
+        >>> storage.set("key2", "value2")
+        >>> storage.mget("key1", "key2", "key3")
+        ['value1', 'value2', None]
+        >>> storage.mget(["key1", "key2"])
+        ['value1', 'value2']
+        """
+        with self._lock:
+            # Handle both mget("k1", "k2", "k3") and mget(["k1", "k2", "k3"])
+            if len(keys) == 1 and isinstance(keys[0], (list, tuple)):
+                keys = keys[0]
+
+            response = []
+            for key in keys:
+                if self._is_expired(key):
+                    response.append(None)
+                else:
+                    response.append(self.content.get(key, None))
+            return response
+
     def incr(self, name: str, amount: int = 1) -> int:
         """Increment the integer value of a key by the given amount.
 

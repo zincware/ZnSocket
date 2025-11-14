@@ -1606,3 +1606,133 @@ def test_storage_sismember_empty_set(r, request):
 
     # Empty set still exists, so should return 0 for non-existent member
     assert c.sismember("myset", "member1") == 0
+
+
+# ============================================================================
+# MGET TESTS
+# ============================================================================
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_mget_basic(r, request):
+    """Test mget returns values for multiple keys."""
+    c = request.getfixturevalue(r)
+    c.set("key1", "value1")
+    c.set("key2", "value2")
+    c.set("key3", "value3")
+
+    # Get multiple values
+    values = c.mget("key1", "key2", "key3")
+    assert values == ["value1", "value2", "value3"]
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_mget_with_list(r, request):
+    """Test mget with list of keys."""
+    c = request.getfixturevalue(r)
+    c.set("a", "1")
+    c.set("b", "2")
+    c.set("c", "3")
+
+    # Pass keys as a list
+    values = c.mget(["a", "b", "c"])
+    assert values == ["1", "2", "3"]
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_mget_nonexistent_keys(r, request):
+    """Test mget returns None for non-existent keys."""
+    c = request.getfixturevalue(r)
+    c.set("key1", "value1")
+    c.set("key3", "value3")
+
+    # key2 doesn't exist
+    values = c.mget("key1", "key2", "key3")
+    assert values == ["value1", None, "value3"]
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_mget_all_nonexistent(r, request):
+    """Test mget with all non-existent keys."""
+    c = request.getfixturevalue(r)
+
+    values = c.mget("nonexistent1", "nonexistent2", "nonexistent3")
+    assert values == [None, None, None]
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_mget_single_key(r, request):
+    """Test mget with a single key."""
+    c = request.getfixturevalue(r)
+    c.set("key", "value")
+
+    values = c.mget("key")
+    assert values == ["value"]
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_mget_empty_keys(r, request):
+    """Test mget with no keys returns empty list."""
+    c = request.getfixturevalue(r)
+
+    values = c.mget([])
+    assert values == []
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_mget_mixed_types(r, request):
+    """Test mget with different value types (stored as strings)."""
+    c = request.getfixturevalue(r)
+    c.set("str_key", "hello")
+    c.set("int_key", 42)
+    c.set("float_key", 3.14)
+
+    values = c.mget("str_key", "int_key", "float_key")
+    # All values should be returned as strings
+    assert values == ["hello", "42", "3.14"]
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_mget_with_expired_keys(r, request):
+    """Test mget returns None for expired keys."""
+    c = request.getfixturevalue(r)
+    c.set("key1", "value1")
+    c.setex("key2", 1, "value2")  # Expires in 1 second
+    c.set("key3", "value3")
+
+    # Before expiry
+    values = c.mget("key1", "key2", "key3")
+    assert values == ["value1", "value2", "value3"]
+
+    # After expiry
+    time.sleep(1.1)
+    values = c.mget("key1", "key2", "key3")
+    assert values == ["value1", None, "value3"]
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_mget_duplicate_keys(r, request):
+    """Test mget with duplicate keys returns duplicate values."""
+    c = request.getfixturevalue(r)
+    c.set("key1", "value1")
+
+    # Request same key multiple times
+    values = c.mget("key1", "key1", "key1")
+    assert values == ["value1", "value1", "value1"]
+
+
+@pytest.mark.parametrize("r", ["memory_storage", "redisclient"])
+def test_storage_mget_preserves_order(r, request):
+    """Test mget returns values in the same order as requested keys."""
+    c = request.getfixturevalue(r)
+    c.set("z", "last")
+    c.set("a", "first")
+    c.set("m", "middle")
+
+    # Request in specific order
+    values = c.mget("z", "a", "m")
+    assert values == ["last", "first", "middle"]
+
+    # Request in different order
+    values = c.mget("a", "m", "z")
+    assert values == ["first", "middle", "last"]
