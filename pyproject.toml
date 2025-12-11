@@ -1,6 +1,6 @@
 [project]
 name = "znsocket"
-version = "0.2.13a4"
+version = "0.3.0"
 description = "Python implementation of a Redis-compatible API using websockets."
 authors = [
     { name = "Fabian Zills", email = "fzills@icp.uni-stuttgart.de" },

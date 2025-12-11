@@ -2873,7 +2873,7 @@ wheels = [
 
 [[package]]
 name = "znsocket"
-version = "0.2.13a4"
+version = "0.3.0"
 source = { editable = "." }
 dependencies = [
     { name = "eventlet" },
