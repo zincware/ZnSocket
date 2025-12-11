@@ -953,7 +953,7 @@ class MemoryStorage:
                 return 0
             return len(self.content[name]["sorted"])
 
-    def zrange(self, name: str, start: int, end: int, withscores: bool = False) -> list:
+    def zrange(self, name: str, start: int, end: int, withscores: bool = False) -> list:  # noqa: C901
         """Get a range of members from a sorted set by index.
 
         Parameters
@@ -1013,7 +1013,7 @@ class MemoryStorage:
 
             return result
 
-    def zrangebyscore(
+    def zrangebyscore(  # noqa: C901
         self,
         name: str,
         min_score: t.Union[str, float],
@@ -1092,7 +1092,7 @@ class MemoryStorage:
             else:
                 return [member for member, score in result]
 
-    def zrevrangebyscore(
+    def zrevrangebyscore(  # noqa: C901
         self,
         name: str,
         max_score: t.Union[str, float],
