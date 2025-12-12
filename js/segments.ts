@@ -42,13 +42,13 @@ export class Segments {
 	}
 
 	async length(): Promise<number> {
-		const segments = await this._client.hGetAll(this._key);
+		const segments = await this._client.lRange(this._key, 0, -1);
 		let length = 0;
-		Object.values(segments).forEach((segment: string) => {
+		for (const segment of segments) {
 			// segment is [start, end, target]
 			const [start, end] = JSON.parse(segment);
 			length += end - start;
-		});
+		}
 		return length;
 	}
 
@@ -107,11 +107,10 @@ export class Segments {
 	// }
 
 	async get(index: number): Promise<any | null> {
-		const segments = await this._client.hGetAll(this._key);
-		const items = [];
+		const segments = await this._client.lRange(this._key, 0, -1);
 		let size = 0;
 
-		for (const segment of Object.values(segments)) {
+		for (const segment of segments) {
 			const [start, end, target] = JSON.parse(segment);
 			const listKey = target.split(/:(.+)/)[1];
 			const lst = new ZnSocketList({ client: this._client, key: listKey });
@@ -119,11 +118,11 @@ export class Segments {
 			if (size <= index && index < size + (end - start)) {
 				const offset = index + start - size;
 				const item = await lst.get(offset);
-				items.push(item);
+				return item;
 			}
 			size += end - start;
 		}
-		return items.length > 0 ? items[0] : null;
+		return null;
 	}
 
 	// onRefresh(callback) {

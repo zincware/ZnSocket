@@ -10,7 +10,7 @@ import pytest
 import socketio
 from flask import Flask
 
-from znsocket import Client, Storage, attach_events
+from znsocket import Client, MemoryStorage, attach_events
 
 
 @pytest.fixture
@@ -23,7 +23,7 @@ def flask_server_with_znsocket():
     app.config["SECRET_KEY"] = "test-secret"
 
     # Create custom storage instance
-    storage = Storage()
+    storage = MemoryStorage()
 
     # Create a regular socketio server and attach znsocket events
     sio = socketio.Server(cors_allowed_origins="*")

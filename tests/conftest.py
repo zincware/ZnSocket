@@ -6,11 +6,12 @@ import random
 import socket
 import subprocess
 import time
+import typing as t
 
 import pytest
 import redis
 
-from znsocket import Client
+from znsocket import Client, MemoryStorage
 
 
 @pytest.fixture
@@ -93,10 +94,18 @@ def znsclient_w_redis(eventlet_memory_server_redis):
 
 
 @pytest.fixture
-def redisclient():
+def redisclient() -> t.Generator[redis.Redis, None, None]:
     r = redis.Redis.from_url("redis://localhost:6379/0", decode_responses=True)
     yield r
     r.flushdb()
+
+
+@pytest.fixture
+def memory_storage() -> t.Generator[MemoryStorage, None, None]:
+    """Test against in-memory storage implementation"""
+    r = MemoryStorage()
+    yield r
+    r.flushall()
 
 
 @pytest.fixture
