@@ -1,3 +1,7 @@
+> [!IMPORTANT]
+> This library will no longer be maintaine. Use https://github.com/cunla/fakeredis-py and https://github.com/brainix/pottery instead.
+
+
 [![PyPI version](https://badge.fury.io/py/znsocket.svg)](https://badge.fury.io/py/znsocket)
 [![npm version](https://badge.fury.io/js/znsocket.svg)](https://badge.fury.io/js/znsocket)
 [![Coverage Status](https://coveralls.io/repos/github/zincware/ZnSocket/badge.svg?branch=main)](https://coveralls.io/github/zincware/ZnSocket?branch=main)
